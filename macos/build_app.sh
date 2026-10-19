@@ -1,79 +1,150 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="RuSwitcher"
-APP_BUNDLE="$PROJECT_DIR/$APP_NAME.app"
-# Universal-сборка кладёт продукт сюда (а не в .build/release)
-BUILD_DIR="$PROJECT_DIR/.build/apple/Products/Release"
-# version.json живёт в КОРНЕ репозитория (живой фид обновлений) — не переносить!
-# RS_VERSION_JSON переопределяет источник версии (для бета-сборок → version-beta.json).
-VERSION_JSON="${RS_VERSION_JSON:-$PROJECT_DIR/../version.json}"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+REPO_DIR="$(cd "$PROJECT_DIR/.." && pwd -P)"
+APP_NAME="MultiSwitcher"
+INFO_PLIST="$PROJECT_DIR/Info.plist"
+SIGN_IDENTITY="${MULTISWITCHER_SIGN_IDENTITY:-MultiSwitcher Stable Code Signing}"
+if [[ "$SIGN_IDENTITY" != "-" ]]; then
+    IDENTITIES=$(/usr/bin/security find-identity -v -p codesigning)
+    if [[ "$SIGN_IDENTITY" =~ ^[[:xdigit:]]{40}$ ]]; then
+        /usr/bin/awk -v identity="$SIGN_IDENTITY" '$2 == identity { found = 1 } END { exit !found }' <<<"$IDENTITIES" || {
+            echo "Signing identity fingerprint is unavailable in the configured keychains: $SIGN_IDENTITY" >&2
+            exit 1
+        }
+    else
+        MATCHING_IDENTITIES=$(/usr/bin/awk -v name="\"$SIGN_IDENTITY\"" 'index($0, name) { print $2 }' <<<"$IDENTITIES")
+        if [[ -z "$MATCHING_IDENTITIES" ]]; then
+            echo "Signing identity is unavailable in the configured keychains: $SIGN_IDENTITY" >&2
+            exit 1
+        fi
+        if [[ "$MATCHING_IDENTITIES" == *$'\n'* ]]; then
+            echo "Multiple signing identities are named '$SIGN_IDENTITY'; set MULTISWITCHER_SIGN_IDENTITY to one SHA-1 fingerprint." >&2
+            exit 1
+        fi
+        # Sign by the unique fingerprint. codesign can otherwise reject a common name
+        # when similarly named certificate-only entries also exist in other keychains.
+        SIGN_IDENTITY="$MATCHING_IDENTITIES"
+    fi
+fi
 
-# version.json — единый источник правды. Значения в Info.plist в репо
-# игнорируются: скрипт штампует CFBundleShortVersionString и CFBundleVersion
-# в копию Info.plist внутри собранного бандла.
-SHORT_VERSION=$(/usr/bin/python3 -c "import json,sys;print(json.load(open('$VERSION_JSON'))['version'])")
-BUILD_VERSION=$(/usr/bin/python3 -c "import json,sys;print(json.load(open('$VERSION_JSON')).get('build','1'))")
-DEV_TAG=$(/usr/bin/python3 -c "import json,sys;print(json.load(open('$VERSION_JSON')).get('dev',''))")
+if [[ -n "${MULTISWITCHER_BUILD_ROOT:-}" ]]; then
+    BUILD_ROOT="$MULTISWITCHER_BUILD_ROOT"
+    if [[ -e "$BUILD_ROOT" ]]; then
+        echo "Build destination already exists: $BUILD_ROOT" >&2
+        exit 1
+    fi
+    mkdir -m 700 -p "$BUILD_ROOT"
+else
+    BUILD_ROOT="$(mktemp -d "${TMPDIR:-/private/tmp}/multiswitcher-build.XXXXXX")"
+fi
+BUILD_ROOT="$(cd "$BUILD_ROOT" && pwd -P)"
 
-if [ -z "$SHORT_VERSION" ]; then
-    echo "ERROR: could not read version from $VERSION_JSON"
+# A build inside the synced source tree can acquire File Provider metadata
+# after codesign, invalidating the app bundle. Always stage somewhere else.
+case "$BUILD_ROOT/" in
+    "$REPO_DIR/"*)
+        echo "Build destination must be outside the source tree: $BUILD_ROOT" >&2
+        exit 1
+        ;;
+esac
+
+APP_BUNDLE="$BUILD_ROOT/$APP_NAME.app"
+VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")
+BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO_PLIST")
+
+ENABLE_UPDATES="${MULTISWITCHER_ENABLE_UPDATES:-0}"
+UPDATE_REPO="${MULTISWITCHER_GITHUB_REPOSITORY:-}"
+DEVELOPER_TEAM_ID="${MULTISWITCHER_DEVELOPER_TEAM_ID:-}"
+if [[ "$ENABLE_UPDATES" == "1" ]]; then
+    [[ "$UPDATE_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || {
+        echo "Set MULTISWITCHER_GITHUB_REPOSITORY to owner/repository for release builds." >&2
+        exit 1
+    }
+    [[ "$DEVELOPER_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || {
+        echo "Set MULTISWITCHER_DEVELOPER_TEAM_ID to the 10-character Apple Developer Team ID." >&2
+        exit 1
+    }
+fi
+echo "Building $APP_NAME $VERSION ($BUILD_NUMBER) for arm64"
+echo "Staging directory: $BUILD_ROOT"
+
+mkdir -p "$BUILD_ROOT/module-cache"
+export CLANG_MODULE_CACHE_PATH="$BUILD_ROOT/module-cache"
+export SWIFTPM_MODULECACHE_OVERRIDE="$BUILD_ROOT/module-cache"
+
+SWIFT_OPTIONS=(
+    --package-path "$PROJECT_DIR"
+    --scratch-path "$BUILD_ROOT/swiftpm"
+    --cache-path "$BUILD_ROOT/cache"
+    --config-path "$BUILD_ROOT/config"
+    --security-path "$BUILD_ROOT/security"
+    --disable-sandbox
+    --disable-dependency-cache
+    --manifest-cache local
+    -Xswiftc -module-cache-path
+    -Xswiftc "$BUILD_ROOT/module-cache"
+    -c release
+    --arch arm64
+)
+
+swift build "${SWIFT_OPTIONS[@]}" --product "$APP_NAME"
+BIN_DIR="$(swift build "${SWIFT_OPTIONS[@]}" --show-bin-path)"
+BIN_PATH="$BIN_DIR/$APP_NAME"
+if [[ ! -x "$BIN_PATH" ]]; then
+    echo "Built executable is missing: $BIN_PATH" >&2
     exit 1
 fi
 
-echo "=== Building $APP_NAME v$SHORT_VERSION (build $BUILD_VERSION) ==="
-
-# 1. Собираем release — universal (arm64 + x86_64), чтобы работало и на Intel-маках
-echo "→ swift build -c release --arch arm64 --arch x86_64 (universal)..."
-cd "$PROJECT_DIR"
-swift build -c release --arch arm64 --arch x86_64
-
-# 2. Создаём .app bundle
-echo "→ Creating app bundle..."
-rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_BUNDLE/Contents/MacOS"
-mkdir -p "$APP_BUNDLE/Contents/Resources"
-
-# 3. Копируем бинарник
-cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
-
-# 3a. Самопроверка: бинарь обязан быть universal (arm64 + x86_64), иначе Intel-маки не запустят
-ARCHS=$(lipo -archs "$APP_BUNDLE/Contents/MacOS/$APP_NAME")
-if [[ "$ARCHS" != *"arm64"* || "$ARCHS" != *"x86_64"* ]]; then
-    echo "ERROR: бинарь не universal (получено: $ARCHS)"; exit 1
+mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources/Licenses"
+cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+cp "$INFO_PLIST" "$APP_BUNDLE/Contents/Info.plist"
+if [[ "$ENABLE_UPDATES" == "1" ]]; then
+    INFO="$APP_BUNDLE/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Add :MSUpdateFeedURL string https://github.com/$UPDATE_REPO/releases/latest/download/version.json" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :MSReleaseBaseURL string https://github.com/$UPDATE_REPO/releases/download" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :MSReleasesURL string https://github.com/$UPDATE_REPO/releases" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :MSDeveloperTeamID string $DEVELOPER_TEAM_ID" "$INFO"
 fi
-echo "→ Universal OK: $ARCHS"
+cp "$PROJECT_DIR/MultiSwitcher.icns" "$APP_BUNDLE/Contents/Resources/MultiSwitcher.icns"
+cp "$PROJECT_DIR/icons/layout-ru.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-Layout-RU.svg"
+cp "$PROJECT_DIR/icons/layout-us.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-Layout-US.svg"
+cp "$PROJECT_DIR/icons/layout-disabled.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-Layout-Disabled.svg"
+cp "$PROJECT_DIR/icons/app-icon-az.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-AppIcon-AZ.svg"
+cp "$PROJECT_DIR/icons/app-icon-disabled.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-AppIcon-Disabled.svg"
+cp "$REPO_DIR/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/RuSwitcher-MIT.txt"
+cp "$REPO_DIR/TRADEMARKS.md" "$APP_BUNDLE/Contents/Resources/Licenses/RuSwitcher-Attribution.md"
+printf 'APPL????' > "$APP_BUNDLE/Contents/PkgInfo"
 
-# 4. Копируем Info.plist и штампуем версию из version.json
-cp "$PROJECT_DIR/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHORT_VERSION" "$APP_BUNDLE/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_VERSION" "$APP_BUNDLE/Contents/Info.plist"
-# Dev-метка (буква) для непубликуемых сборок — пусто для релиза. Показывается в About/меню.
-/usr/libexec/PlistBuddy -c "Set :RSDevTag $DEV_TAG" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null \
-  || /usr/libexec/PlistBuddy -c "Add :RSDevTag string $DEV_TAG" "$APP_BUNDLE/Contents/Info.plist"
-echo "→ Stamped Info.plist: CFBundleShortVersionString=$SHORT_VERSION$DEV_TAG CFBundleVersion=$BUILD_VERSION"
+ARCHS="$(lipo -archs "$APP_BUNDLE/Contents/MacOS/$APP_NAME")"
+if [[ "$ARCHS" != arm64 ]]; then
+    echo "Expected arm64-only executable, got: $ARCHS" >&2
+    exit 1
+fi
+plutil -lint "$APP_BUNDLE/Contents/Info.plist"
 
-# 5. Копируем иконку
-cp "$PROJECT_DIR/RuSwitcher.icns" "$APP_BUNDLE/Contents/Resources/RuSwitcher.icns"
+# The staging directory is local; clear inherited source-file attributes once,
+# before signing. Developer ID releases use Apple's secure timestamp service.
+xattr -cr "$APP_BUNDLE"
+SIGN_TIMESTAMP_ARGS=(--timestamp=none)
+if [[ "${MULTISWITCHER_CODESIGN_TIMESTAMP:-0}" == "1" ]]; then
+    SIGN_TIMESTAMP_ARGS=(--timestamp)
+fi
+codesign --force --sign "$SIGN_IDENTITY" "${SIGN_TIMESTAMP_ARGS[@]}" \
+    --entitlements "$PROJECT_DIR/MultiSwitcher.entitlements" \
+    --options runtime "$APP_BUNDLE"
+codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 
-# 6. Создаём PkgInfo
-echo -n "APPL????" > "$APP_BUNDLE/Contents/PkgInfo"
+{
+    echo "Product: $APP_NAME"
+    echo "Version: $VERSION ($BUILD_NUMBER)"
+    echo "Architecture: $ARCHS"
+    echo "Bundle identifier: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_BUNDLE/Contents/Info.plist")"
+    echo "Signing identity: $SIGN_IDENTITY"
+    echo "Updater configured: $ENABLE_UPDATES"
+    echo "Executable SHA-256: $(shasum -a 256 "$APP_BUNDLE/Contents/MacOS/$APP_NAME" | awk '{print $1}')"
+} > "$BUILD_ROOT/BUILD-INFO.txt"
 
-# 7. Подписываем Developer ID (разрешения macOS привязаны к подписи —
-#    при одинаковой подписи разрешения сохраняются между обновлениями)
-# RS_SIGN_ID переопределяет identity (CI без сертификата ставит "-" — ad-hoc).
-SIGN_ID="${RS_SIGN_ID:-Developer ID Application: Rashid Nasibulin (9GEWCZ59HK)}"
-echo "→ Code signing with Developer ID..."
-codesign --force --deep --sign "$SIGN_ID" \
-    --options runtime \
-    --entitlements "$PROJECT_DIR/RuSwitcher.entitlements" \
-    "$APP_BUNDLE"
-
-echo ""
-echo "=== Done! ==="
-echo "App bundle: $APP_BUNDLE"
-echo "Signed with: $SIGN_ID"
-echo ""
-echo "To install:"
-echo "  cp -R $APP_BUNDLE /Applications/"
+echo "Verified app: $APP_BUNDLE"
+echo "Build record: $BUILD_ROOT/BUILD-INFO.txt"

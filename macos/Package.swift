@@ -2,18 +2,28 @@
 import PackageDescription
 
 let package = Package(
-    name: "RuSwitcher",
-    platforms: [.macOS(.v13)],
+    name: "MultiSwitcher",
+    platforms: [.macOS(.v15)],
     targets: [
+        .target(
+            name: "MultiSwitcherCore",
+            path: "Sources/MultiSwitcherCore"
+        ),
         .executableTarget(
-            name: "RuSwitcher",
-            path: "Sources/RuSwitcher",
+            name: "MultiSwitcher",
+            dependencies: ["MultiSwitcherCore"],
+            path: "Sources/MultiSwitcher",
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("Carbon"),
                 .linkedFramework("CoreGraphics"),
                 .linkedFramework("ServiceManagement"),
             ]
-        )
+        ),
+        .executableTarget(
+            name: "MultiSwitcherCoreTests",
+            dependencies: ["MultiSwitcherCore"],
+            path: "Tests/MultiSwitcherCoreTests"
+        ),
     ]
 )

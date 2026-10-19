@@ -12,13 +12,16 @@ DerivedData/
 .vscode/
 .claude/
 *.certSigningRequest
+_local_backups/
 
-# .NET (Windows version)
+# Local .NET tooling leftovers
 [Bb]in/
 [Oo]bj/
 *.user
 
-# Внутренние заметки, дизайн-спеки, маркетинг — держим локально, в публичный репо не кладём.
-# В репозитории — только код приложения и скрипты его сборки/дистрибуции.
+# Local-only development notes and artifacts
 docs/
-generate_habr_cover.swift
+MULTI_SWITCHER_PLAN.md
+replica/
+.agents/
+*.log

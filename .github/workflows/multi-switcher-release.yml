@@ -1,0 +1,129 @@
+name: MultiSwitcher signed release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: multiswitcher-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Check release configuration and version
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
+          SIGNING_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+          for name in CERTIFICATE CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD TEAM_ID SIGNING_IDENTITY; do
+            if [[ -z "${!name}" ]]; then echo "Missing required GitHub secret or variable: $name" >&2; exit 1; fi
+          done
+          version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
+          build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
+          tag_version="${GITHUB_REF_NAME#v}"
+          [[ "$version" == "$tag_version" ]] || { echo "Tag $GITHUB_REF_NAME does not match app version $version." >&2; exit 1; }
+          [[ "$build_number" =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "CFBundleVersion must be numeric." >&2; exit 1; }
+          [[ "$TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "Developer Team ID must be 10 uppercase letters or digits." >&2; exit 1; }
+
+      - name: Import Developer ID certificate into temporary keychain
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/multiswitcher-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(/usr/bin/openssl rand -base64 24)"
+          echo "$CERTIFICATE" | /usr/bin/base64 -D > "$RUNNER_TEMP/developer-id.p12"
+          /usr/bin/security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          /usr/bin/security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          /usr/bin/security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          /usr/bin/security import "$RUNNER_TEMP/developer-id.p12" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security -k "$KEYCHAIN"
+          /usr/bin/security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          /usr/bin/security list-keychains -d user -s "$KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
+          echo "MULTISWITCHER_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          /bin/rm -f "$RUNNER_TEMP/developer-id.p12"
+
+      - name: Run core checks
+        run: swift run --package-path macos MultiSwitcherCoreTests
+
+      - name: Build Developer ID app
+        env:
+          MULTISWITCHER_ENABLE_UPDATES: "1"
+          MULTISWITCHER_GITHUB_REPOSITORY: ${{ github.repository }}
+          MULTISWITCHER_DEVELOPER_TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
+          MULTISWITCHER_SIGN_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
+          MULTISWITCHER_CODESIGN_TIMESTAMP: "1"
+          MULTISWITCHER_BUILD_ROOT: ${{ runner.temp }}/MultiSwitcher-release-build
+        run: bash macos/build_app.sh
+
+      - name: Configure notarization credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          /usr/bin/xcrun notarytool store-credentials MultiSwitcher-Notary \
+            --apple-id "$APPLE_ID" --team-id "$TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" --keychain "$MULTISWITCHER_KEYCHAIN"
+
+      - name: Notarize app and disk image
+        env:
+          TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
+          SIGNING_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/MultiSwitcher-release-build/MultiSwitcher.app"
+          VERSION="${GITHUB_REF_NAME#v}"
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
+          SIGNATURE=$(/usr/bin/codesign -dv --verbose=4 "$APP" 2>&1)
+          /usr/bin/grep -Fxq "TeamIdentifier=$TEAM_ID" <<<"$SIGNATURE" || {
+            echo "Built app is signed by a different Developer Team." >&2; exit 1;
+          }
+          /usr/bin/grep -Fq 'Authority=Developer ID Application:' <<<"$SIGNATURE" || {
+            echo "Built app does not use a Developer ID Application certificate." >&2; exit 1;
+          }
+          APP_ZIP="$RUNNER_TEMP/MultiSwitcher-$VERSION-app.zip"
+          /usr/bin/ditto -c -k --keepParent "$APP" "$APP_ZIP"
+          /usr/bin/xcrun notarytool submit "$APP_ZIP" --keychain-profile MultiSwitcher-Notary --wait
+          /bin/rm -f "$APP_ZIP"
+          /usr/bin/xcrun stapler staple "$APP"
+          /usr/bin/xcrun stapler validate "$APP"
+          /usr/sbin/spctl --assess --type execute --verbose=2 "$APP"
+          DMG="$RUNNER_TEMP/MultiSwitcher-$VERSION-arm64.dmg"
+          bash macos/package_release_dmg.sh "$APP" "$DMG"
+          /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --timestamp \
+            --identifier com.multiswitcher.dmg "$DMG"
+          /usr/bin/codesign --verify --verbose=2 "$DMG"
+          /usr/bin/xcrun notarytool submit "$DMG" --keychain-profile MultiSwitcher-Notary --wait
+          /usr/bin/xcrun stapler staple "$DMG"
+          /usr/bin/xcrun stapler validate "$DMG"
+          /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
+          python3 scripts/create_update_manifest.py \
+            --version "$VERSION" --repository "$GITHUB_REPOSITORY" \
+            --dmg "$DMG" --output "$RUNNER_TEMP/version.json"
+          gh release create "$GITHUB_REF_NAME" "$DMG" "$RUNNER_TEMP/version.json" \
+            --verify-tag --latest --title "MultiSwitcher $VERSION" --generate-notes
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          set +e
+          if [[ -n "${MULTISWITCHER_KEYCHAIN:-}" ]]; then /usr/bin/security delete-keychain "$MULTISWITCHER_KEYCHAIN"; fi
+          /bin/rm -f "$RUNNER_TEMP/developer-id.p12"
