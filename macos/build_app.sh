@@ -121,7 +121,7 @@ python3 "$REPO_DIR/scripts/unpack_dict_packs.py" "$REPO_DIR/dicts" \
 cp "$REPO_DIR/dicts/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/FrequencyWords-CC-BY-SA-4.0.txt"
 python3 "$REPO_DIR/scripts/prepare_thematic_lexicons.py" "$REPO_DIR/dicts/themes" \
     "$APP_BUNDLE/Contents/Resources/Lexicons/Themes"
-cp "$REPO_DIR/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/MultiSwitcher-Thematic-Lexicons-MIT.txt"
+cp "$REPO_DIR/dicts/themes/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/MultiSwitcher-Thematic-Lexicons-MIT.txt"
 printf 'APPL????' > "$APP_BUNDLE/Contents/PkgInfo"
 
 ARCHS="$(lipo -archs "$APP_BUNDLE/Contents/MacOS/$APP_NAME")"

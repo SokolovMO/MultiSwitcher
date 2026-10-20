@@ -3,3 +3,6 @@ contact_links:
   - name: Privacy and data handling
     url: https://github.com/SokolovMO/MultiSwitcher/blob/main/PRIVACY.md
     about: Read what MultiSwitcher processes locally and what is included in update requests.
+  - name: Security reporting
+    url: https://github.com/SokolovMO/MultiSwitcher/blob/main/SECURITY.md
+    about: Learn how to report a vulnerability privately.

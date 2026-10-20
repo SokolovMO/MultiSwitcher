@@ -15,6 +15,9 @@ concurrency:
 jobs:
   release:
     runs-on: macos-15
+    timeout-minutes: 90
+    environment:
+      name: multiswitcher-release
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -30,8 +33,15 @@ jobs:
           SIGNING_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
         run: |
           set -euo pipefail
+          # Release tags must point at reviewed code already merged into main.
+          /usr/bin/git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          release_commit=$(/usr/bin/git rev-parse "$GITHUB_REF^{commit}")
+          main_commit=$(/usr/bin/git rev-parse refs/remotes/origin/main)
+          /usr/bin/git merge-base --is-ancestor "$release_commit" "$main_commit" || {
+            echo "Release tag must point to a commit contained in main." >&2; exit 1;
+          }
           for name in CERTIFICATE CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD TEAM_ID SIGNING_IDENTITY; do
-            if [[ -z "${!name}" ]]; then echo "Missing required GitHub secret or variable: $name" >&2; exit 1; fi
+            if [[ -z "${!name}" ]]; then echo "Missing required GitHub environment secret or variable: $name" >&2; exit 1; fi
           done
           version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
           build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)

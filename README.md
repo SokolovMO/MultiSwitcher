@@ -4,7 +4,7 @@ A native macOS menu-bar utility for correcting text typed in the wrong keyboard 
 
 ## Status
 
-The app is under active development. Automated core checks and an arm64 app build are available in this repository. Application-field compatibility and the supported macOS release matrix still require manual validation before calling the project production-ready.
+MultiSwitcher is in public release preparation. There is no signed, notarized end-user release yet. The current source branch has automated core checks and an arm64 build, but live typing compatibility and the advertised macOS support matrix still need release testing. See [Release readiness](RELEASE.md).
 
 ## Requirements
 
@@ -16,7 +16,7 @@ The app is under active development. Automated core checks and an arm64 app buil
 
 Once a signed and notarized GitHub release is published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. The app explains the required macOS permissions on first run. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted.
 
-When release updates are configured, MultiSwitcher checks GitHub Releases no more than once a day (this can be disabled in About) and offers a manual check from the menu-bar menu. Updates are installed only after checking the download hash, bundle identity, Developer ID signature, and Gatekeeper assessment.
+When release updates are configured, MultiSwitcher checks GitHub Releases no more than once a day (this can be disabled in About) and offers a manual check from the menu-bar menu. The in-app update path is implemented but has not been verified end to end with a signed public release; see [RELEASE.md](RELEASE.md) before relying on it.
 
 ## Build and checks
 
@@ -27,11 +27,11 @@ swift run --package-path macos MultiSwitcherCoreTests
 bash macos/build_app.sh
 ```
 
-The local build is arm64 and signed with the configured local signing identity. A public release additionally needs an Apple Developer ID certificate, notarization credentials, and GitHub Actions secrets; see [RELEASE.md](RELEASE.md).
+A local arm64 build may use a development or ad-hoc signature; neither is suitable for public distribution. Public releases need an Apple Developer ID certificate, notarization credentials, and the GitHub release environment; see [RELEASE.md](RELEASE.md).
 
 ## Privacy
 
-Text conversion runs locally. The release checker contacts GitHub only to retrieve version metadata and the selected release asset; typed text and profile data are not included in update requests. See [PRIVACY.md](PRIVACY.md) for local profile, diagnostics, permissions, and issue-reporting details.
+Text conversion runs locally. The release checker contacts GitHub only to retrieve version metadata and the selected release asset; typed text and profile data are not included in update requests. Debug logs are not uploaded automatically. Read [Privacy](PRIVACY.md), [Security reporting](SECURITY.md), and [Release readiness](RELEASE.md) before installing.
 
 ## Feedback
 

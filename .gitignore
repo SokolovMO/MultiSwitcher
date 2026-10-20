@@ -1,5 +1,16 @@
 .DS_Store
 .build/
+
+# Local signing credentials and environment secrets
+*.p12
+*.pfx
+*.key
+*.pem
+*.mobileprovision
+*.provisionprofile
+.env
+.env.*
+!.env.example
 /Packages
 xcuserdata/
 DerivedData/
