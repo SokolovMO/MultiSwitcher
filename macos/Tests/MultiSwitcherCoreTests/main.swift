@@ -1,11 +1,17 @@
 import Foundation
+import CryptoKit
 import MultiSwitcherCore
 
 private func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
+    CheckCounter.total += 1
     guard condition() else {
         fputs("FAIL: \(message)\n", stderr)
         exit(EXIT_FAILURE)
     }
+}
+
+private enum CheckCounter {
+    nonisolated(unsafe) static var total = 0
 }
 
 private func propertyListData(_ value: Any) throws -> Data {
@@ -784,12 +790,16 @@ private func testClipboardRestoreRequiresOwnership() {
 }
 
 private func testDiagnosticLogRedaction() {
-    let raw = "path=/Users/example-user/Library/Logs/app.log bundle=com.example.editor query=private words"
+    let fakeCredential = "ghp_" + String(repeating: "A", count: 36)
+    let raw = "path=/Users/example-user/Library/Logs/app.log\nother=/Users/other-person/Documents/private.txt\nbundle=com.example.editor\nquery=private words\nurl=https://example.com/private?token=abc\nopened https://example.org/secret/path\ncontact person@example.com\nremote 192.0.2.4\ncredential \(fakeCredential)"
     let report = DiagnosticLogRedactor.redact(raw, homeDirectory: "/Users/example-user")
-    expect(report.contains("~/Library/Logs/app.log"), "diagnostic reports do not expose the home directory")
+    expect(report.contains("~/Library/Logs/app.log") && report.contains("[local-path]"),
+           "diagnostic reports redact the home directory and other absolute local paths")
     expect(report.contains("[app-id]"), "diagnostic reports redact third-party bundle identifiers")
-    expect(!report.contains("com.example.editor") && !report.contains("private words"),
-           "sensitive log fields are removed before the user previews a report")
+    expect(!report.contains("com.example.editor") && !report.contains("private words")
+           && !report.contains("example.com/private") && !report.contains("example.org/secret") && !report.contains("person@example.com")
+           && !report.contains("192.0.2.4") && !report.contains(fakeCredential),
+           "diagnostic reports redact message values, URLs, emails, IP addresses, and credentials before preview")
 }
 
 private func testProfileStoreImportIsRepeatableAndSnapshotsSource() throws {
@@ -831,6 +841,27 @@ private func testProfileStoreImportIsRepeatableAndSnapshotsSource() throws {
         at: store.backupsURL, includingPropertiesForKeys: nil
     )).filter { $0.lastPathComponent.hasPrefix("Punto-") }
     expect(snapshots.count == 2, "each import has its own recoverable source snapshot")
+}
+
+private func testProfileBackupSnapshotIsPrivateAndVerifiable() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Backup-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = ProfileStore(rootURL: root.appendingPathComponent("profile", isDirectory: true))
+    _ = try store.update { profile in
+        profile.rules.append(ProfileRule(pattern: "private-rule", origin: .user))
+    }
+    let beforeUpdate = try Data(contentsOf: store.profileURL)
+    let snapshot = try store.createBackupSnapshot(label: "before-update")
+    let copiedProfile = try Data(contentsOf: snapshot.appendingPathComponent("profile.json"))
+    let manifestData = try Data(contentsOf: snapshot.appendingPathComponent("manifest.json"))
+    let manifest = try JSONSerialization.jsonObject(with: manifestData) as? [String: Any]
+    let digest = SHA256.hash(data: copiedProfile).map { String(format: "%02x", $0) }.joined()
+    expect(copiedProfile == beforeUpdate, "pre-update snapshots preserve the exact serialized profile bytes")
+    expect(manifest?["profileSHA256"] as? String == digest,
+           "profile snapshot manifest contains a verifiable SHA-256")
+    let permissions = try FileManager.default.attributesOfItem(atPath: snapshot.path)[.posixPermissions] as? NSNumber
+    expect(permissions?.intValue == 0o700, "profile snapshot directories are private to the user")
 }
 
 private func testProfileStoreRecoveryPreservesDamagedPrimary() throws {
@@ -1021,6 +1052,7 @@ testExactTextUndoTogglesOnlyUnchangedField()
 testTextFieldSnapshotRejectsStaleCaretOrTarget()
 testClipboardRestoreRequiresOwnership()
 testDiagnosticLogRedaction()
+try testProfileBackupSnapshotIsPrivateAndVerifiable()
 testForgettingLearningPreservesImportedAndUserRules()
 try testProfileStoreImportIsRepeatableAndSnapshotsSource()
 try testProfileStoreRecoveryPreservesDamagedPrimary()
@@ -1030,4 +1062,4 @@ testApplicationExclusionPolicy()
 testTypedRuleMatchingAndProvenance()
 try testUserRuleFileRoundTripSanitizesProvenance()
 try testGenericTextRuleImportsAreExplicitAndPreviewable()
-print("MultiSwitcherCoreChecks: 34 checks passed")
+print("MultiSwitcherCoreChecks: \(CheckCounter.total) checks passed")

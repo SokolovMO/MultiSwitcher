@@ -32,5 +32,8 @@ _local_backups/
 
 # Local-only development notes and agent instructions
 docs/
+!docs/
+docs/*
+!docs/index.html
 .agents/
 *.log

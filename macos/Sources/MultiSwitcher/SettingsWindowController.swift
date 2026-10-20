@@ -1692,7 +1692,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
         let preview = NSTextView(frame: NSRect(x: 0, y: 0, width: 560, height: 260))
         preview.string = report
-        preview.isEditable = false
+        preview.isEditable = true
         preview.isSelectable = true
         preview.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         preview.textContainer?.widthTracksTextView = true
@@ -1712,15 +1712,25 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         alert.addButton(withTitle: L10n.commonCancel)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-        if let service = NSSharingService(named: .composeEmail) {
-            service.perform(withItems: ["MultiSwitcher diagnostic report" as NSString, report as NSString])
-        } else {
+        let issueURL = URL(string: "https://github.com/SokolovMO/MultiSwitcher/issues/new?template=bug_report.yml")!
+        guard NSWorkspace.shared.open(issueURL) else {
             let unavailable = NSAlert()
             unavailable.alertStyle = .informational
             unavailable.messageText = L10n.supportReportUnavailable
             unavailable.addButton(withTitle: L10n.commonOkay)
             unavailable.runModal()
+            return
         }
+
+        // Share only after explicit confirmation. Re-redact edits made in the preview.
+        let finalReport = DiagnosticLogRedactor.redact(preview.string, homeDirectory: NSHomeDirectory())
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(finalReport, forType: .string)
+        let copied = NSAlert()
+        copied.alertStyle = .informational
+        copied.messageText = L10n.supportReportCopied
+        copied.addButton(withTitle: L10n.commonOkay)
+        copied.runModal()
     }
 
     private func logFilePath() -> String {

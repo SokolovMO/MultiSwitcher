@@ -79,10 +79,12 @@ enum CrashReporter {
             options.tracesSampleRate = 0
             options.beforeSend = { event in
                 guard defaults.bool(forKey: consentKey) else { return nil }
-                if let revokedAt = UserDefaults.standard.object(forKey: revokedAtKey) as? Date,
-                   let occurredAt = event.timestamp,
-                   occurredAt <= revokedAt {
-                    return nil
+                if let revokedAt = UserDefaults.standard.object(forKey: revokedAtKey) as? Date {
+                    // If Sentry cannot provide a timestamp, do not assume the event
+                    // occurred after consent was revoked.
+                    guard let occurredAt = event.timestamp, occurredAt > revokedAt else {
+                        return nil
+                    }
                 }
 
                 // Keep only an unhandled native crash, not ordinary captured errors.

@@ -211,6 +211,67 @@ public final class ProfileStore: @unchecked Sendable {
         return (snapshotURL, digest)
     }
 
+    /// Captures the exact on-disk profile generation before a potentially disruptive
+    /// operation such as an app update. The snapshot is immutable and private to the
+    /// current user; a malformed profile is copied as-is for recovery instead of being
+    /// replaced with defaults.
+    @discardableResult
+    public func createBackupSnapshot(label: String) throws -> URL {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let safeLabel = label.lowercased().replacingOccurrences(
+            of: "[^a-z0-9-]", with: "-", options: .regularExpression
+        ).trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        guard !safeLabel.isEmpty, safeLabel.count <= 48 else {
+            throw ProfileStoreError.invalidSnapshotName
+        }
+
+        let manager = FileManager.default
+        try manager.createDirectory(at: backupsURL, withIntermediateDirectories: true,
+                                    attributes: [.posixPermissions: 0o700])
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let stamp = formatter.string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let folder = backupsURL.appendingPathComponent("Snapshot-\(safeLabel)-\(stamp)-\(UUID().uuidString.prefix(8))",
+                                                       isDirectory: true)
+        try manager.createDirectory(at: folder, withIntermediateDirectories: false,
+                                    attributes: [.posixPermissions: 0o700])
+
+        let profileData: Data
+        if manager.fileExists(atPath: profileURL.path) {
+            profileData = try Data(contentsOf: profileURL)
+        } else {
+            profileData = try JSONEncoder.multiSwitcher.encode(cached)
+        }
+        let snapshotURL = folder.appendingPathComponent("profile.json")
+        try profileData.write(to: snapshotURL, options: .atomic)
+        try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: snapshotURL.path)
+
+        let previousURL = rootURL.appendingPathComponent("profile.json.previous")
+        let includesPrevious = manager.fileExists(atPath: previousURL.path)
+        if includesPrevious {
+            let copy = folder.appendingPathComponent("profile.json.previous")
+            try manager.copyItem(at: previousURL, to: copy)
+            try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: copy.path)
+        }
+
+        let digest = SHA256.hash(data: profileData).map { String(format: "%02x", $0) }.joined()
+        let manifest: [String: Any] = [
+            "snapshotVersion": 1,
+            "label": safeLabel,
+            "createdAt": formatter.string(from: Date()),
+            "profileSHA256": digest,
+            "profileBytes": profileData.count,
+            "includesPreviousProfile": includesPrevious
+        ]
+        let manifestData = try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys])
+        let manifestURL = folder.appendingPathComponent("manifest.json")
+        try manifestData.write(to: manifestURL, options: .atomic)
+        try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: manifestURL.path)
+        return folder
+    }
+
     private func writeAtomically(_ profile: MultiSwitcherProfile) throws {
         let manager = FileManager.default
         try manager.createDirectory(at: rootURL, withIntermediateDirectories: true,

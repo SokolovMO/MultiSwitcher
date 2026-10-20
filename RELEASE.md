@@ -1,95 +1,81 @@
-# Release and update pipeline
+# Public Alpha 1 readiness
 
-The intended distribution is an Apple Silicon macOS app in a signed and notarized DMG on GitHub Releases. The custom in-app updater is designed to verify the manifest, DMG hash, bundle identity, Developer ID team signature, and Gatekeeper assessment; end-to-end installation is still a release gate.
+Last verified: 2026-10-21. This document describes source preparation, not a published release.
 
-## Current status
+## Release state
 
-**Status checked 2026-10-20: there is no public app release. Do not describe the current build as production-ready.**
+**Do not publish Public Alpha 1 yet.** The GitHub release list has no public app release. The project source is in draft PR #2 and is not a published installer. Current app metadata is 0.3.1 (9), and the local environment has no valid Developer ID identity. The current updater is a custom GitHub-release updater; migration to signed Sparkle appcasts is not complete. A public Pages site and release workflow are prepared in source, but Pages must be enabled in repository settings and no notarized update has been tested end to end.
 
-- The public repository has no published releases.
-- The current implementation is on draft PR #2 and has not reached main.
-- The previous PR commit passed core checks and an arm64 build on macOS 15 and 26. The current updater, consent, and symbol-upload changes are awaiting a fresh CI run. CI does not test real keyboard input in Spotlight, Cursor, browsers, or other apps.
-- The current source passes 34 core checks and builds for arm64 with an ad-hoc signature. That signature is not suitable for public distribution.
-- No Developer ID identity is available in the current build environment. A Developer ID build, notarization, clean install, and in-app update from a previous signed build remain unverified.
-- The source now supports an optional Sentry crash-reporting integration. It is disabled until explicit in-app consent and a DSN is configured in the release build. This checkout has no DSN, so automatic reports are not active yet.
+Required hands-on checks on **each macOS 15, 26, and 27** before alpha publication:
 
-Treat this as **release-candidate preparation**. Do not publish a stable DMG until the gates below pass.
+- Install, request permissions, remove/regrant permissions manually, launch at login, sleep/wake, and quit.
+- Confirm automatic correction, Option conversion and exact undo, fast typing, edits, secure input, and no damage to neighboring text in TextEdit, Spotlight, Codex, Cursor, Safari, and agreed supported apps.
+- Exercise profile import, backup, restore, learning, and update-preserved profile on a clean user account.
+- Measure idle/active CPU, memory, and input latency.
+- Verify Developer ID signature, notarization, Gatekeeper, fresh install, update from the prior signed build, and rollback.
+- Verify crash-report opt-in/revocation, exact sanitized payload, IP handling/retention, and dSYM symbolication before enabling reporting in a public build.
 
-## One-time GitHub configuration
+CI compilation on macOS 15/26 and core checks do not substitute for live input on those systems. On the current macOS 27.0.1 Mac, all Swift sources parse, 195 core checks pass, and a debug arm64 app executable builds. The release-configured SwiftPM build reaches dSYM generation but fails there with `Operation not permitted`; full Xcode is unavailable. The current environment has no Developer ID identity or configured notarization credentials.
 
-Create a GitHub Actions environment named multiswitcher-release.
+## Public Alpha 1 scope
 
-- Add the project owner as a required reviewer for each deployment.
-- Restrict deployment tags to `v*` and `beta-v*`.
-- Store all signing credentials as environment-scoped secrets, not repository-wide secrets.
+- Keep the existing **beta/test channel**. Public Alpha 1 is a release label on that channel, not a third updater channel.
+- Use a prerelease tag such as `beta-v0.3.1-build9` after version/build metadata is incremented and reviewed code is merged to `main`.
+- Keep the GitHub release as a draft while validating the signed DMG. Publish manually only after every alpha gate above passes.
+- Do not call the build `1.0`. Stable 1.0 is a separate release after alpha feedback and open text-integrity issues are resolved.
+- Do not claim compatibility with an OS version until hands-on testing is recorded.
 
-Environment variables:
+## Current distribution mechanism and migration gate
 
-- MULTISWITCHER_DEVELOPER_TEAM_ID: the 10-character Apple Developer Team ID.
-- MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY: exact Developer ID Application identity from security find-identity.
-- MULTISWITCHER_SENTRY_DSN: public Sentry project DSN. Configure IP scrubbing and a short retention period in the Sentry project. This is an ingestion address, not an authentication token; it must not be confused with a Sentry auth token.
-- MULTISWITCHER_SENTRY_ORG_SLUG and MULTISWITCHER_SENTRY_PROJECT_SLUG: the Sentry organization and project slugs used to upload matching debug symbols.
+The current code checks GitHub Releases, validates a signed manifest, SHA-256, bundle identity, Developer ID team signature, and Gatekeeper before replacing the app. This code has **not** been tested end to end from one notarized public build to another, and its install/rollback path is not accepted as a production updater yet.
 
-Environment secrets:
+The target is the latest reviewed production release of Sparkle 2.x with EdDSA-signed appcasts for stable and the existing beta channel. Pin the exact version when integration begins and verify it against the [official Sparkle documentation](https://sparkle-project.org/documentation/). Sparkle integration requires a persistent key pair: keep the private key only in the protected release environment, embed its matching public key, generate and validate appcasts in release automation, and test cross-channel behavior. Do not generate a new key for each release. Do not enable Sparkle or publish a feed until the key is provisioned and the signed update has passed a clean install/update/rollback test.
 
-- APPLE_DEVELOPER_CERTIFICATE_P12_BASE64: base64-encoded Developer ID Application certificate and private key.
-- APPLE_DEVELOPER_CERTIFICATE_PASSWORD: password for that PKCS#12 file.
-- APPLE_ID: Apple Account used for notarization.
-- APPLE_APP_SPECIFIC_PASSWORD: app-specific password used by notarytool.
-- MULTISWITCHER_SENTRY_AUTH_TOKEN: narrowly scoped Sentry token with permission to upload debug files to this project. The release workflow uses it only to upload the matching dSYM; it is never embedded in the app.
+The GitHub Pages workflow deploys `docs/` from `main`. A repository owner must enable **Settings → Pages → Build and deployment → GitHub Actions** once. The page discovers the latest published arm64 DMG; draft releases remain unavailable to visitors.
 
-The workflow uses a temporary keychain and removes it and the imported certificate file after the job. Keep an offline backup of the signing certificate and its password. Never put certificates, private keys, passwords, or tokens in the repository, issue tracker, chat, or workflow logs. Keep the same Team ID for future updates.
+## One-time release configuration
 
-Also configure repository rules in GitHub settings:
+Create the protected GitHub Actions environment `multiswitcher-release`; require a reviewer and permit only reviewed release tags. Keep secrets environment-scoped.
 
-- Protect main: require pull requests, prevent force pushes and deletion, and require checks (macos-15) and checks (macos-26).
-- Protect v* tags from unauthorized creation, update, or deletion.
-- Enable private vulnerability reporting if available.
+Required for signed release workflow:
 
-The source workflow cannot safely configure these repository-level settings.
+- `APPLE_DEVELOPER_CERTIFICATE_P12_BASE64`
+- `APPLE_DEVELOPER_CERTIFICATE_PASSWORD`
+- `APPLE_ID`
+- `APPLE_APP_SPECIFIC_PASSWORD`
+- `MULTISWITCHER_DEVELOPER_TEAM_ID` variable
+- `MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY` variable
 
-## Publishing a release
+Optional crash reporting configuration (release reporting stays unavailable without it):
 
-1. Merge reviewed code into main.
-2. Update CFBundleShortVersionString and increment CFBundleVersion in macos/Info.plist. Keep the first public release below 1.0 until product gates pass.
-3. Run core checks and arm64 build. Verify menu, permissions, import and restore, secure-input behavior, and text replacement on every macOS version advertised as supported.
-4. For the public beta, create and push `beta-v0.3.0-build8` at reviewed code already contained in main. The workflow verifies the version/build, marks the GitHub draft as a prerelease, and builds the app with the beta updater channel. For stable 1.0, use `v1.0.0-buildN` after all stable gates pass.
-5. The workflow signs the app, notarizes and staples the app and DMG, checks Gatekeeper, and creates a draft release with the DMG and channel-specific `version.json`. Stable users query the latest full release; beta users query published beta releases and will also accept a newer stable release. Drafts are not delivered as updates.
-6. Install the draft on a clean Apple Silicon Mac. Complete the smoke checklist, including updating an app installed in /Applications. Publish the draft only after every gate passes.
-7. From the installed release, check for updates, install the next signed build, restart, and verify profile and permissions. Test rollback before promoting updater changes.
+- `MULTISWITCHER_SENTRY_DSN` variable
+- `MULTISWITCHER_SENTRY_ORG_SLUG` and `MULTISWITCHER_SENTRY_PROJECT_SLUG` variables
+- `MULTISWITCHER_SENTRY_AUTH_TOKEN` secret with only debug-symbol upload permission
 
-A local or ad-hoc build cannot serve as the first in-app update source. Install the first signed release manually. macOS may request Input Monitoring and Accessibility permissions again after the signing identity changes.
+Future Sparkle updater configuration:
 
-## Support and user reports
+- persistent Sparkle private key as an environment secret;
+- matching public key embedded in the app;
+- release automation that builds both feeds and signs every update item.
 
-Issue forms request synthetic examples, app and macOS versions, affected app, and action. Debug logging is off by default. A diagnostic report is local and shared only after the user previews it. Configured release builds can send crash type, stack frames, and app/macOS versions to Sentry only after the user opts in; text, clipboard, profile, windows, and dictionaries are filtered out. The user can revoke consent in About. Configure Sentry data scrubbing and retention before publishing a build with reporting enabled. There is no support-time guarantee. See PRIVACY.md and SECURITY.md.
+Never place signing certificates, private keys, passwords, API tokens, user profiles, or Punto data in the repository, workflow output, website, issue, or chat. The source workflow cannot configure repository rules, required reviewers, Pages settings, Apple Developer enrollment, or Sentry retention/IP scrubbing.
 
-Do not request real messages, URLs with private data, clipboard content, profiles, passwords, or raw logs in public issues.
+## Release procedure
 
-## Release checklist
+1. Merge reviewed code to `main`; require passing macOS 15 and 26 CI jobs.
+2. Confirm the matching hands-on test logs for macOS 15, 26, and 27 and review known limitations.
+3. Increment `CFBundleVersion`; keep the first public release below 1.0.
+4. Create `beta-v<version>-build<build>` pointing to the reviewed `main` commit. The workflow verifies the tag and creates a draft prerelease with the signed DMG and manifest.
+5. Install that exact signed build on a clean Apple Silicon account. Verify signature, notarization, permissions, profile preservation, and a forward update from the preceding signed build; exercise rollback.
+6. Verify the download page finds the published asset after it is manually published. Confirm crash-report configuration and privacy disclosures match the actual payload.
+7. Publish the draft manually. A Git commit or tag alone does not distribute an update; a published, signed release and working updater are required.
 
-### Signing and delivery
+## Data, reports, and support
 
-- [ ] The release environment requires a reviewer and accepts only reviewed `v*` and `beta-v*` tags.
-- [ ] Signing credentials are environment-scoped, not repository-wide.
-- [ ] The tag points to code merged into main and matches app version/build.
-- [ ] The workflow creates a draft; a human publishes only after QA.
-- [ ] App and DMG pass strict signature, notarization, stapler, and Gatekeeper checks.
-- [ ] version.json SHA-256 matches the exact uploaded DMG.
-- [ ] Fresh installation works and a recovery backup is available.
-- [ ] In-app update is verified from the preceding signed build in /Applications and a user-owned Applications folder; failed updates leave the old app launchable.
-- [ ] Profile migration, import, backup, restore, and rollback pass on a clean account.
+Conversion and bundled dictionaries run locally. Update checks send ordinary network metadata to GitHub, not typed text or profile data. Crash reports are disabled by default and initialize only after explicit consent in configured builds. Revoking consent closes the reporter and rejects events with a timestamp at or before revocation; an event with no timestamp is rejected when a revocation date exists.
 
-### Product and compatibility
+Debug logs are off by default. The support action redacts common paths, app IDs, sensitive key/value fields, URLs, emails, IP addresses, and common token formats; the preview is editable and redacted again after edits. Only after the user chooses to share does the app copy the report and open the GitHub issue form. Nothing is submitted automatically. Redaction is defense in depth, not a guarantee; the user must review the final report.
 
-- [ ] Live input passes in Spotlight, native fields, Safari and Chrome, chat apps, Cursor/Codex, Finder or System Settings search, and supported terminals.
-- [ ] Option conversion and exact undo, automatic correction, fast typing, punctuation, secure input, app exclusions, and permission recovery are verified.
-- [ ] Each advertised macOS version has hands-on testing; CI compilation is not live-input testing.
-- [ ] Idle CPU, memory, battery, and fast-typing responsiveness are measured on the signed release.
-- [ ] Release notes explain behavior changes, permission changes, known limitations, and recovery.
-- [ ] Bundled FrequencyWords and curated vocabulary notices are present in the app.
-- [ ] The first beta installs with the beta channel selected, can switch to stable, and does not offer draft or wrong-channel releases.
-- [ ] Crash reporting is off on first launch; opt-in and revoke are tested, including the exact sanitized event payload and Sentry IP/retention settings.
-- [ ] The matching release dSYM is uploaded to Sentry and a test crash resolves to MultiSwitcher source frames.
+## Stable 1.0 gate
 
-A public beta can be published after signing, notarization, privacy, installation, and basic input smoke checks pass. A stable 1.0 release requires the full product gates above. Until then, do not claim that every supported app or macOS version, or in-app updates, has been verified.
+In addition to the alpha checks, 1.0 requires a public support page and tested update/rollback channel, completed appcast migration or an explicitly reviewed updater decision, no open text/clipboard/learning corruption issues, documented compatibility, accessibility review, and measured resource targets. Public feedback should be triaged and fixes released through reviewed commits and signed builds. There is no response-time commitment.

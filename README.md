@@ -4,7 +4,7 @@ A native macOS menu-bar utility for correcting text typed in the wrong keyboard 
 
 ## Status
 
-MultiSwitcher is in public release preparation. There is no signed, notarized end-user release yet. The current source branch has automated core checks and an arm64 build, but live typing compatibility and the advertised macOS support matrix still need release testing. See [Release readiness](RELEASE.md).
+MultiSwitcher is preparing its first public alpha. The source candidate is 0.3.1 (9); no signed, notarized end-user release has been published. Input integrity, hands-on compatibility on macOS 15/26/27, and update recovery remain release gates. See [Release readiness](RELEASE.md).
 
 ## Requirements
 
@@ -14,9 +14,9 @@ MultiSwitcher is in public release preparation. There is no signed, notarized en
 
 ## Install
 
-Once a signed and notarized GitHub release is published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. The app explains the required macOS permissions on first run. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted. Public beta releases use tags such as `beta-v0.3.0-build8` and are marked as prereleases. Stable releases use `v1.0.0-build1`.
+When Public Alpha 1 passes its gates and is manually published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted. The planned first alpha tag is `beta-v0.3.1-build9`; stable 1.0 will be a separate release. The website source is in `docs/`; a repository owner must enable GitHub Pages once.
 
-When release updates are configured, MultiSwitcher checks the selected GitHub release channel no more than once a day (this can be disabled in About) and offers a manual check from the menu-bar menu. Beta users can switch back to stable in About, and beta builds will also accept a newer stable release. The in-app update path is implemented but has not been verified end to end with a signed public release; see [RELEASE.md](RELEASE.md) before relying on it.
+The current source has a custom GitHub Releases update path, but it has not been verified end to end with a signed public release. Sparkle appcast migration is a remaining release gate. A commit or tag alone does not deliver updates. See [RELEASE.md](RELEASE.md) before relying on the updater.
 
 ## Build and checks
 
@@ -35,7 +35,7 @@ Text conversion runs locally. The release checker contacts GitHub to retrieve ve
 
 ## Feedback
 
-Use the repository's bug-report and feature-request forms. Bug reports request synthetic examples and warn against publishing private text or raw logs. A sanitized diagnostic preview is available in Settings when you choose to share a report.
+Use the repository's bug-report and feature-request forms. Bug reports request synthetic examples and warn against publishing private text or raw logs. The redacted diagnostic preview is editable; choosing to share copies the reviewed report and opens the GitHub issue form. It is never submitted automatically.
 
 ## Source and license
 

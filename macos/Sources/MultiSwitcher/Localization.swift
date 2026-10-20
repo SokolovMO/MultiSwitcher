@@ -26,6 +26,10 @@ enum L10n {
     // MARK: - Визард разрешений
     static var wizardPermissionsResetTitle: String { s("wizard.permissionsReset.title") }
     static var wizardPermissionsResetText: String { s("wizard.permissionsReset.text") }
+    static var permissionsRequiredTitle: String { s("wizard.permissionsRequired.title") }
+    static var permissionsRequiredText: String { s("wizard.permissionsRequired.text") }
+    static var wizardOpenSettings: String { s("wizard.openSettings") }
+    static var wizardLater: String { s("wizard.later") }
     static var permissionsOkTitle: String { s("wizard.permissionsOk.title") }
     static var permissionsOkText: String { s("wizard.permissionsOk.text") }
     static var wizardLaunchAtLoginTitle: String { s("wizard.launchAtLogin.title") }
@@ -213,6 +217,7 @@ enum L10n {
     static var supportReportPreviewBody: String { s("support.report.preview.body") }
     static var supportReportShare: String { s("support.report.share") }
     static var supportReportUnavailable: String { s("support.report.unavailable") }
+    static var supportReportCopied: String { s("support.report.copied") }
     static var settingsCheckUpdates: String { s("settings.checkUpdates") }
     static var settingsUpdateChannel: String { s("settings.updateChannel") }
     static var settingsUpdateStable: String { s("settings.updateChannel.stable") }
@@ -316,6 +321,8 @@ enum L10n {
 
             "wizard.permissionsReset.title": "Permissions Reset After Update",
             "wizard.permissionsReset.text": "macOS has reset permissions because the app was updated.\n\nMultiSwitcher will remove old entries and request permissions again.\nYou just need to flip the toggles.",
+            "wizard.permissionsRequired.title": "MultiSwitcher needs permission",
+            "wizard.permissionsRequired.text": "macOS no longer allows MultiSwitcher to monitor or edit text. Open System Settings and enable the permissions you want to use. MultiSwitcher will not change permission settings on its own.",
             "wizard.permissionsOk.title": "All Permissions Granted",
             "wizard.permissionsOk.text": "Accessibility and Input Monitoring are enabled. MultiSwitcher is working.",
             "wizard.accessibility.title": "Step 1 of 2: Accessibility",
@@ -480,9 +487,10 @@ enum L10n {
             "profile.recovery.restored": "Previous profile restored. Your damaged file remains in the recovery backups.",
             "profile.recovery.failed": "The previous profile could not be restored. Your original files are still preserved.",
             "support.report.preview.title": "Review the diagnostic report",
-            "support.report.preview.body": "The report removes your home folder, app identifiers, and values in sensitive log fields. Review it before continuing. MultiSwitcher will open a share draft only after you choose Share.",
-            "support.report.share": "Share Report…",
-            "support.report.unavailable": "No email sharing service is available. The report was not sent.",
+            "support.report.preview.body": "Review and edit the redacted report. After you choose Copy & Open Issue, MultiSwitcher will copy it and open the GitHub bug form. Nothing is submitted automatically.",
+            "support.report.share": "Copy & Open Issue…",
+            "support.report.unavailable": "The GitHub issue form could not be opened. No report was shared.",
+            "support.report.copied": "The redacted report was copied. Paste it into the GitHub issue form and review it before submitting.",
             "settings.checkUpdates": "Check for updates automatically",
             "common.add": "Add",
             "common.cancel": "Cancel",
@@ -543,6 +551,8 @@ enum L10n {
 
             "wizard.permissionsReset.title": "Разрешения сброшены после обновления",
             "wizard.permissionsReset.text": "macOS сбросил разрешения из-за обновления программы.\n\nMultiSwitcher удалит старые записи и запросит разрешения заново.\nВам нужно только включить переключатели.",
+            "wizard.permissionsRequired.title": "MultiSwitcher нужны разрешения",
+            "wizard.permissionsRequired.text": "macOS больше не разрешает MultiSwitcher отслеживать нажатия или изменять текст. Откройте Системные настройки и включите нужные разрешения. MultiSwitcher не будет менять их самостоятельно.",
             "wizard.permissionsOk.title": "Все разрешения на месте",
             "wizard.permissionsOk.text": "«Универсальный доступ» и «Мониторинг ввода» включены. MultiSwitcher работает.",
             "wizard.accessibility.title": "Шаг 1 из 2: Универсальный доступ",
@@ -706,9 +716,10 @@ enum L10n {
             "profile.recovery.restored": "Предыдущий профиль восстановлен. Исходный файл сохранён в резервных копиях восстановления.",
             "profile.recovery.failed": "Не удалось восстановить предыдущий профиль. Исходные файлы сохранены.",
             "support.report.preview.title": "Проверьте диагностический отчёт",
-            "support.report.preview.body": "Из отчёта удаляются домашний путь, идентификаторы приложений и значения чувствительных полей журнала. Проверьте содержимое перед продолжением. MultiSwitcher откроет черновик отправки только после нажатия кнопки «Поделиться».",
-            "support.report.share": "Поделиться отчётом…",
-            "support.report.unavailable": "Сервис отправки почты недоступен. Отчёт не отправлен.",
+            "support.report.preview.body": "Проверьте и отредактируйте очищенный отчёт. После нажатия «Скопировать и открыть форму» MultiSwitcher скопирует его и откроет форму ошибки GitHub. Отчёт никуда не отправляется автоматически.",
+            "support.report.share": "Скопировать и открыть форму…",
+            "support.report.unavailable": "Не удалось открыть форму GitHub. Отчёт не передан.",
+            "support.report.copied": "Очищенный отчёт скопирован. Вставьте его в форму GitHub и ещё раз проверьте перед отправкой.",
             "settings.checkUpdates": "Автоматически проверять обновления",
             "common.add": "Добавить",
             "common.cancel": "Отмена",

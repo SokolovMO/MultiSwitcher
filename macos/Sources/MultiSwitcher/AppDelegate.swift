@@ -289,32 +289,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func showPermissionsResetAlert() {
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = L10n.wizardPermissionsResetTitle
-        alert.informativeText = L10n.wizardPermissionsResetText
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+        alert.messageText = L10n.permissionsRequiredTitle
+        alert.informativeText = L10n.permissionsRequiredText
+        alert.addButton(withTitle: L10n.wizardOpenSettings)
+        alert.addButton(withTitle: L10n.wizardLater)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-        // Сбрасываем старые записи через tccutil
-        resetPermissions()
-
-        // Запрашиваем заново
-        showStep_Accessibility()
-    }
-
-    /// Сбрасывает старые записи разрешений для нашего bundle ID
-    private func resetPermissions() {
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.multiswitcher.app"
-        rslog("Resetting TCC entries for \(bundleID)")
-
-        for service in ["Accessibility", "ListenEvent"] {
-            let reset = Process()
-            reset.launchPath = "/usr/bin/tccutil"
-            reset.arguments = ["reset", service, bundleID]
-            try? reset.run()
-            reset.waitUntilExit()
+        // TCC permissions are managed by the user. Never reset or re-request them
+        // automatically after an update; take the user to the relevant settings page.
+        let privacyPane = AXIsProcessTrusted() ? "Privacy_ListenEvent" : "Privacy_Accessibility"
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(privacyPane)") {
+            NSWorkspace.shared.open(url)
         }
-
-        rslog("TCC entries reset done")
+        permissionCheckTimer?.invalidate()
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                guard AXIsProcessTrusted() && CGPreflightListenEventAccess() else { return }
+                self.permissionCheckTimer?.invalidate()
+                self.permissionCheckTimer = nil
+                SettingsManager.shared.permissionsWereGranted = true
+                if !self.monitoringActive && !SettingsManager.shared.isPaused {
+                    self.startMonitoring()
+                }
+            }
+        }
     }
 
     private func showStep_Accessibility() {

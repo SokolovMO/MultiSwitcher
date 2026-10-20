@@ -11,9 +11,34 @@ public enum DiagnosticLogRedactor {
         }
 
         result = replacing(
-            pattern: #"(?i)\b(password|passwd|token|authorization|clipboard|query|typed[_ ]?text|word|text)\s*[:=]\s*[^,\r\n]+"#,
+            pattern: #"(?i)\b(password|passwd|token|authorization|clipboard|query|typed[_ ]?text|word|text|url|email|address)\s*[:=]\s*[^,\r\n]+"#,
             in: result,
             template: "$1=[redacted]"
+        )
+        result = replacing(
+            pattern: #"(?i)\b(?:https?|file)://[^\s<>\"']+"#,
+            in: result,
+            template: "[url]"
+        )
+        result = replacing(
+            pattern: #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#,
+            in: result,
+            template: "[email]"
+        )
+        result = replacing(
+            pattern: #"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{16,}|sk-[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._~+/-]+=*)"#,
+            in: result,
+            template: "[credential]"
+        )
+        result = replacing(
+            pattern: #"(?i)(?<![A-Za-z0-9])(?:\d{1,3}\.){3}\d{1,3}(?![A-Za-z0-9])"#,
+            in: result,
+            template: "[ip]"
+        )
+        result = replacing(
+            pattern: #"(?<![A-Za-z0-9])/(?:Users|private/var/folders|tmp)/[^\s,;]+"#,
+            in: result,
+            template: "[local-path]"
         )
         result = replacing(
             pattern: #"\b(?:[A-Za-z][A-Za-z0-9_-]*\.){2,}[A-Za-z][A-Za-z0-9_-]*\b"#,

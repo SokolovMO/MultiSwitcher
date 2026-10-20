@@ -404,22 +404,38 @@ enum UpdateChecker {
             return
         }
 
-        // 6. Скопировать .app с read-only тома DMG на тот же том, что и текущее
-        //    приложение. replaceItemAt НЕ умеет переносить элемент напрямую с
-        //    read-only тома DMG — именно это давало «Ошибку установки».
-        let stagingDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("MultiSwitcher-update-staging-\(UUID().uuidString)", isDirectory: true)
-        try? fm.removeItem(at: stagingDir)
+        // Save a recoverable profile snapshot before touching the installed bundle.
+        // The profile backup is separate from the app staging directory and persists
+        // if the process exits or installation fails.
+        do {
+            _ = try ProfileStore.shared.createBackupSnapshot(label: "before-update")
+        } catch {
+            rslog("Update: profile backup failed; refusing to replace the app")
+            await showInstallError(L10n.updateInstallFailed)
+            return
+        }
+
+        // 6. Stage both the incoming app and an exact rollback copy beside the
+        //    installed app. This guarantees a same-volume replacement and leaves the
+        //    running app untouched if there is not enough space or copying fails.
+        let stagingDir = currentApp.deletingLastPathComponent()
+            .appendingPathComponent(".MultiSwitcher-update-\(UUID().uuidString)", isDirectory: true)
         let stagedApp = stagingDir.appendingPathComponent(appName)
+        let rollbackApp = stagingDir.appendingPathComponent("Previous-MultiSwitcher.app")
+        var preserveRecoveryBackup = false
         do {
             try fm.createDirectory(at: stagingDir, withIntermediateDirectories: true)
             try fm.copyItem(at: sourceApp, to: stagedApp)
+            try fm.copyItem(at: currentApp, to: rollbackApp)
         } catch {
             rslog("Update: staging copy failed — \(error)")
+            try? fm.removeItem(at: stagingDir)
             await showInstallError(error.localizedDescription)
             return
         }
-        defer { try? fm.removeItem(at: stagingDir) }
+        defer {
+            if !preserveRecoveryBackup { try? fm.removeItem(at: stagingDir) }
+        }
 
         // 7. Атомарно заменить .app из staging-копии (на одном томе — работает)
         do {
@@ -430,6 +446,30 @@ enum UpdateChecker {
             await showInstallError(error.localizedDescription)
             return
         }
+
+        // Validate the actual installed copy, not just the DMG source. If this fails,
+        // restore the retained app bundle before showing an error to the user.
+        guard verifyNotarizedSignature(at: currentApp.path),
+              bundle(at: currentApp, matchesID: Bundle.main.bundleIdentifier ?? "", version: version,
+                     build: info.buildNumber) else {
+            rslog("Update: installed app failed verification; restoring previous bundle")
+            do {
+                try fm.removeItem(at: currentApp)
+                try fm.copyItem(at: rollbackApp, to: currentApp)
+                guard verifyNotarizedSignature(at: currentApp.path) else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                rslog("Update: previous bundle restored after post-copy verification failure")
+            } catch {
+                preserveRecoveryBackup = true
+                rslog("Update: automatic rollback failed; recovery bundle retained at \(stagingDir.path)")
+                await showInstallError(L10n.updateInstallFailed)
+                return
+            }
+            await showInstallError(L10n.updateIntegrityFailed)
+            return
+        }
+        rslog("Update: installed signature and bundle metadata verified")
 
         // 8. Явная уборка ПЕРЕД перезапуском: relaunch завершает процесс через
         //    terminate() → exit(), поэтому defer-блоки НЕ выполняются. Без этого том
@@ -503,6 +543,19 @@ enum UpdateChecker {
         let requirement = "anchor apple generic and certificate leaf[subject.OU] = \"\(teamID)\""
         guard runTool("/usr/bin/codesign", ["--verify", "--deep", "--strict", "-R=\(requirement)", path]) else { return false }
         return runTool("/usr/sbin/spctl", ["--assess", "--type", "execute", "--verbose=2", path])
+    }
+
+    private static func bundle(at appURL: URL, matchesID expectedID: String,
+                               version expectedVersion: String, build expectedBuild: String?) -> Bool {
+        let plistURL = appURL.appendingPathComponent("Contents/Info.plist")
+        guard let data = try? Data(contentsOf: plistURL),
+              let info = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any],
+              info["CFBundleIdentifier"] as? String == expectedID,
+              info["CFBundleShortVersionString"] as? String == expectedVersion else { return false }
+        if let expectedBuild {
+            return info["CFBundleVersion"] as? String == expectedBuild
+        }
+        return true
     }
 
     private static func sha256OfFile(at path: String) -> String? {
