@@ -1,5 +1,39 @@
 import Foundation
 
+/// In-memory evidence that a completed automatic layout conversion was explicitly
+/// undone in the same application and text context. The event itself is never saved.
+public struct LearningEvidence: Equatable, Sendable {
+    public var operationID: String
+    public var word: String
+    public var processIdentifier: Int32?
+    public var bundleIdentifier: String?
+    public var textContextGeneration: UInt64
+    public var completedAt: Date
+
+    public init(operationID: String = UUID().uuidString, word: String,
+                processIdentifier: Int32?, bundleIdentifier: String?,
+                textContextGeneration: UInt64, completedAt: Date = Date()) {
+        self.operationID = operationID
+        self.word = word
+        self.processIdentifier = processIdentifier
+        self.bundleIdentifier = bundleIdentifier
+        self.textContextGeneration = textContextGeneration
+        self.completedAt = completedAt
+    }
+
+    public func matchesUndo(operationID undoOperationID: String?,
+                            processIdentifier undoPID: Int32?, bundleIdentifier undoBundleID: String?,
+                            textContextGeneration undoGeneration: UInt64, at date: Date,
+                            maximumAge: TimeInterval = 8) -> Bool {
+        guard !operationID.isEmpty, operationID == undoOperationID,
+              processIdentifier != nil, bundleIdentifier != nil,
+              undoPID != nil, undoBundleID != nil,
+              date >= completedAt, date.timeIntervalSince(completedAt) <= maximumAge else { return false }
+        return processIdentifier == undoPID && bundleIdentifier == undoBundleID
+            && textContextGeneration == undoGeneration
+    }
+}
+
 public enum LearningEngine {
     public static let minimumLetters = 3
     public static let requiredCancellations = 2
@@ -51,6 +85,13 @@ public enum LearningEngine {
         return .excluded(word: clean)
     }
 
+    /// Records a cancellation only when the caller has matched it to the same completed
+    /// operation, app process, and text context. The evidence remains memory-only.
+    public static func recordAutomaticCancellation(evidence: LearningEvidence,
+                                                   in profile: inout MultiSwitcherProfile) -> LearningOutcome {
+        recordAutomaticCancellation(word: evidence.word, in: &profile)
+    }
+
     @discardableResult
     public static func setEnabled(_ enabled: Bool, in store: ProfileStore) throws -> Bool {
         try store.update { profile in
@@ -69,6 +110,8 @@ public enum LearningEngine {
         profile.rules.removeAll { $0.origin == .learned && normalizedKey($0.pattern) == key }
         if let index = profile.learning.firstIndex(where: { normalizedKey($0.word) == key }) {
             profile.learning[index].isExcluded = false
+            profile.learning[index].cancellationCount = 0
+            profile.learning[index].origin = .local
             profile.learning[index].updatedAt = Date()
         }
         return profile.rules.count != oldCount

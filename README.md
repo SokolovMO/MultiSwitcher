@@ -14,7 +14,7 @@ The app is under active development. Automated core checks and an arm64 app buil
 
 ## Install
 
-Once a signed and notarized GitHub release is published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. The app explains the required macOS permissions on first run.
+Once a signed and notarized GitHub release is published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. The app explains the required macOS permissions on first run. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted.
 
 When release updates are configured, MultiSwitcher checks GitHub Releases no more than once a day (this can be disabled in About) and offers a manual check from the menu-bar menu. Updates are installed only after checking the download hash, bundle identity, Developer ID signature, and Gatekeeper assessment.
 
@@ -31,7 +31,11 @@ The local build is arm64 and signed with the configured local signing identity. 
 
 ## Privacy
 
-Text conversion runs locally. The release checker contacts GitHub only to retrieve version metadata and the selected release asset; typed text and profile data are not included in update requests.
+Text conversion runs locally. The release checker contacts GitHub only to retrieve version metadata and the selected release asset; typed text and profile data are not included in update requests. See [PRIVACY.md](PRIVACY.md) for local profile, diagnostics, permissions, and issue-reporting details.
+
+## Feedback
+
+Use the repository's bug-report and feature-request forms. Bug reports request synthetic examples and warn against publishing private text or raw logs. A sanitized diagnostic preview is available in Settings when you choose to share a report.
 
 ## Source and license
 

@@ -35,9 +35,9 @@ jobs:
           done
           version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
           build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
-          tag_version="${GITHUB_REF_NAME#v}"
-          [[ "$version" == "$tag_version" ]] || { echo "Tag $GITHUB_REF_NAME does not match app version $version." >&2; exit 1; }
           [[ "$build_number" =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "CFBundleVersion must be numeric." >&2; exit 1; }
+          expected_tag="v${version}-build${build_number}"
+          [[ "$GITHUB_REF_NAME" == "$expected_tag" ]] || { echo "Expected release tag $expected_tag, got $GITHUB_REF_NAME." >&2; exit 1; }
           [[ "$TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "Developer Team ID must be 10 uppercase letters or digits." >&2; exit 1; }
 
       - name: Import Developer ID certificate into temporary keychain
@@ -90,7 +90,8 @@ jobs:
         run: |
           set -euo pipefail
           APP="$RUNNER_TEMP/MultiSwitcher-release-build/MultiSwitcher.app"
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
+          BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
           /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
           SIGNATURE=$(/usr/bin/codesign -dv --verbose=4 "$APP" 2>&1)
           /usr/bin/grep -Fxq "TeamIdentifier=$TEAM_ID" <<<"$SIGNATURE" || {
@@ -116,10 +117,11 @@ jobs:
           /usr/bin/xcrun stapler validate "$DMG"
           /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
           python3 scripts/create_update_manifest.py \
-            --version "$VERSION" --repository "$GITHUB_REPOSITORY" \
+            --version "$VERSION" --build-number "$BUILD_NUMBER" --tag "$GITHUB_REF_NAME" \
+            --repository "$GITHUB_REPOSITORY" \
             --dmg "$DMG" --output "$RUNNER_TEMP/version.json"
           gh release create "$GITHUB_REF_NAME" "$DMG" "$RUNNER_TEMP/version.json" \
-            --verify-tag --latest --title "MultiSwitcher $VERSION" --generate-notes
+            --verify-tag --draft --title "MultiSwitcher $VERSION" --generate-notes
 
       - name: Remove signing material
         if: always()

@@ -15,9 +15,16 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
     private var entries: [LearningEntry] = []
     private var visibleEntries: [LearningEntry] = []
 
+    func setCompactMode(_ compact: Bool) {
+        table.rowHeight = compact ? 20 : 24
+        table.intercellSpacing = NSSize(width: 0, height: compact ? 1 : 3)
+    }
+
     func makeContainer(frame: NSRect) -> NSView {
         let root = NSView(frame: frame)
+        root.autoresizesSubviews = true
         searchField.frame = NSRect(x: 0, y: frame.height - 30, width: frame.width, height: 24)
+        searchField.autoresizingMask = [.width, .minYMargin]
         searchField.placeholderString = L10n.learningSearch
         searchField.sendsSearchStringImmediately = true
         searchField.target = self
@@ -25,6 +32,7 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         root.addSubview(searchField)
 
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 34, width: frame.width, height: frame.height - 70))
+        scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.borderType = .bezelBorder
@@ -32,6 +40,8 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         addColumn(L10n.learningColumnWord, identifier: Column.word, width: frame.width * 0.54)
         addColumn(L10n.learningColumnCount, identifier: Column.count, width: frame.width * 0.18)
         addColumn(L10n.learningColumnState, identifier: Column.state, width: frame.width * 0.28)
+        table.autoresizingMask = [.width]
+        table.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
         table.dataSource = self
         table.delegate = self
         table.rowHeight = 24
@@ -39,6 +49,7 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         root.addSubview(scroll)
 
         forgetButton.frame = NSRect(x: 0, y: 0, width: 100, height: 26)
+        forgetButton.autoresizingMask = [.maxYMargin]
         forgetButton.title = L10n.learningForget
         forgetButton.bezelStyle = .rounded
         forgetButton.target = self
@@ -53,6 +64,7 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         column.title = title
         column.width = width
         column.minWidth = identifier == Column.word ? 120 : 64
+        column.maxWidth = .greatestFiniteMagnitude
         column.resizingMask = .autoresizingMask
         table.addTableColumn(column)
     }

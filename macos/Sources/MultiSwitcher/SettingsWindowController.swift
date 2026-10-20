@@ -1,17 +1,77 @@
 import AppKit
 import Carbon
 import MultiSwitcherCore
+import QuartzCore
 import UniformTypeIdentifiers
+
+/// The menu-bar app has no main menu while it runs as an accessory. Handle the
+/// standard close shortcut at the window level so it also works from text fields.
+@MainActor
+private final class SettingsWindow: NSWindow {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let extraModifiers = modifiers.intersection([.shift, .option, .control])
+        if event.type == .keyDown,
+           modifiers.contains(.command),
+           extraModifiers.isEmpty,
+           event.keyCode == 13 {
+            performClose(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
+@MainActor
+private final class SettingsSidebarDivider: NSView {
+    var onDrag: ((CGFloat) -> Void)?
+    var onDragEnded: (() -> Void)?
+
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.separatorColor.setFill()
+        NSBezierPath(rect: NSRect(x: bounds.midX - 0.5, y: 0, width: 1, height: bounds.height)).fill()
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .resizeLeftRight)
+    }
+
+    override func mouseDown(with event: NSEvent) {}
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let superview else { return }
+        onDrag?(superview.convert(event.locationInWindow, from: nil).x)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        onDragEnded?()
+    }
+}
 
 /// Нативное окно настроек с полноценной боковой навигацией.
 @MainActor
-final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSTabViewDelegate {
+final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSTabViewDelegate, NSWindowDelegate {
     private struct NavigationItem {
         let title: String
         let symbol: String
     }
 
     private var window: NSWindow?
+    private weak var rootView: NSView?
+    private weak var sidebarView: NSView?
+    private weak var sidebarSeparator: NSView?
+    private weak var navigationScrollView: NSScrollView?
+    private weak var paneScrollView: NSScrollView?
+    private var pageAccessory: NSTitlebarAccessoryViewController?
+    private var pageExpandButton: NSButton?
+    private var compactModeButton: NSButton?
+    private var expandedPage = false
+    private var selectedPageIndex = 0
+    private var minimumDocumentHeight: CGFloat = 0
+    private var sidebarWidth: CGFloat = 206
+    private let sidebarDividerWidth: CGFloat = 6
     private var navigationTable: NSTableView?
     private var settingsTabView: NSTabView?
     private var autoSwitchCheckbox: NSButton?
@@ -20,6 +80,8 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private var caretFlagCheckbox: NSButton?
     private var autoConvertCheckbox: NSButton?      // #4: синк тумблера меню → окно настроек
     private var remoteDesktopCheckbox: NSButton?    // #5: то же (опционален — за фичефлагом)
+    private var smartConversionCheckbox: NSButton?
+    private var convertByTextCheckbox: NSButton?
     private var layout1Popup: NSPopUpButton?
     private var layout2Popup: NSPopUpButton?
     private var languagePopup: NSPopUpButton?
@@ -28,6 +90,9 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private var exceptionEditors: [ExceptionListEditor] = []
     private var learningListEditor: LearningListEditor?
     private var ruleEditor: UserRuleEditor?
+    private weak var profileRecoveryNoteLabel: NSTextField?
+    private weak var restoreProfileButton: NSButton?
+    private var pageTransitionGeneration = 0
 
     /// Callback для обновления меню
     var onAutoSwitchChanged: ((Bool) -> Void)?
@@ -38,18 +103,23 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     var onRemoteDesktopChanged: ((Bool) -> Void)?
     var onCaretFlagChanged: ((Bool) -> Void)?
     var onHideIconChanged: ((Bool) -> Void)?
+    var onWindowVisibilityChanged: ((Bool) -> Void)?
 
     func showWindow() {
         if let window {
             exceptionEditors.forEach { $0.reloadFromStore() }
             learningListEditor?.reloadFromStore()
             ruleEditor?.reloadFromStore()
+            NSApp.setActivationPolicy(.regular)
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
+            onWindowVisibilityChanged?(true)
             return
         }
 
-        let win = NSWindow(
+        NSApp.setActivationPolicy(.regular)
+        sidebarWidth = CGFloat(SettingsManager.shared.settingsSidebarWidth)
+        let win = SettingsWindow(
             contentRect: NSRect(x: 0, y: 0, width: 800, height: 780),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -60,14 +130,25 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         win.collectionBehavior = [.managed, .fullScreenPrimary]
         win.center()
         win.isReleasedWhenClosed = false
+        win.delegate = self
 
         let root = NSView(frame: win.contentView!.bounds)
         root.autoresizingMask = [.width, .height]
+        root.autoresizesSubviews = true
         root.wantsLayer = true
-        let sidebarWidth: CGFloat = 206
-        let separator = NSBox(frame: NSRect(x: sidebarWidth, y: 0, width: 1, height: root.bounds.height))
-        separator.boxType = .separator
-        separator.autoresizingMask = [.height, .minXMargin]
+        let separator = SettingsSidebarDivider(frame: NSRect(x: sidebarWidth, y: 0,
+                                                               width: sidebarDividerWidth,
+                                                               height: root.bounds.height))
+        // Keep the divider beside the sidebar as the window grows. A flexible
+        // left margin made it drift toward the center on wide displays.
+        separator.autoresizingMask = [.height, .maxXMargin]
+        separator.onDrag = { [weak self] x in self?.setSidebarWidth(x) }
+        separator.setAccessibilityLabel(L10n.settingsResizeSidebar)
+        separator.toolTip = L10n.settingsResizeSidebar
+        separator.onDragEnded = { [weak self] in
+            guard let self else { return }
+            SettingsManager.shared.settingsSidebarWidth = Int(self.sidebarWidth.rounded())
+        }
         root.addSubview(separator)
 
         let sidebar = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: sidebarWidth,
@@ -77,11 +158,16 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         sidebar.state = .followsWindowActiveState
         sidebar.autoresizingMask = [.height, .maxXMargin]
         root.addSubview(sidebar, positioned: .below, relativeTo: separator)
+        rootView = root
+        sidebarView = sidebar
+        sidebarSeparator = separator
 
         let brandMark = NSTextField(labelWithString: "AЯ")
         brandMark.frame = NSRect(x: 18, y: root.bounds.height - 40, width: 34, height: 24)
         brandMark.font = SystemTypography.font(.headline, weight: .bold)
-        brandMark.textColor = .controlAccentColor
+        // Keep the AЯ signature monochrome in both appearances; system accent remains
+        // reserved for interactive selection and status feedback.
+        brandMark.textColor = .labelColor
         brandMark.alignment = .center
         brandMark.autoresizingMask = [.minYMargin]
         sidebar.addSubview(brandMark)
@@ -113,9 +199,11 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         navigationScroll.documentView = navigation
         sidebar.addSubview(navigationScroll)
         navigationTable = navigation
+        navigationScrollView = navigationScroll
 
-        let tabView = NSTabView(frame: NSRect(x: sidebarWidth + 1, y: 0,
-                                               width: root.bounds.width - sidebarWidth - 1,
+        let paneOriginX = sidebarWidth + sidebarDividerWidth
+        let tabView = NSTabView(frame: NSRect(x: paneOriginX, y: 0,
+                                               width: root.bounds.width - paneOriginX,
                                                height: root.bounds.height))
         tabView.tabViewType = .noTabsNoBorder
         tabView.delegate = self
@@ -126,12 +214,14 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         tabView.addTabViewItem(createRulesTab())
         tabView.addTabViewItem(createLearningTab())
         tabView.addTabViewItem(createAboutTab())
+        applyCompactMode(SettingsManager.shared.compactSettings)
 
         let tallest = tabView.tabViewItems.compactMap { $0.view?.frame.height }.max() ?? 700
-        tabView.frame.size.height = max(root.bounds.height, tallest)
-        tabView.autoresizingMask = [.width]
-        let paneScroll = NSScrollView(frame: NSRect(x: sidebarWidth + 1, y: 0,
-                                                    width: root.bounds.width - sidebarWidth - 1,
+        minimumDocumentHeight = max(root.bounds.height, tallest)
+        tabView.frame.size.height = minimumDocumentHeight
+        tabView.autoresizingMask = [.width, .height]
+        let paneScroll = NSScrollView(frame: NSRect(x: paneOriginX, y: 0,
+                                                    width: root.bounds.width - paneOriginX,
                                                     height: root.bounds.height))
         paneScroll.borderType = .noBorder
         paneScroll.hasVerticalScroller = true
@@ -141,16 +231,17 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         paneScroll.autoresizingMask = [.width, .height]
         paneScroll.documentView = tabView
         root.addSubview(paneScroll)
+        paneScrollView = paneScroll
         win.contentView = root
         settingsTabView = tabView
+        installPageAccessory(on: win)
+        applyCompactMode(SettingsManager.shared.compactSettings)
         navigation.reloadData()
         navigation.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
         tabView.selectTabViewItem(at: 0)
 
-        // Панель правил имеет фиксированную полезную ширину 580 pt. При окне уже 800 pt
-        // (206 pt навигации + 580 pt содержимого + разделитель) документ обрезался справа,
-        // хотя окно ещё разрешало уменьшать ширину до 760 pt. Оставляем ширину, нужную
-        // таблице, а по высоте адаптируемся к экрану: вкладки уже прокручиваются целиком.
+        // Keep the comfortable initial size, while allowing the content itself to
+        // grow with the window instead of leaving the right half empty.
         let visibleFrame = (win.screen ?? NSScreen.main)?.visibleFrame
         let availableHeight = max(360, (visibleFrame?.height ?? 720) - 56)
         let minimumHeight = min(480, availableHeight)
@@ -162,6 +253,175 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         NSApp.activate(ignoringOtherApps: true)
 
         window = win
+        setSidebarWidth(sidebarWidth)
+        onWindowVisibilityChanged?(true)
+        updatePagePresentation()
+    }
+
+    private func installPageAccessory(on window: NSWindow) {
+        let accessory = NSTitlebarAccessoryViewController()
+        accessory.layoutAttribute = .right
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 72, height: 28))
+        let expandImage = NSImage(systemSymbolName: "arrow.up.left.and.arrow.down.right",
+                                  accessibilityDescription: "Развернуть страницу")
+            ?? NSImage(size: NSSize(width: 16, height: 16))
+        let button = NSButton(image: expandImage,
+                              target: self, action: #selector(toggleExpandedPage))
+        button.frame = NSRect(x: 38, y: 2, width: 28, height: 24)
+        button.bezelStyle = .accessoryBarAction
+        button.isBordered = false
+        button.toolTip = L10n.settingsExpandPage
+        button.setAccessibilityLabel(L10n.settingsExpandPage)
+        container.addSubview(button)
+
+        let compactButton = NSButton(image: NSImage(systemSymbolName: "line.3.horizontal.decrease.circle",
+                                                      accessibilityDescription: L10n.settingsCompactMode)
+                                    ?? NSImage(size: NSSize(width: 16, height: 16)),
+                                    target: self, action: #selector(toggleCompactMode))
+        compactButton.frame = NSRect(x: 2, y: 2, width: 28, height: 24)
+        compactButton.bezelStyle = .accessoryBarAction
+        compactButton.isBordered = false
+        compactButton.toolTip = L10n.settingsCompactMode
+        compactButton.setAccessibilityLabel(L10n.settingsCompactMode)
+        container.addSubview(compactButton)
+
+        accessory.view = container
+        pageAccessory = accessory
+        pageExpandButton = button
+        compactModeButton = compactButton
+        window.addTitlebarAccessoryViewController(accessory)
+    }
+
+    @objc private func toggleExpandedPage() {
+        guard canExpandSelectedPage else { return }
+        expandedPage.toggle()
+        updatePagePresentation(animated: true)
+    }
+
+    private var canExpandSelectedPage: Bool {
+        selectedPageIndex == 2 || selectedPageIndex == 3 || selectedPageIndex == 4
+    }
+
+    private var reduceMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    private func updatePagePresentation(animated: Bool = false) {
+        let canExpand = canExpandSelectedPage
+        pageExpandButton?.isHidden = !canExpand
+        let isExpanded = expandedPage && canExpand
+        let symbol = isExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right"
+        pageExpandButton?.image = NSImage(systemSymbolName: symbol,
+                                          accessibilityDescription: isExpanded ? L10n.settingsRestoreSidebar : L10n.settingsExpandPage)
+        pageExpandButton?.toolTip = isExpanded ? L10n.settingsRestoreSidebar : L10n.settingsExpandPage
+        pageExpandButton?.setAccessibilityLabel(pageExpandButton?.toolTip ?? "Развернуть страницу")
+
+        guard let rootView, let paneScrollView else { return }
+        let originX = isExpanded ? CGFloat.zero : sidebarWidth + sidebarDividerWidth
+        let targetFrame = NSRect(x: originX, y: 0,
+                                 width: max(1, rootView.bounds.width - originX),
+                                 height: rootView.bounds.height)
+        let shouldAnimate = animated && !reduceMotion && window?.isVisible == true
+
+        if !shouldAnimate {
+            paneScrollView.frame = targetFrame
+            sidebarView?.isHidden = isExpanded
+            sidebarSeparator?.isHidden = isExpanded
+            sidebarView?.alphaValue = 1
+            sidebarSeparator?.alphaValue = 1
+            updateDocumentSize()
+            return
+        }
+
+        pageTransitionGeneration += 1
+        let generation = pageTransitionGeneration
+        if !isExpanded {
+            sidebarView?.isHidden = false
+            sidebarSeparator?.isHidden = false
+            sidebarView?.alphaValue = 0
+            sidebarSeparator?.alphaValue = 0
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.22
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            paneScrollView.animator().frame = targetFrame
+            if isExpanded {
+                sidebarView?.animator().alphaValue = 0
+                sidebarSeparator?.animator().alphaValue = 0
+            } else {
+                sidebarView?.animator().alphaValue = 1
+                sidebarSeparator?.animator().alphaValue = 1
+            }
+            context.completionHandler = { [weak self, weak paneScrollView] in
+                guard let self, let paneScrollView,
+                      self.pageTransitionGeneration == generation else { return }
+                if isExpanded {
+                    self.sidebarView?.isHidden = true
+                    self.sidebarSeparator?.isHidden = true
+                }
+                paneScrollView.frame = targetFrame
+                self.updateDocumentSize()
+            }
+        }
+    }
+
+    private func updateDocumentSize() {
+        guard let paneScrollView, let documentView = paneScrollView.documentView else { return }
+        documentView.setFrameSize(NSSize(width: paneScrollView.contentSize.width,
+                                         height: max(minimumDocumentHeight, paneScrollView.contentSize.height)))
+    }
+
+    private func setSidebarWidth(_ requested: CGFloat) {
+        guard let rootView, let sidebarView, let sidebarSeparator else { return }
+        let maximum = max(180, min(320, rootView.bounds.width - sidebarDividerWidth - 480))
+        sidebarWidth = min(max(180, requested), maximum)
+        sidebarView.frame.size.width = sidebarWidth
+        sidebarSeparator.frame.origin.x = sidebarWidth
+        navigationScrollView?.frame.size.width = max(120, sidebarWidth - 16)
+        if let navigationTable {
+            navigationTable.tableColumns.first?.width = navigationScrollView?.contentSize.width ?? sidebarWidth - 16
+        }
+        guard !expandedPage else { return }
+        let originX = sidebarWidth + sidebarDividerWidth
+        paneScrollView?.frame = NSRect(x: originX, y: 0,
+                                       width: max(1, rootView.bounds.width - originX),
+                                       height: rootView.bounds.height)
+        updateDocumentSize()
+    }
+
+    private func applyCompactMode(_ compact: Bool) {
+        navigationTable?.rowHeight = compact ? 36 : 42
+        navigationTable?.intercellSpacing = NSSize(width: 0, height: compact ? 2 : 4)
+        navigationTable?.reloadData()
+        exceptionEditors.forEach { $0.setCompactMode(compact) }
+        learningListEditor?.setCompactMode(compact)
+        ruleEditor?.setCompactMode(compact)
+        let title = compact ? L10n.settingsComfortableMode : L10n.settingsCompactMode
+        let symbol = compact ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
+        compactModeButton?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        compactModeButton?.toolTip = title
+        compactModeButton?.setAccessibilityLabel(title)
+    }
+
+    @objc private func toggleCompactMode() {
+        let compact = !SettingsManager.shared.compactSettings
+        SettingsManager.shared.compactSettings = compact
+        applyCompactMode(compact)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === window else { return }
+        pageTransitionGeneration += 1
+        paneScrollView?.alphaValue = 1
+        expandedPage = false
+        updatePagePresentation()
+        onWindowVisibilityChanged?(false)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === window else { return }
+        setSidebarWidth(sidebarWidth)
+        updateDocumentSize()
     }
 
     private var navigationItems: [NavigationItem] {
@@ -209,14 +469,51 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         guard let navigationTable,
               (notification.object as? NSTableView) === navigationTable,
               navigationTable.selectedRow >= 0 else { return }
-        settingsTabView?.selectTabViewItem(at: navigationTable.selectedRow)
+        transitionToPage(navigationTable.selectedRow, animated: true)
     }
 
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         guard let tabViewItem,
               let index = tabView.tabViewItems.firstIndex(of: tabViewItem),
               navigationTable?.selectedRow != index else { return }
+        selectedPageIndex = index
+        if !canExpandSelectedPage { expandedPage = false }
         navigationTable?.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        updatePagePresentation(animated: true)
+    }
+
+    private func transitionToPage(_ index: Int, animated: Bool) {
+        guard navigationItems.indices.contains(index) else { return }
+        let willChange = selectedPageIndex != index
+        selectedPageIndex = index
+        if !canExpandSelectedPage { expandedPage = false }
+        navigationTable?.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        guard let settingsTabView, willChange, animated, !reduceMotion,
+              let paneScrollView, window?.isVisible == true else {
+            settingsTabView?.selectTabViewItem(at: index)
+            updatePagePresentation(animated: willChange)
+            return
+        }
+
+        pageTransitionGeneration += 1
+        let generation = pageTransitionGeneration
+        paneScrollView.alphaValue = 1
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.09
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            paneScrollView.animator().alphaValue = 0.72
+            context.completionHandler = { [weak self, weak settingsTabView, weak paneScrollView] in
+                guard let self, let settingsTabView, let paneScrollView,
+                      self.pageTransitionGeneration == generation else { return }
+                settingsTabView.selectTabViewItem(at: index)
+                self.updatePagePresentation(animated: true)
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.16
+                    context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                    paneScrollView.animator().alphaValue = 1
+                }
+            }
+        }
     }
 
     /// Обновить состояние чекбокса автопереключения извне
@@ -243,14 +540,28 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     /// а под-вью с абсолютными координатами (y от низа) иначе провисают к низу/центру короткой
     /// вкладки. Оборачиваем фиксированный контент в растягивающийся контейнер и пиним контент к
     /// верхнему краю (гибкий нижний отступ — .minYMargin).
-    private func topAligned(_ content: NSView) -> NSView {
+    private func topAligned(_ content: NSView, fillsHeight: Bool = false) -> NSView {
         let paneWidth: CGFloat = 580
         content.frame.origin.x = max(0, (paneWidth - content.frame.width) / 2)
         let outer = NSView(frame: NSRect(x: 0, y: 0, width: paneWidth, height: content.frame.height))
         outer.autoresizingMask = [.width, .height]
         outer.autoresizesSubviews = true
-        // Keep fixed-width preference forms centered when users zoom or enter full screen.
-        content.autoresizingMask = [.minYMargin, .minXMargin, .maxXMargin]
+        // Page view follows the scroll view's document width. Stretch controls
+        // already aligned to the content edge; keep labels and compact buttons fixed.
+        content.autoresizingMask = fillsHeight ? [.width, .height] : [.width, .minYMargin]
+        for child in content.subviews {
+            var mask: NSView.AutoresizingMask = child.frame.maxX >= content.frame.width - 46 ? [.width] : []
+            if fillsHeight {
+                if child.frame.height < 40 && child.frame.minY < 30 {
+                    mask.insert(.maxYMargin)
+                } else if child.frame.minY < content.frame.height * 0.45 {
+                    mask.insert(.height)
+                } else {
+                    mask.insert(.minYMargin)
+                }
+            }
+            child.autoresizingMask = mask
+        }
         outer.addSubview(content)
         return outer
     }
@@ -664,16 +975,18 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             self?.exceptionEditors.forEach { $0.reloadFromStore() }
         }
         let container = editor.makeContainer(frame: NSRect(x: 20, y: 54, width: 540, height: 590))
+        container.autoresizingMask = [.width, .height]
         view.addSubview(container)
         let importPunto = NSButton(title: L10n.settingsImportPunto, target: self, action: #selector(importPuntoProfile))
         importPunto.image = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: nil)
         importPunto.imagePosition = .imageLeading
         importPunto.bezelStyle = .rounded
         importPunto.frame = NSRect(x: 20, y: 16, width: 320, height: 30)
+        importPunto.autoresizingMask = [.maxYMargin]
         view.addSubview(importPunto)
         ruleEditor = editor
 
-        item.view = topAligned(view)
+        item.view = topAligned(view, fillsHeight: true)
         return item
     }
 
@@ -694,7 +1007,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         editor.reloadFromStore()
         learningListEditor = editor
 
-        item.view = topAligned(view)
+        item.view = topAligned(view, fillsHeight: true)
         return item
     }
 
@@ -704,8 +1017,8 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         let item = NSTabViewItem()
         item.label = L10n.settingsTabAbout
 
-        let view = NSView(frame: NSRect(x: 0, y: 0, width: 460, height: 360))
-        var y: CGFloat = 310
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 460, height: 450))
+        var y: CGFloat = 400
 
         // Название и версия
         let titleLabel = NSTextField(labelWithString: "MultiSwitcher")
@@ -726,21 +1039,38 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         if UpdateChecker.isConfigured {
             let updateCheck = NSButton(checkboxWithTitle: L10n.settingsCheckUpdates,
                                        target: self, action: #selector(updateChecksChanged(_:)))
-            updateCheck.frame = NSRect(x: 20, y: 222, width: 420, height: 22)
+            updateCheck.frame = NSRect(x: 20, y: 312, width: 420, height: 22)
             updateCheck.state = SettingsManager.shared.checkUpdatesEnabled ? .on : .off
             view.addSubview(updateCheck)
 
             let checkNow = NSButton(title: L10n.menuCheckUpdates, target: self,
                                     action: #selector(checkForUpdatesNow(_:)))
-            checkNow.frame = NSRect(x: 20, y: 180, width: 190, height: 30)
+            checkNow.frame = NSRect(x: 20, y: 270, width: 190, height: 30)
             view.addSubview(checkNow)
         }
 
         let localNotice = NSTextField(wrappingLabelWithString: L10n.settingsAboutLocalNotice)
-        localNotice.frame = NSRect(x: 20, y: 98, width: 420, height: 64)
+        localNotice.frame = NSRect(x: 20, y: 174, width: 420, height: 64)
         localNotice.font = SystemTypography.font(.footnote)
         localNotice.textColor = .secondaryLabelColor
         view.addSubview(localNotice)
+
+        if ProfileStore.shared.isInRecoveryMode {
+            let recoveryNote = NSTextField(wrappingLabelWithString: L10n.profileRecoveryNotice)
+            recoveryNote.frame = NSRect(x: 20, y: 92, width: 420, height: 58)
+            recoveryNote.font = SystemTypography.font(.footnote)
+            recoveryNote.textColor = .systemOrange
+            view.addSubview(recoveryNote)
+            profileRecoveryNoteLabel = recoveryNote
+
+            let restore = NSButton(title: L10n.profileRecoveryRestore,
+                                   target: self, action: #selector(restorePreviousProfile))
+            restore.frame = NSRect(x: 20, y: 48, width: 240, height: 30)
+            restore.isEnabled = ProfileStore.shared.canRestorePreviousProfile
+            restore.setAccessibilityLabel(L10n.profileRecoveryRestore)
+            view.addSubview(restore)
+            restoreProfileButton = restore
+        }
 
         fitToText(view)
         item.view = topAligned(view)
@@ -759,6 +1089,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         // issue #22 (B): умная по-словная конверсия выделения. По умолчанию ВКЛ.
         let smartCheckbox = NSButton(checkboxWithTitle: L10n.settingsSmartConversion,
                                      target: self, action: #selector(smartConversionChanged))
+        smartConversionCheckbox = smartCheckbox
         smartCheckbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
         smartCheckbox.state = SettingsManager.shared.smartConversion ? .on : .off
         smartCheckbox.toolTip = L10n.settingsSmartConversionHint
@@ -776,6 +1107,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         // письменностей). По умолчанию ВЫКЛ; перебивает умную конверсию.
         let byTextCheckbox = NSButton(checkboxWithTitle: L10n.settingsConvertByText,
                                       target: self, action: #selector(convertByTextChanged))
+        convertByTextCheckbox = byTextCheckbox
         byTextCheckbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
         byTextCheckbox.state = SettingsManager.shared.convertByText ? .on : .off
         byTextCheckbox.toolTip = L10n.settingsConvertByTextHint
@@ -812,6 +1144,36 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         secureNoticeCheckbox.state = SettingsManager.shared.secureInputNoticeEnabled ? .on : .off
         view.addSubview(secureNoticeCheckbox)
         y -= 32
+
+        let dictionaryHeading = NSTextField(labelWithString: L10n.settingsDictionaryPacks)
+        dictionaryHeading.font = SystemTypography.font(.body, weight: .semibold)
+        dictionaryHeading.frame = NSRect(x: 20, y: y, width: 420, height: 22)
+        view.addSubview(dictionaryHeading)
+        y -= 27
+
+        let themeTitles = [
+            L10n.settingsDictionaryTechnology,
+            L10n.settingsDictionaryDesign,
+            L10n.settingsDictionaryBrands,
+            L10n.settingsDictionarySlang,
+        ]
+        let themeIDs = ["technology", "design", "brands", "slang"]
+        let enabledThemes = SettingsManager.shared.enabledDictionaryThemes
+        for (index, title) in themeTitles.enumerated() {
+            let checkbox = NSButton(checkboxWithTitle: title, target: self,
+                                    action: #selector(dictionaryThemeChanged(_:)))
+            checkbox.tag = index
+            checkbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
+            checkbox.state = enabledThemes.contains(themeIDs[index]) ? .on : .off
+            view.addSubview(checkbox)
+            y -= 24
+        }
+        let dictionaryHint = NSTextField(wrappingLabelWithString: L10n.settingsDictionaryPacksHint)
+        dictionaryHint.frame = NSRect(x: 40, y: y - 14, width: 400, height: 34)
+        dictionaryHint.font = SystemTypography.font(.footnote)
+        dictionaryHint.textColor = .secondaryLabelColor
+        view.addSubview(dictionaryHint)
+        y -= 50
 
         // Скрыть иконку из меню-бара (запрос пользователя). По умолчанию ВЫКЛ.
         // При включении — подтверждающий алерт с объяснением, как вернуть (reopen).
@@ -1140,6 +1502,24 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         SettingsManager.shared.checkUpdatesEnabled = sender.state == .on
     }
 
+    @objc private func restorePreviousProfile() {
+        do {
+            _ = try ProfileStore.shared.restorePreviousProfile()
+            exceptionEditors.forEach { $0.reloadFromStore() }
+            learningListEditor?.reloadFromStore()
+            ruleEditor?.reloadFromStore()
+            profileRecoveryNoteLabel?.stringValue = L10n.profileRecoveryRestored
+            restoreProfileButton?.isEnabled = false
+        } catch {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = L10n.profileRecoveryFailed
+            alert.informativeText = error.localizedDescription
+            alert.addButton(withTitle: L10n.commonOkay)
+            alert.runModal()
+        }
+    }
+
     @objc private func checkForUpdatesNow(_ sender: NSButton) {
         UpdateChecker.checkNow()
     }
@@ -1207,10 +1587,12 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
     @objc private func smartConversionChanged(_ sender: NSButton) {
         SettingsManager.shared.smartConversion = sender.state == .on
+        if sender.state == .on { convertByTextCheckbox?.state = .off }
     }
 
     @objc private func convertByTextChanged(_ sender: NSButton) {
         SettingsManager.shared.convertByText = sender.state == .on
+        if sender.state == .on { smartConversionCheckbox?.state = .off }
     }
 
     @objc private func convertWholeLineChanged(_ sender: NSButton) {
@@ -1219,6 +1601,16 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
     @objc private func secureNoticeChanged(_ sender: NSButton) {
         SettingsManager.shared.secureInputNoticeEnabled = sender.state == .on
+    }
+
+    @objc private func dictionaryThemeChanged(_ sender: NSButton) {
+        let ids = ["technology", "design", "brands", "slang"]
+        guard ids.indices.contains(sender.tag) else { return }
+        var enabled = SettingsManager.shared.enabledDictionaryThemes
+        let id = ids[sender.tag]
+        if sender.state == .on { enabled.insert(id) } else { enabled.remove(id) }
+        SettingsManager.shared.enabledDictionaryThemes = enabled
+        Dict.setEnabledThemes(enabled)
     }
 
     @objc private func debugLogChanged(_ sender: NSButton) {
@@ -1244,15 +1636,43 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             return
         }
 
-        let url = URL(fileURLWithPath: path)
+        guard let raw = try? String(contentsOfFile: path, encoding: .utf8) else {
+            showLogFile()
+            return
+        }
+        let sanitized = DiagnosticLogRedactor.redact(raw, homeDirectory: NSHomeDirectory())
+        let report = String(sanitized.suffix(100_000))
+
+        let preview = NSTextView(frame: NSRect(x: 0, y: 0, width: 560, height: 260))
+        preview.string = report
+        preview.isEditable = false
+        preview.isSelectable = true
+        preview.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        preview.textContainer?.widthTracksTextView = true
+        preview.isVerticallyResizable = true
+        preview.isHorizontallyResizable = false
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 560, height: 260))
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        scroll.documentView = preview
+
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = L10n.supportReportPreviewTitle
+        alert.informativeText = L10n.supportReportPreviewBody
+        alert.accessoryView = scroll
+        alert.addButton(withTitle: L10n.supportReportShare)
+        alert.addButton(withTitle: L10n.commonCancel)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
         if let service = NSSharingService(named: .composeEmail) {
-            service.perform(withItems: [
-                "MultiSwitcher debug log" as NSString,
-                url
-            ])
+            service.perform(withItems: ["MultiSwitcher diagnostic report" as NSString, report as NSString])
         } else {
-            // Fallback: показать в Finder
-            NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+            let unavailable = NSAlert()
+            unavailable.alertStyle = .informational
+            unavailable.messageText = L10n.supportReportUnavailable
+            unavailable.addButton(withTitle: L10n.commonOkay)
+            unavailable.runModal()
         }
     }
 

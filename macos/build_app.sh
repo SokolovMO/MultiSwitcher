@@ -97,7 +97,8 @@ if [[ ! -x "$BIN_PATH" ]]; then
     exit 1
 fi
 
-mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources/Licenses"
+mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources/Licenses" \
+    "$APP_BUNDLE/Contents/Resources/Lexicons" "$APP_BUNDLE/Contents/Resources/Lexicons/Themes"
 cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 cp "$INFO_PLIST" "$APP_BUNDLE/Contents/Info.plist"
 if [[ "$ENABLE_UPDATES" == "1" ]]; then
@@ -115,6 +116,12 @@ cp "$PROJECT_DIR/icons/app-icon-az.svg" "$APP_BUNDLE/Contents/Resources/MultiSwi
 cp "$PROJECT_DIR/icons/app-icon-disabled.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-AppIcon-Disabled.svg"
 cp "$REPO_DIR/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/RuSwitcher-MIT.txt"
 cp "$REPO_DIR/TRADEMARKS.md" "$APP_BUNDLE/Contents/Resources/Licenses/RuSwitcher-Attribution.md"
+python3 "$REPO_DIR/scripts/unpack_dict_packs.py" "$REPO_DIR/dicts" \
+    "$APP_BUNDLE/Contents/Resources/Lexicons"
+cp "$REPO_DIR/dicts/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/FrequencyWords-CC-BY-SA-4.0.txt"
+python3 "$REPO_DIR/scripts/prepare_thematic_lexicons.py" "$REPO_DIR/dicts/themes" \
+    "$APP_BUNDLE/Contents/Resources/Lexicons/Themes"
+cp "$REPO_DIR/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/MultiSwitcher-Thematic-Lexicons-MIT.txt"
 printf 'APPL????' > "$APP_BUNDLE/Contents/PkgInfo"
 
 ARCHS="$(lipo -archs "$APP_BUNDLE/Contents/MacOS/$APP_NAME")"

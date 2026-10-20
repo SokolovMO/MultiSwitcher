@@ -3,16 +3,38 @@ import Carbon
 import IOKit
 import MultiSwitcherCore
 
-/// Проверка слов по системному словарю (NSSpellChecker) — локально, без зависимостей,
-/// без сети и без бандла данных. ~0.1мс на проверку, 40+ языков.
+/// Local spelling lookup combines bundled RU/EN words with AppleSpell when available.
+/// Custom open word lists are read on a utility task, outside the keyboard event path.
 enum Dict {
     @MainActor private static let checker = NSSpellChecker.shared
     /// Кэш списка словарей: availableLanguages ходит в AppleSpell — не дёргаем на каждое слово.
     @MainActor private static var cachedLanguages: [String]?
+    /// Spell checks run on the main actor at word boundaries. A small time-bounded cache
+    /// prevents repeated XPC calls for common words without growing with a long session.
+    @MainActor private static var wordCache: [String: Bool] = [:]
+    @MainActor private static var cacheFlushedAt = Date.timeIntervalSinceReferenceDate
+    @MainActor private static var bundledLexicons: [String: WordLexicon] = [:]
+    @MainActor private static var thematicLexicons: [String: WordLexicon] = [:]
+    @MainActor private static var enabledThemes: Set<String> = ["technology", "design", "brands", "slang"]
+    @MainActor private static var lexiconLoadStarted = false
 
     @MainActor static func isAvailable(_ lang: String) -> Bool {
         let two = String(lang.prefix(2))
-        return languages().contains { String($0.prefix(2)) == two }
+        return bundledLexicons[two] != nil || languages().contains { String($0.prefix(2)) == two }
+    }
+
+    /// Fast automatic-input check: never starts a synchronous AppleSpell/XPC request.
+    /// Bundled dictionaries are authoritative for RU/EN; other languages can use only
+    /// a result already cached by a non-keyboard spelling check.
+    @MainActor static func isValidWordForAutomaticPath(_ word: String, lang: String) -> Bool {
+        let language = String(lang.prefix(2)).lowercased()
+        let normalized = word.precomposedStringWithCanonicalMapping.lowercased()
+        if bundledLexicons[language]?.contains(normalized) == true { return true }
+        if enabledThemes.contains(where: { thematicLexicons["\($0).\(language)"]?.contains(normalized) == true }) {
+            return true
+        }
+        let key = "\(lang.lowercased())\u{0}\(normalized)"
+        return wordCache[key] == true
     }
 
     @MainActor private static func languages() -> [String] {
@@ -26,16 +48,90 @@ enum Dict {
     /// (сотни мс на main) — без прогрева этот фриз пришёлся бы на первый пробел
     /// пользователя после запуска. Вызывается отложенно из applicationDidFinishLaunching.
     @MainActor static func warmUp() {
+        if !lexiconLoadStarted {
+            lexiconLoadStarted = true
+            Task.detached(priority: .utility) {
+                let loaded = loadBundledLexicons()
+                let themed = loadBundledThematicLexicons()
+                await MainActor.run {
+                    bundledLexicons = loaded
+                    thematicLexicons = themed
+                    enabledThemes = SettingsManager.shared.enabledDictionaryThemes
+                    wordCache.removeAll(keepingCapacity: true)
+                    cacheFlushedAt = Date.timeIntervalSinceReferenceDate
+                    rslog("dictionary: bundled packs loaded en=\(loaded["en"]?.count ?? 0) ru=\(loaded["ru"]?.count ?? 0) thematic=\(themed.count)")
+                }
+            }
+        }
         _ = languages()
         _ = isValidWord("тест", lang: "ru")
         _ = isValidWord("test", lang: "en")
     }
 
+    @MainActor static func setEnabledThemes(_ themes: Set<String>) {
+        enabledThemes = themes
+        wordCache.removeAll(keepingCapacity: true)
+    }
+
     /// true — слово есть в словаре языка (орфография корректна).
     @MainActor static func isValidWord(_ word: String, lang: String) -> Bool {
-        let range = checker.checkSpelling(of: word, startingAt: 0, language: lang,
+        guard isAvailable(lang) else { return false }
+        let now = Date.timeIntervalSinceReferenceDate
+        if now - cacheFlushedAt >= 300 || wordCache.count >= 4096 {
+            wordCache.removeAll(keepingCapacity: true)
+            cacheFlushedAt = now
+        }
+        let normalized = word.precomposedStringWithCanonicalMapping.lowercased()
+        let key = "\(lang.lowercased())\u{0}\(normalized)"
+        if let cached = wordCache[key] { return cached }
+        let language = String(lang.prefix(2))
+        let bundledMatch = bundledLexicons[language]?.contains(normalized) == true
+        let themedMatch = enabledThemes.contains { theme in
+            thematicLexicons["\(theme).\(language)"]?.contains(normalized) == true
+        }
+        if bundledMatch || themedMatch {
+            // The packaged, versioned list is already positive evidence. Avoid an
+            // AppleSpell/XPC round trip for common RU/EN words on the main event path.
+            wordCache[key] = true
+            return true
+        }
+        guard languages().contains(where: { String($0.prefix(2)) == String(lang.prefix(2)) }) else {
+            wordCache[key] = false
+            return false
+        }
+        let range = checker.checkSpelling(of: normalized, startingAt: 0, language: lang,
                                           wrap: false, inSpellDocumentWithTag: 0, wordCount: nil)
-        return range.location == NSNotFound
+        let valid = range.location == NSNotFound
+        wordCache[key] = valid
+        return valid
+    }
+
+    nonisolated private static func loadBundledLexicons() -> [String: WordLexicon] {
+        guard let directory = Bundle.main.resourceURL?.appendingPathComponent("Lexicons", isDirectory: true) else {
+            return [:]
+        }
+        var result: [String: WordLexicon] = [:]
+        for language in ["en", "ru"] {
+            let url = directory.appendingPathComponent("\(language).words")
+            guard let contents = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            result[language] = WordLexicon(wordList: contents)
+        }
+        return result
+    }
+
+    nonisolated private static func loadBundledThematicLexicons() -> [String: WordLexicon] {
+        guard let directory = Bundle.main.resourceURL?.appendingPathComponent("Lexicons/Themes", isDirectory: true) else {
+            return [:]
+        }
+        var result: [String: WordLexicon] = [:]
+        for theme in ["technology", "design", "brands", "slang"] {
+            for language in ["en", "ru"] {
+                let url = directory.appendingPathComponent("\(theme).\(language).words")
+                guard let contents = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                result["\(theme).\(language)"] = WordLexicon(wordList: contents)
+            }
+        }
+        return result
     }
 }
 
@@ -51,11 +147,41 @@ enum LayoutDetector {
         // не даёт пинг-понг. Жёсткие гейты (secure/denied-app/never) проверены ДО decide.
         if AutoSwitchPolicy.isAlwaysConvert(converted) { return .switchToConverted }
 
+        if !capsLock {
+            if isAllCaps(typed) { return .undecided }
+            switch LayoutCorrectionEngine.trustedTermDecision(typed: typed, converted: converted) {
+            case .preserve:
+                return .keep
+            case .convert:
+                return .switchToConverted
+            case nil:
+                break
+            }
+        }
+
         // --- мягкие вето (дёшево, до словаря) ---
         // 1 буква — не трогаем никогда (неоднозначность запредельная). 2 буквы —
         // отдельная ветка ниже через частотный список (ShortWords), т.к. на такой длине
         // системный словарь ненадёжен; 3+ — обычный путь через NSSpellChecker.
         guard typed.count >= 2 else { return .undecided }
+        // Internal hyphens join a compound token (for example `rfr-nj` → `как-то`).
+        // Check each segment separately with the same conservative dictionary policy;
+        // leading, trailing, repeated hyphens and digits remain untouched.
+        if typed.contains("-") || converted.contains("-") {
+            switch HyphenatedTokenPolicy.decide(
+                typed: typed,
+                converted: converted,
+                currentLanguage: currentLang,
+                targetLanguage: otherLang,
+                isValidWord: { word, language in
+                    Dict.isValidWordForAutomaticPath(word, lang: language)
+                }
+            ) {
+            case .convert: return .switchToConverted
+            case .keep: return .keep
+            case .undecided: return .undecided
+            }
+        }
         // Обычный путь — набранное целиком буквенное. Плюс (issue #22, п.3) случай «буквы
         // на клавишах-пунктуации»: ё/х/ъ/ж/э/б/ю в ЙЦУКЕН живут на ` [ ] ; ' , . — тогда
         // typed содержит эти знаки, но КОНВЕРСИЯ целиком буквенная, и решает словарь ниже.
@@ -68,7 +194,6 @@ enum LayoutDetector {
         // Под Caps Lock весь текст в ВЕРХНЕМ регистре — это НЕ акроним и НЕ camelCase,
         // поэтому эти два вето применяем только когда Caps Lock выключен.
         if !capsLock {
-            if isAllCaps(typed) { return .undecided }                      // акронимы
             // Mixed-script input is evaluated below by the target dictionary.
             // CamelCase remains protected because it is a strong code/name signal.
             if hasInternalUppercase(typed) { return .undecided }
@@ -106,10 +231,10 @@ enum LayoutDetector {
                 // тот же класс, что «думаю vs дума.» в 2.7.0). Словарю отдаём только
                 // целиком буквенный образ; иначе .undecided — ручной триггер работает.
                 guard converted.allSatisfy({ $0.isLetter }) else { return .undecided }
-                return Dict.isValidWord(converted.lowercased(), lang: sideLang)
+                return Dict.isValidWordForAutomaticPath(converted.lowercased(), lang: sideLang)
                     ? .switchToConverted : .undecided
             }
-            return Dict.isValidWord(typed.lowercased(), lang: sideLang) ? .keep : .undecided
+            return Dict.isValidWordForAutomaticPath(typed.lowercased(), lang: sideLang) ? .keep : .undecided
         }
 
         // --- Короткие (2-буквенные) слова: позитивный частотный сигнал (3.1, issue #22) ---
@@ -121,20 +246,25 @@ enum LayoutDetector {
         // Коллизий «частое↔частое» нет (аудит образов раскладки). Пары с языком без списка
         // сюда не попадают → 2-буквенные, как и раньше, не трогаются.
         if typed.count == 2 {
-            guard let othShort = ShortWords.common(oth) else { return .undecided }
-            if let curShort = ShortWords.common(cur), curShort.contains(typed.lowercased()) {
-                return .keep   // уже частое слово в текущей раскладке — не трогаем
+            switch ShortWordPolicy.decide(
+                typed: typed, converted: converted, currentLanguage: cur, otherLanguage: oth
+            ) {
+            case .convert:
+                return .switchToConverted
+            case .keep:
+                return .keep
+            case .undecided:
+                return .undecided
             }
-            return othShort.contains(converted.lowercased()) ? .switchToConverted : .undecided
         }
 
         // Словарь — без учёта регистра (Caps Lock не должен мешать определению слова).
         guard Dict.isAvailable(oth) else { return .undecided }
-        guard Dict.isValidWord(converted.lowercased(), lang: oth) else {
+        guard Dict.isValidWordForAutomaticPath(converted.lowercased(), lang: oth) else {
             rslog("auto: keep target-dictionary")
             return .keep
         }
-        if Dict.isAvailable(cur), Dict.isValidWord(typed.lowercased(), lang: cur) {
+        if Dict.isAvailable(cur), Dict.isValidWordForAutomaticPath(typed.lowercased(), lang: cur) {
             rslog("auto: keep source-dictionary")
             return .keep
         }

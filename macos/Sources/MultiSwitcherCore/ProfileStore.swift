@@ -4,6 +4,8 @@ import Foundation
 public enum ProfileStoreError: LocalizedError {
     case unsupportedSchema(Int)
     case unreadableProfile
+    case noPreviousProfile
+    case invalidPreviousProfile
     case invalidSnapshotName
 
     public var errorDescription: String? {
@@ -12,6 +14,10 @@ public enum ProfileStoreError: LocalizedError {
             return "The MultiSwitcher profile schema \(version) is newer than this app supports."
         case .unreadableProfile:
             return "The saved MultiSwitcher profile could not be read. The original file was preserved."
+        case .noPreviousProfile:
+            return "No previous MultiSwitcher profile backup is available."
+        case .invalidPreviousProfile:
+            return "The previous MultiSwitcher profile backup is invalid. The original file was preserved."
         case .invalidSnapshotName:
             return "A safe name for the Punto backup could not be created."
         }
@@ -59,6 +65,62 @@ public final class ProfileStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return cached
+    }
+
+    /// The app stays read-only when the primary profile cannot be decoded. Expose that
+    /// state so Settings can explain the problem instead of silently showing defaults.
+    public var isInRecoveryMode: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return loadFailure != nil
+    }
+
+    public var canRestorePreviousProfile: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return loadFailure != nil
+            && FileManager.default.fileExists(atPath: rootURL.appendingPathComponent("profile.json.previous").path)
+    }
+
+    /// Restores only a decodable, supported previous generation. The damaged primary
+    /// is copied to a timestamped recovery file before the previous generation replaces it.
+    @discardableResult
+    public func restorePreviousProfile() throws -> MultiSwitcherProfile {
+        lock.lock()
+        defer { lock.unlock() }
+        guard loadFailure != nil else { return cached }
+
+        let previousURL = rootURL.appendingPathComponent("profile.json.previous")
+        guard FileManager.default.fileExists(atPath: previousURL.path) else {
+            throw ProfileStoreError.noPreviousProfile
+        }
+        let data = try Data(contentsOf: previousURL)
+        let decoded: MultiSwitcherProfile
+        do {
+            decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
+            guard decoded.schemaVersion <= MultiSwitcherProfile.currentSchemaVersion else {
+                throw ProfileStoreError.unsupportedSchema(decoded.schemaVersion)
+            }
+        } catch {
+            throw ProfileStoreError.invalidPreviousProfile
+        }
+
+        let manager = FileManager.default
+        try manager.createDirectory(at: backupsURL, withIntermediateDirectories: true,
+                                    attributes: [.posixPermissions: 0o700])
+        if manager.fileExists(atPath: profileURL.path) {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let stamp = formatter.string(from: Date()).replacingOccurrences(of: ":", with: "-")
+            let recoveryURL = backupsURL.appendingPathComponent("profile-unreadable-\(stamp).json")
+            try manager.copyItem(at: profileURL, to: recoveryURL)
+            try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: recoveryURL.path)
+        }
+        try data.write(to: profileURL, options: .atomic)
+        try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: profileURL.path)
+        cached = decoded
+        loadFailure = nil
+        return decoded
     }
 
     @discardableResult

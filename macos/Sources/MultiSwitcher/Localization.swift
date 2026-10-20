@@ -38,6 +38,11 @@ enum L10n {
     static var settingsTabGeneral: String { s("settings.tab.general") }
     static var settingsTabAbout: String { s("settings.tab.about") }
     static var settingsTabAdvanced: String { s("settings.tab.advanced") }
+    static var settingsExpandPage: String { s("settings.expandPage") }
+    static var settingsRestoreSidebar: String { s("settings.restoreSidebar") }
+    static var settingsCompactMode: String { s("settings.compactMode") }
+    static var settingsComfortableMode: String { s("settings.comfortableMode") }
+    static var settingsResizeSidebar: String { s("settings.resizeSidebar") }
     static var settingsAutoSwitch: String { s("settings.autoSwitch") }
     static var settingsLaunchAtLogin: String { s("settings.launchAtLogin") }
     static var settingsSmartConversion: String { s("settings.smartConversion") }
@@ -69,6 +74,15 @@ enum L10n {
     static var settingsTriggerHint: String { s("settings.triggerHint") }
     static var menuAutoConvert: String { s("menu.autoConvert") }
     static var menuPause: String { s("menu.pause") }
+    static var menuLayout: String { s("menu.layout") }
+    static var menuResume: String { s("menu.resume") }
+    static var menuPause15: String { s("menu.pause15") }
+    static var menuPause60: String { s("menu.pause60") }
+    static var menuPauseUntilResume: String { s("menu.pauseUntilResume") }
+    static var menuAppNormally: String { s("menu.appNormally") }
+    static var menuAppManual: String { s("menu.appManual") }
+    static var menuAppOff: String { s("menu.appOff") }
+    static func menuForCurrentApp(_ app: String) -> String { String(format: s("menu.forCurrentApp"), app) }
     static var menuCurrentAppExclude: String { s("menu.currentAppExclude") }
     static var menuCurrentAppDisableAll: String { s("menu.currentAppDisableAll") }
     static var menuLearning: String { s("menu.learning") }
@@ -94,6 +108,12 @@ enum L10n {
     static var settingsCaretFlagHint: String { s("settings.caretFlag.hint") }
     static var settingsAutoConvert: String { s("settings.autoConvert") }
     static var settingsAutoConvertHint: String { s("settings.autoConvert.hint") }
+    static var settingsDictionaryPacks: String { s("settings.dictionaryPacks") }
+    static var settingsDictionaryPacksHint: String { s("settings.dictionaryPacks.hint") }
+    static var settingsDictionaryTechnology: String { s("settings.dictionaryPacks.technology") }
+    static var settingsDictionaryDesign: String { s("settings.dictionaryPacks.design") }
+    static var settingsDictionaryBrands: String { s("settings.dictionaryPacks.brands") }
+    static var settingsDictionarySlang: String { s("settings.dictionaryPacks.slang") }
     static var settingsTabExceptions: String { s("settings.tab.exceptions") }
     static var settingsTabRules: String { s("settings.tab.rules") }
     static var settingsTabLearning: String { s("settings.tab.learning") }
@@ -169,6 +189,11 @@ enum L10n {
     static var userRulesImportSuccess: String { s("rules.import.success") }
     static var userRulesImportAdded: String { s("rules.import.added") }
     static var userRulesImportFailure: String { s("rules.import.failure") }
+    static var userRulesImportTextIntentTitle: String { s("rules.import.textIntent.title") }
+    static var userRulesImportPreviewTitle: String { s("rules.import.preview.title") }
+    static func userRulesImportPreview(_ rows: Int, _ added: Int, _ duplicates: Int, _ conflicts: Int) -> String {
+        String(format: s("rules.import.preview.details"), rows, added, duplicates, conflicts)
+    }
     static var userRulesExportSuccess: String { s("rules.export.success") }
     static var userRulesExportFailure: String { s("rules.export.failure") }
     static var commonOkay: String { s("common.ok") }
@@ -180,6 +205,14 @@ enum L10n {
         String(format: s("settings.importPunto.appliedDetails"), rows, unverified, learned, removed, snapshot)
     }
     static var settingsAboutLocalNotice: String { s("settings.about.localNotice") }
+    static var profileRecoveryNotice: String { s("profile.recovery.notice") }
+    static var profileRecoveryRestore: String { s("profile.recovery.restore") }
+    static var profileRecoveryRestored: String { s("profile.recovery.restored") }
+    static var profileRecoveryFailed: String { s("profile.recovery.failed") }
+    static var supportReportPreviewTitle: String { s("support.report.preview.title") }
+    static var supportReportPreviewBody: String { s("support.report.preview.body") }
+    static var supportReportShare: String { s("support.report.share") }
+    static var supportReportUnavailable: String { s("support.report.unavailable") }
     static var settingsCheckUpdates: String { s("settings.checkUpdates") }
     static func settingsImportPuntoDetails(_ rows: Int, _ supported: Int, _ added: Int, _ existing: Int, _ learned: Int, _ unsupported: Int) -> String {
         String(format: s("settings.importPunto.details"), rows, supported, added, existing, learned, unsupported)
@@ -314,6 +347,11 @@ enum L10n {
             "onboard.autoConvert.text": "MultiSwitcher can fix the keyboard layout automatically as you type. It's off by default. The manual trigger (Option) always works and undoes a fix. Enable automatic conversion now?",
             "settings.tab.exceptions": "Autocorrection",
             "settings.tab.rules": "Rules",
+            "settings.expandPage": "Expand this page to fill the window",
+            "settings.restoreSidebar": "Show the sidebar again",
+            "settings.compactMode": "Use compact settings rows",
+            "settings.comfortableMode": "Use comfortable settings spacing",
+            "settings.resizeSidebar": "Drag to resize the sidebar",
             "rules.search": "Search rules",
             "rules.hint": "Select a row, then click Delete, press Delete, or right-click it. Punto stays untouched; learned rows also clear their local history.",
             "rules.column.pattern": "Pattern",
@@ -366,6 +404,9 @@ enum L10n {
             "rules.import.success": "Rules imported",
             "rules.import.added": "%d new user rules were added. Existing rows were kept.",
             "rules.import.failure": "Could not import rules",
+            "rules.import.textIntent.title": "How should words in this list behave?",
+            "rules.import.preview.title": "Review import",
+            "rules.import.preview.details": "%d source rows. %d new rules will be added; %d duplicates and %d conflicts will be skipped. Existing rules are kept.",
             "rules.export.success": "Rules exported",
             "rules.export.failure": "Could not export rules",
             "common.ok": "OK",
@@ -373,6 +414,15 @@ enum L10n {
             "menu.currentAppDisableAll": "Disable all MultiSwitcher actions in this app",
             "menu.learning": "Self-learning",
             "menu.pause": "Pause",
+            "menu.layout": "Layout",
+            "menu.resume": "Resume",
+            "menu.pause15": "Pause for 15 minutes",
+            "menu.pause60": "Pause for 1 hour",
+            "menu.pauseUntilResume": "Pause until resumed",
+            "menu.forCurrentApp": "For %@",
+            "menu.appNormally": "Normally",
+            "menu.appManual": "Manual conversion only",
+            "menu.appOff": "Turn off here",
             "menu.undoLastLearned": "Undo last learned exception",
             "learning.pending.title": "Learning in progress",
             "learning.pending.body": "Cancelled automatically %d time(s); another undo may add an exception.",
@@ -384,6 +434,12 @@ enum L10n {
             "pause.active.body": "MultiSwitcher is paused.",
             "pause.resumed.body": "MultiSwitcher resumed.",
             "settings.tab.learning": "Learning",
+            "settings.dictionaryPacks": "Terminology dictionaries",
+            "settings.dictionaryPacks.hint": "These lists help preserve technical words, product names, and informal spellings. They never rewrite text by themselves.",
+            "settings.dictionaryPacks.technology": "Technology and development",
+            "settings.dictionaryPacks.design": "Design and typography",
+            "settings.dictionaryPacks.brands": "Brands and products",
+            "settings.dictionaryPacks.slang": "Informal language",
             "learning.search": "Search words",
             "learning.column.word": "Word",
             "learning.column.count": "Undo count",
@@ -402,9 +458,17 @@ enum L10n {
             "settings.importPunto.chooseFile": "Choose a saved Punto Switcher preferences file.",
             "settings.importPunto.success": "Punto rules imported",
             "settings.importPunto.failure": "Could not import Punto Switcher data",
-            "settings.importPunto.appliedDetails": "%d rule rows were copied (%d retain unverified matching details). %d learning entries were imported; %d history entries were removed by your review. Backup: %@.",
+            "settings.importPunto.appliedDetails": "%d rule rows were copied (%d retain unverified matching details). %d learning entries were imported; %d source entries were omitted. Backup: %@.",
             "settings.importPunto.details": "%d rule rows scanned; %d unique supported words (%d added, %d already present). %d learned-history entries were kept separate. %d unsupported rows were skipped.",
             "settings.about.localNotice": "MultiSwitcher processes text on this Mac. If updates are configured, it checks GitHub Releases; typed text is never sent.",
+            "profile.recovery.notice": "The saved profile could not be read, so profile changes cannot be saved. The damaged file is preserved. You can try restoring the previous saved copy below.",
+            "profile.recovery.restore": "Restore previous profile…",
+            "profile.recovery.restored": "Previous profile restored. Your damaged file remains in the recovery backups.",
+            "profile.recovery.failed": "The previous profile could not be restored. Your original files are still preserved.",
+            "support.report.preview.title": "Review the diagnostic report",
+            "support.report.preview.body": "The report removes your home folder, app identifiers, and values in sensitive log fields. Review it before continuing. MultiSwitcher will open a share draft only after you choose Share.",
+            "support.report.share": "Share Report…",
+            "support.report.unavailable": "No email sharing service is available. The report was not sent.",
             "settings.checkUpdates": "Check for updates automatically",
             "common.add": "Add",
             "common.cancel": "Cancel",
@@ -412,12 +476,12 @@ enum L10n {
             "learn.add": "Add to exceptions",
             "learn.notNow": "Not now",
             "settings.launchAtLogin": "Launch at login",
-            "settings.convertByText": "Convert selection by text (flip both scripts)",
-            "settings.convertByText.hint": "When on, the trigger flips the entire selection between scripts (Latin ↔ Cyrillic), ignoring the active layout. Off: each word is fixed smartly and correct text is kept.",
+            "settings.convertByText": "Flip the entire selection",
+            "settings.convertByText.hint": "Converts every character between layouts, including correct words and names. Enabling this turns smart selection off.",
             "settings.convertWholeLine": "Trigger converts the whole line (not just the last word)",
             "settings.convertWholeLine.hint": "The trigger selects the current line up to the cursor and converts it (fixing only the mis-typed words). Handy in terminals and when several words are typed in the wrong layout. Off: only the last word is converted.",
             "settings.smartConversion": "Smart selection conversion",
-            "settings.smartConversion.hint": "Fixes only the mis-typed words in a selection and keeps text that is already correct (e.g. «iPhone стоит»). Off: the whole selection is flipped one way by the current layout.",
+            "settings.smartConversion.hint": "Fixes only words supported as mistyped and preserves correct text and known names (for example, “ghbdtn купи iphone” → “привет купи iPhone”). Off: uses a simple one-way conversion.",
             "settings.layout1": "Layout 1:",
             "settings.layout2": "Layout 2:",
             "settings.autoDetect": "Auto-detect",
@@ -503,6 +567,11 @@ enum L10n {
             "onboard.autoConvert.text": "MultiSwitcher может исправлять раскладку автоматически по ходу набора. По умолчанию выключено. Ручной триггер (Option) всегда работает — им же отменяется замена. Включить автоматическую конверсию сейчас?",
             "settings.tab.exceptions": "Автокоррекция",
             "settings.tab.rules": "Правила",
+            "settings.expandPage": "Развернуть страницу на всё окно",
+            "settings.restoreSidebar": "Вернуть боковую панель",
+            "settings.compactMode": "Компактный вид настроек",
+            "settings.comfortableMode": "Обычная плотность настроек",
+            "settings.resizeSidebar": "Потяни, чтобы изменить ширину бокового меню",
             "rules.search": "Поиск правил",
             "rules.hint": "Выбери строку и нажми «Удалить», клавишу Delete или щёлкни правой кнопкой. Punto не меняется; обучение удаляется вместе с локальной историей.",
             "rules.column.pattern": "Шаблон",
@@ -555,12 +624,24 @@ enum L10n {
             "rules.import.success": "Правила импортированы",
             "rules.import.added": "Добавлено новых пользовательских правил: %d. Существующие записи сохранены.",
             "rules.import.failure": "Не удалось импортировать правила",
+            "rules.import.textIntent.title": "Как использовать слова из списка?",
+            "rules.import.preview.title": "Проверь импорт",
+            "rules.import.preview.details": "Строк в файле: %d. Будет добавлено правил: %d; дубликатов пропущено: %d; конфликтов пропущено: %d. Существующие правила останутся.",
             "rules.export.success": "Правила экспортированы",
             "rules.export.failure": "Не удалось экспортировать правила",
             "menu.currentAppExclude": "Не исправлять автоматически в этом приложении",
             "menu.currentAppDisableAll": "Отключить все действия MultiSwitcher в этом приложении",
             "menu.learning": "Самообучение",
             "menu.pause": "Пауза",
+            "menu.layout": "Раскладка",
+            "menu.resume": "Возобновить",
+            "menu.pause15": "На 15 минут",
+            "menu.pause60": "На 1 час",
+            "menu.pauseUntilResume": "До возобновления",
+            "menu.forCurrentApp": "Для %@",
+            "menu.appNormally": "Обычно",
+            "menu.appManual": "Только вручную",
+            "menu.appOff": "Выключить здесь",
             "menu.undoLastLearned": "Отменить последнее выученное исключение",
             "learning.pending.title": "Обучение продолжается",
             "learning.pending.body": "Автоисправление отменено %d раз; после ещё одной отмены слово станет исключением.",
@@ -572,6 +653,12 @@ enum L10n {
             "pause.active.body": "MultiSwitcher приостановлен.",
             "pause.resumed.body": "MultiSwitcher продолжил работу.",
             "settings.tab.learning": "Обучение",
+            "settings.dictionaryPacks": "Словари терминов",
+            "settings.dictionaryPacks.hint": "Словари помогают сохранить технические слова, названия и разговорные написания. Они не переписывают текст сами.",
+            "settings.dictionaryPacks.technology": "Техника и разработка",
+            "settings.dictionaryPacks.design": "Дизайн и типографика",
+            "settings.dictionaryPacks.brands": "Бренды и продукты",
+            "settings.dictionaryPacks.slang": "Разговорная речь",
             "learning.search": "Поиск слов",
             "learning.column.word": "Слово",
             "learning.column.count": "Отмены",
@@ -590,9 +677,17 @@ enum L10n {
             "settings.importPunto.chooseFile": "Выберите сохранённый файл настроек Punto Switcher.",
             "settings.importPunto.success": "Правила Punto импортированы",
             "settings.importPunto.failure": "Не удалось импортировать данные Punto Switcher",
-            "settings.importPunto.appliedDetails": "Скопировано строк правил: %d (для %d способ сопоставления пока не подтверждён). Записей истории обучения: %d; удалено по вашей прошлой проверке: %d. Резервная копия: %@.",
+            "settings.importPunto.appliedDetails": "Скопировано строк правил: %d (для %d способ сопоставления пока не подтверждён). Записей истории обучения: %d; пропущено записей источника: %d. Резервная копия: %@.",
             "settings.importPunto.details": "Проверено строк правил: %d; уникальных поддерживаемых слов: %d (добавлено %d, уже было %d). Записей обученной истории: %d, они сохранены отдельно. Пропущено неподдерживаемых строк: %d.",
             "settings.about.localNotice": "MultiSwitcher обрабатывает текст на этом Mac. При настроенных обновлениях приложение проверяет GitHub Releases; введённый текст не отправляется.",
+            "profile.recovery.notice": "Не удалось прочитать сохранённый профиль, поэтому новые настройки не сохраняются. Повреждённый файл сохранён. Ниже можно попробовать восстановить предыдущую копию.",
+            "profile.recovery.restore": "Восстановить предыдущий профиль…",
+            "profile.recovery.restored": "Предыдущий профиль восстановлен. Исходный файл сохранён в резервных копиях восстановления.",
+            "profile.recovery.failed": "Не удалось восстановить предыдущий профиль. Исходные файлы сохранены.",
+            "support.report.preview.title": "Проверьте диагностический отчёт",
+            "support.report.preview.body": "Из отчёта удаляются домашний путь, идентификаторы приложений и значения чувствительных полей журнала. Проверьте содержимое перед продолжением. MultiSwitcher откроет черновик отправки только после нажатия кнопки «Поделиться».",
+            "support.report.share": "Поделиться отчётом…",
+            "support.report.unavailable": "Сервис отправки почты недоступен. Отчёт не отправлен.",
             "settings.checkUpdates": "Автоматически проверять обновления",
             "common.add": "Добавить",
             "common.cancel": "Отмена",
@@ -600,12 +695,12 @@ enum L10n {
             "learn.add": "Добавить в исключения",
             "learn.notNow": "Не сейчас",
             "settings.launchAtLogin": "Запускать при входе",
-            "settings.convertByText": "Конвертировать выделение по тексту (флип обеих раскладок)",
-            "settings.convertByText.hint": "Когда включено, триггер переворачивает всё выделение между письменностями (латиница ↔ кириллица) независимо от активной раскладки. Выключено: каждое слово чинится умно, а верный текст сохраняется.",
+            "settings.convertByText": "Переворачивать всё выделение",
+            "settings.convertByText.hint": "Меняет раскладку у каждого символа, включая правильные слова и названия. При включении умная конверсия выключается.",
             "settings.convertWholeLine": "Триггер конвертирует всю строку (не только последнее слово)",
             "settings.convertWholeLine.hint": "Триггер сам выделяет строку до курсора и конвертирует её (чинит только слова не в той раскладке). Удобно в терминале и когда несколько слов набрано не в той раскладке. Выключено: конвертируется только последнее слово.",
             "settings.smartConversion": "Умная конверсия выделения",
-            "settings.smartConversion.hint": "Исправляет в выделении только слова не в той раскладке, а верный текст оставляет (напр. «iPhone стоит»). Выключено: всё выделение переворачивается в одну сторону по текущей раскладке.",
+            "settings.smartConversion.hint": "Исправляет только слова с подтверждённой ошибочной раскладкой, сохраняет правильный текст и известные названия (например, «ghbdtn купи iphone» → «привет купи iPhone»). Выключено: применяется простая конверсия в одну сторону.",
             "settings.layout1": "Раскладка 1:",
             "settings.layout2": "Раскладка 2:",
             "settings.autoDetect": "Автоопределение",

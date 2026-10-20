@@ -110,8 +110,6 @@ public enum PuntoProfileImporter {
     /// Their full matching semantics remain explicitly unverified.
     public static let retainedRuleTypeCodes: Set<Int> = [12, 13]
     public static let neverConvertTypeCodes: Set<Int> = retainedRuleTypeCodes
-    public static let reviewedHistoryDeletions: Set<String> = ["сделатй", "нужн", "шбор", "ытой", ";nj", "shla"]
-    public static let reviewedHistoryRenames: [String: String] = ["еюьу": "t.me"]
     public static let maximumProfileSize = 10 * 1024 * 1024
 
     public static func read(from url: URL) throws -> PuntoImportReport {

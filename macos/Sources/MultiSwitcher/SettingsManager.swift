@@ -50,6 +50,10 @@ final class SettingsManager: @unchecked Sendable {
         static let alwaysConvertWords = "com.multiswitcher.alwaysConvertWords"
         static let learningEnabled = "com.multiswitcher.learningEnabled"
         static let paused = "com.multiswitcher.paused"
+        static let pauseUntil = "com.multiswitcher.pauseUntil"
+        static let enabledDictionaryThemes = "com.multiswitcher.enabledDictionaryThemes"
+        static let compactSettings = "com.multiswitcher.compactSettings"
+        static let settingsSidebarWidth = "com.multiswitcher.settingsSidebarWidth"
     }
 
     private init() {
@@ -92,6 +96,11 @@ final class SettingsManager: @unchecked Sendable {
         return defaults.string(forKey: key) ?? fallback
     }
 
+    private func readInt(_ key: String, default fallback: Int) -> Int {
+        if case .integer(let value) = profileStore.current.settings[key] { return value }
+        return defaults.object(forKey: key) as? Int ?? fallback
+    }
+
     private func readStrings(_ key: String) -> [String] {
         if case .strings(let value) = profileStore.current.settings[key] { return value }
         return defaults.stringArray(forKey: key) ?? []
@@ -103,6 +112,10 @@ final class SettingsManager: @unchecked Sendable {
 
     private func write(_ value: String, forKey key: String) {
         saveSetting(.string(value), forKey: key)
+    }
+
+    private func write(_ value: Int, forKey key: String) {
+        saveSetting(.integer(value), forKey: key)
     }
 
     private func write(_ value: [String], forKey key: String) {
@@ -130,8 +143,53 @@ final class SettingsManager: @unchecked Sendable {
     }
 
     var isPaused: Bool {
-        get { readBool(Keys.paused) }
-        set { write(newValue, forKey: Keys.paused) }
+        get {
+            guard readBool(Keys.paused) else { return false }
+            let deadline = readInt(Keys.pauseUntil, default: 0)
+            return deadline == 0 || deadline > Int(Date().timeIntervalSince1970)
+        }
+        set {
+            write(newValue, forKey: Keys.paused)
+            write(0, forKey: Keys.pauseUntil)
+        }
+    }
+
+    var pauseDeadline: Date? {
+        let value = readInt(Keys.pauseUntil, default: 0)
+        return value > 0 ? Date(timeIntervalSince1970: TimeInterval(value)) : nil
+    }
+
+    func pause(for duration: TimeInterval?) {
+        write(true, forKey: Keys.paused)
+        let deadline = duration.map { Int(Date().addingTimeInterval($0).timeIntervalSince1970) } ?? 0
+        write(deadline, forKey: Keys.pauseUntil)
+    }
+
+    func clearExpiredPause() {
+        guard readBool(Keys.paused), PauseStatePolicy.hasExpiredDeadline(pauseDeadline) else { return }
+        isPaused = false
+    }
+
+    /// Optional themed vocabularies add accepted words; they never rewrite spelling.
+    var enabledDictionaryThemes: Set<String> {
+        get {
+            let configured = readStrings(Keys.enabledDictionaryThemes)
+            if configured == ["__none__"] { return [] }
+            return configured.isEmpty
+                ? Set(["technology", "design", "brands", "slang"])
+                : Set(configured)
+        }
+        set { write(newValue.isEmpty ? ["__none__"] : newValue.sorted(), forKey: Keys.enabledDictionaryThemes) }
+    }
+
+    var compactSettings: Bool {
+        get { readBool(Keys.compactSettings) }
+        set { write(newValue, forKey: Keys.compactSettings) }
+    }
+
+    var settingsSidebarWidth: Int {
+        get { min(320, max(180, readInt(Keys.settingsSidebarWidth, default: 206))) }
+        set { write(min(320, max(180, newValue)), forKey: Keys.settingsSidebarWidth) }
     }
 
     var learningEntries: [LearningEntry] {
@@ -316,7 +374,10 @@ final class SettingsManager: @unchecked Sendable {
     /// старое одностороннее поведение (всё выделение в одну сторону по текущей раскладке).
     var smartConversion: Bool {
         get { readBool(Keys.smartConversion, default: true) }
-        set { write(newValue, forKey: Keys.smartConversion) }
+        set {
+            write(newValue, forKey: Keys.smartConversion)
+            if newValue { write(false, forKey: Keys.convertByText) }
+        }
     }
 
     /// issue #22 (вариант A): ручной триггер конвертирует ПО ТЕКСТУ — тотальный флип обеих
@@ -324,8 +385,13 @@ final class SettingsManager: @unchecked Sendable {
     /// для mixed-мусора, но переворачивает и намеренный второй язык. По умолчанию ВЫКЛ.
     /// Перебивает «Умную конверсию».
     var convertByText: Bool {
-        get { readBool(Keys.convertByText) }
-        set { write(newValue, forKey: Keys.convertByText) }
+        // Smart mode is the safe default and wins over legacy profiles that happened
+        // to persist both flags. Enabling full flip explicitly turns smart mode off.
+        get { readBool(Keys.convertByText) && !smartConversion }
+        set {
+            write(newValue, forKey: Keys.convertByText)
+            if newValue { write(false, forKey: Keys.smartConversion) }
+        }
     }
 
     /// issue #24: триггер конвертирует ВСЮ строку (от курсора до начала строки), а не только

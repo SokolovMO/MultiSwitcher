@@ -47,9 +47,16 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     private let matchModes: [ProfileRuleMatch] = [.exact, .prefix, .contains, .regularExpression]
     private let actions: [ProfileRuleAction] = [.neverConvert, .alwaysConvert, .replace]
 
+    func setCompactMode(_ compact: Bool) {
+        table.rowHeight = compact ? 27 : 34
+        table.intercellSpacing = NSSize(width: 0, height: compact ? 1 : 3)
+    }
+
     func makeContainer(frame: NSRect) -> NSView {
         let root = NSView(frame: frame)
+        root.autoresizesSubviews = true
         searchField.frame = NSRect(x: 0, y: frame.height - 28, width: frame.width, height: 24)
+        searchField.autoresizingMask = [.width, .minYMargin]
         searchField.placeholderString = L10n.userRulesSearch
         searchField.sendsSearchStringImmediately = true
         searchField.target = self
@@ -57,6 +64,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         root.addSubview(searchField)
 
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 76, width: frame.width, height: frame.height - 180))
+        scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
         scroll.hasHorizontalScroller = false
         scroll.autohidesScrollers = true
@@ -70,7 +78,10 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         addColumn(L10n.userRulesColumnReplacement, identifier: Column.replacement, width: columnWidths[2])
         addColumn(L10n.userRulesColumnSource, identifier: Column.source, width: columnWidths[3])
         table.rowHeight = 34
-        table.columnAutoresizingStyle = .noColumnAutoresizing
+        table.autoresizingMask = [.width]
+        // Let the pattern column use spare width so long rules stay readable; source
+        // labels keep a stable width instead of stretching or being clipped.
+        table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         table.usesAlternatingRowBackgroundColors = true
         table.gridStyleMask = [.solidHorizontalGridLineMask]
         table.gridColor = .separatorColor
@@ -90,6 +101,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
 
         let hint = NSTextField(wrappingLabelWithString: L10n.userRulesHint)
         hint.frame = NSRect(x: 0, y: frame.height - 68, width: frame.width, height: 34)
+        hint.autoresizingMask = [.width, .minYMargin]
         hint.font = SystemTypography.font(.footnote)
         hint.textColor = .secondaryLabelColor
         root.addSubview(hint)
@@ -110,6 +122,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
             let row = rowY == 34 ? 0 : 1
             let x = rowX[row]
             button.frame = NSRect(x: x, y: rowY, width: width, height: 30)
+            button.autoresizingMask = [.maxYMargin]
             button.bezelStyle = .rounded
             if let symbol, let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) {
                 button.image = image
@@ -133,9 +146,9 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         let column = NSTableColumn(identifier: identifier)
         column.title = title
         column.width = width
-        column.minWidth = width
-        column.maxWidth = width
-        column.resizingMask = .userResizingMask
+        column.minWidth = identifier == Column.source ? max(width, 140) : max(72, min(width, 96))
+        column.maxWidth = .greatestFiniteMagnitude
+        column.resizingMask = [.userResizingMask, .autoresizingMask]
         table.addTableColumn(column)
     }
 
@@ -295,27 +308,71 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     @objc private func importTapped() {
         let panel = NSOpenPanel()
         panel.title = L10n.userRulesImport
-        panel.allowedContentTypes = [.json]
+        panel.allowedContentTypes = [.json, .plainText, .commaSeparatedText,
+                                     UTType(filenameExtension: "tsv") ?? .plainText]
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            let imported = try UserRuleFileCodec.decode(Data(contentsOf: url))
+            let fileExtension = url.pathExtension.lowercased()
+            let intent = fileExtension == "txt" ? chooseTextImportIntent() : nil
+            if fileExtension == "txt", intent == nil { return }
+            let preview = try UserRuleFileCodec.previewImport(
+                Data(contentsOf: url), fileExtension: fileExtension, textIntent: intent
+            )
             var local = SettingsManager.shared.userRules
-            var added = 0
-            for var rule in imported where !local.contains(where: { equivalent($0, rule) }) {
+            var additions: [ProfileRule] = []
+            var alreadyPresent = 0
+            var conflicts = 0
+            for var rule in preview.rules {
+                if local.contains(where: { equivalent($0, rule) }) {
+                    alreadyPresent += 1
+                    continue
+                }
+                if local.contains(where: { sameRuleTarget($0, rule) }) {
+                    conflicts += 1
+                    continue
+                }
                 if local.contains(where: { $0.id == rule.id }) { rule.id = UUID().uuidString }
                 local.append(rule)
-                added += 1
+                additions.append(rule)
             }
-            try SettingsManager.shared.replaceUserRules(local)
-            reloadFromStore()
-            onRulesChanged?()
+            let skippedDuplicates = preview.duplicateRowCount + alreadyPresent
+            let message = L10n.userRulesImportPreview(
+                preview.sourceRowCount, additions.count, skippedDuplicates, conflicts
+            )
+            let confirmation = NSAlert()
+            confirmation.alertStyle = .informational
+            confirmation.messageText = L10n.userRulesImportPreviewTitle
+            confirmation.informativeText = message
+            confirmation.addButton(withTitle: L10n.userRulesImport)
+            confirmation.addButton(withTitle: L10n.commonCancel)
+            guard confirmation.runModal() == .alertFirstButtonReturn else { return }
+
+            if !additions.isEmpty {
+                try SettingsManager.shared.replaceUserRules(local)
+                reloadFromStore()
+                onRulesChanged?()
+            }
             showAlert(title: L10n.userRulesImportSuccess,
-                      message: String(format: L10n.userRulesImportAdded, added), style: .informational)
+                      message: String(format: L10n.userRulesImportAdded, additions.count), style: .informational)
         } catch {
             showAlert(title: L10n.userRulesImportFailure, message: error.localizedDescription, style: .warning)
+        }
+    }
+
+    private func chooseTextImportIntent() -> UserRuleTextIntent? {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = L10n.userRulesImportTextIntentTitle
+        alert.addButton(withTitle: L10n.userRulesActionNever)
+        alert.addButton(withTitle: L10n.userRulesActionAlways)
+        alert.addButton(withTitle: L10n.commonCancel)
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: return .neverConvert
+        case .alertSecondButtonReturn: return .alwaysConvert
+        default: return nil
         }
     }
 
@@ -367,6 +424,12 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     private func equivalent(_ lhs: ProfileRule, _ rhs: ProfileRule) -> Bool {
         lhs.pattern == rhs.pattern && lhs.replacement == rhs.replacement && lhs.match == rhs.match
             && lhs.action == rhs.action && lhs.enabled == rhs.enabled && lhs.caseSensitive == rhs.caseSensitive
+    }
+
+    private func sameRuleTarget(_ lhs: ProfileRule, _ rhs: ProfileRule) -> Bool {
+        lhs.match == rhs.match
+            && lhs.pattern.precomposedStringWithCanonicalMapping.lowercased()
+                == rhs.pattern.precomposedStringWithCanonicalMapping.lowercased()
     }
 
     private func presentRuleEditor(existing: ProfileRule?) -> ProfileRule? {

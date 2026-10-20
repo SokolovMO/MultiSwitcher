@@ -20,36 +20,45 @@ import MultiSwitcherCore
 /// (DynamicKeyMapping.convertBidirectional). Пары не «латиница+кириллица» — обычный путь.
 enum SmartConvert {
     private enum Script { case cyr, lat, other, mixed }
-    private enum WordDecision { case keep, flip(String, Script), unresolved }
+    private enum WordDecision { case keep, canonicalize(String), flip(String, Script), unresolved, ambiguousShort }
 
     // Частотные однобуквенные слова — доп. страховка для флипа ОДИНОЧНЫХ букв по сигналу.
     private static let cyr1: Set<Character> = ["я", "в", "с", "к", "о", "у", "а", "и"]
     private static let lat1: Set<Character> = ["a", "i"]
 
-    /// Умная по-словная конверсия выделения. Возвращает обычную одностороннюю конверсию, если
-    /// пара не латиница+кириллица или словари недоступны.
+    /// Умная по-словная конверсия выделения. При неизвестной паре или недоступном словаре
+    /// сохраняет текст без изменений: smart mode никогда не становится слепым full flip.
     @MainActor
-    static func selection(_ text: String) -> String {
+    static func selection(_ text: String, useSystemDictionary: Bool = true) -> String {
         guard let (latLang, cyrLang) = classifyPair(),
               Dict.isAvailable(latLang), Dict.isAvailable(cyrLang) else {
-            return DynamicKeyMapping.convert(text)   // не Lat+Cyr пара — обычный путь
+            return text
         }
         let toks = tokenize(text)
         var results = [String?](repeating: nil, count: toks.count)
         var pending: [Int] = []                  // неразрешённые токены — решаем в пасе 2 по сигналу
+        var ambiguousShorts = Set<Int>()
+        var flipDirections = [Script?](repeating: nil, count: toks.count)
         var flippedCyr = 0, flippedLat = 0
 
         // Пас 1 — валидные оставляем, распознанный мусор флипаем и считаем направление.
         for (i, tok) in toks.enumerated() {
             guard tok.isWord else { results[i] = tok.str; continue }
-            switch decideWord(tok.str, latLang: latLang, cyrLang: cyrLang) {
+            switch decideWord(tok.str, latLang: latLang, cyrLang: cyrLang,
+                              useSystemDictionary: useSystemDictionary) {
             case .keep:
                 results[i] = tok.str
+            case let .canonicalize(value):
+                results[i] = value
             case let .flip(s, toScript):
                 results[i] = s
+                flipDirections[i] = toScript
                 if toScript == .cyr { flippedCyr += 1 } else if toScript == .lat { flippedLat += 1 }
             case .unresolved:
                 pending.append(i)
+            case .ambiguousShort:
+                pending.append(i)
+                ambiguousShorts.insert(i)
             }
         }
 
@@ -62,19 +71,93 @@ enum SmartConvert {
                             : (flippedLat > 0 && flippedCyr == 0) ? .lat : nil
 
         // Пас 2 — неразрешённые по сигналу.
-        for i in pending { results[i] = signalFlip(toks[i].str, target: target, latLang: latLang, cyrLang: cyrLang) }
+        for i in pending {
+            if !ambiguousShorts.contains(i) {
+                results[i] = signalFlip(toks[i].str, target: target, latLang: latLang, cyrLang: cyrLang)
+            } else if let target,
+                      hasConfirmedWordsOnBothSides(of: i, target: target, tokens: toks,
+                                                   flipDirections: flipDirections) {
+                results[i] = signalFlip(toks[i].str, target: target, latLang: latLang, cyrLang: cyrLang)
+            } else {
+                results[i] = toks[i].str
+            }
+        }
         return results.map { $0 ?? "" }.joined()
+    }
+
+    /// Ambiguous two-letter words change only when independently confirmed corrections
+    /// sit immediately on both sides; this keeps standalone `kb` and code-like tokens safe.
+    private static func hasConfirmedWordsOnBothSides(
+        of index: Int,
+        target: Script,
+        tokens: [(isWord: Bool, str: String)],
+        flipDirections: [Script?]
+    ) -> Bool {
+        let left = tokens.indices[..<index].reversed().first(where: { tokens[$0].isWord })
+        let right = tokens.indices[(index + 1)...].first(where: { tokens[$0].isWord })
+        guard let left, let right else { return false }
+        return flipDirections[left] == target && flipDirections[right] == target
+    }
+
+    @MainActor
+    static func hasAmbiguousShortWordCorrection(original: String, corrected: String) -> Bool {
+        guard let (latLang, cyrLang) = classifyPair() else { return false }
+        let before = tokenize(original).filter { $0.isWord }.map { $0.str }
+        let after = tokenize(corrected).filter { $0.isWord }.map { $0.str }
+        guard before.count == after.count,
+              let latinShort = ShortWords.common(latLang),
+              let cyrillicShort = ShortWords.common(cyrLang) else { return false }
+        for (source, target) in zip(before, after) {
+            guard source.count == 2, target.count == 2,
+                  source.allSatisfy(\.isLetter), target.allSatisfy(\.isLetter),
+                  source.caseInsensitiveCompare(target) != .orderedSame else { continue }
+            let fromScript = dominantScript(source)
+            let sourceWords = fromScript == .lat ? latinShort : cyrillicShort
+            let targetWords = fromScript == .lat ? cyrillicShort : latinShort
+            if sourceWords.contains(source.lowercased()), targetWords.contains(target.lowercased()) {
+                return true
+            }
+        }
+        return false
     }
 
     /// Решение по слову. .flip несёт письменность РЕЗУЛЬТАТА (сигнал для пасса 2); .unresolved —
     /// кандидат на флип по сигналу соседей (мусор в своём скрипте, но словарём не подтверждён).
     @MainActor
-    private static func decideWord(_ w: String, latLang: String, cyrLang: String) -> WordDecision {
+    private static func decideWord(_ w: String, latLang: String, cyrLang: String,
+                                   useSystemDictionary: Bool) -> WordDecision {
         let core = letterCore(w)
         let script = dominantScript(core)
         guard core.count >= 1, script != .other else { return .keep }
-        // Акронимы и код — как в LayoutDetector.decide.
-        if LayoutDetector.isAllCaps(core) || LayoutDetector.hasInternalUppercase(core) { return .keep }
+
+        let whole = DynamicKeyMapping.convertBidirectional(w)
+        let mappedCore = letterCore(whole)
+        switch SettingsManager.shared.automaticRuleDecision(typed: w, converted: whole) {
+        case .neverConvert:
+            return .keep
+        case .alwaysConvert:
+            let target = dominantScript(mappedCore)
+            return whole == w || target == .mixed || target == .other ? .keep : .flip(whole, target)
+        case .replace(let replacement):
+            let target = dominantScript(letterCore(replacement))
+            return target == .mixed || target == .other ? .keep : .flip(replacement, target)
+        case .none:
+            break
+        }
+
+        // Acronyms stay protected; known mixed-case product names are handled explicitly.
+        if LayoutDetector.isAllCaps(core) { return .keep }
+        switch LayoutCorrectionEngine.trustedTermDecision(typed: core, converted: mappedCore) {
+        case .preserve:
+            guard let canonical = LayoutCorrectionEngine.canonicalTrustedTerm(for: core),
+                  canonical != core else { return .keep }
+            return .canonicalize(replacingLetterCore(in: w, with: canonical))
+        case .convert(let canonical):
+            return .flip(replacingLetterCore(in: w, with: canonical), .lat)
+        case nil:
+            break
+        }
+        if LayoutDetector.hasInternalUppercase(core) { return .keep }
 
         if script == .mixed {
             guard let cyrCandidate = DynamicKeyMapping.convertMixedScript(w, towardLang: cyrLang),
@@ -87,7 +170,8 @@ enum SmartConvert {
                     oppositeCandidate: latCandidate,
                     isValidWord: { text, lang in
                         let word = letterCore(text).lowercased()
-                        return word.count >= 2 && Dict.isAvailable(lang) && Dict.isValidWord(word, lang: lang)
+                        guard word.count >= 2 && Dict.isAvailable(lang) else { return false }
+                        return isValidWord(word, lang: lang, useSystemDictionary: useSystemDictionary)
                     }
                   ) else { return .unresolved }
             return .flip(candidate.text, candidate.language == cyrLang ? .cyr : .lat)
@@ -102,21 +186,27 @@ enum SmartConvert {
 
         // 2 буквы — только частотный список (NSSpellChecker на длине 2 ненадёжен), как decide.
         if core.count == 2 {
-            if let cur = ShortWords.common(wordLang), cur.contains(core.lowercased()) { return .keep }
+            let currentCommon = ShortWords.common(wordLang)?.contains(core.lowercased()) == true
             let whole = DynamicKeyMapping.convertBidirectional(w)
             let wc = letterCore(whole)
-            if wc.count == 2, let oth = ShortWords.common(flipLang), oth.contains(wc.lowercased()) {
+            let oppositeCommon = wc.count == 2
+                && ShortWords.common(flipLang)?.contains(wc.lowercased()) == true
+            if currentCommon && oppositeCommon { return .ambiguousShort }
+            if currentCommon { return .keep }
+            if oppositeCommon {
                 return .flip(whole, flippedScript)
             }
             return .unresolved   // «до», «уж» и т.п. — не в списке → по сигналу
         }
 
         // 3+ — словарь. Уже валидное слово своего языка → не трогаем (iPhone, стоит).
-        if Dict.isValidWord(core.lowercased(), lang: wordLang) { return .keep }
+        if isValidWord(core.lowercased(), lang: wordLang, useSystemDictionary: useSystemDictionary) {
+            return .keep
+        }
         // (1) флип целиком — ловит «ёлка» (`krf), «делю» (ltk.), «продолжение».
-        let whole = DynamicKeyMapping.convertBidirectional(w)
         let wc = letterCore(whole)
-        if wc.count >= 2, wc.allSatisfy({ $0.isLetter }), Dict.isValidWord(wc.lowercased(), lang: flipLang) {
+        if wc.count >= 2, wc.allSatisfy({ $0.isLetter }),
+           isValidWord(wc.lowercased(), lang: flipLang, useSystemDictionary: useSystemDictionary) {
             return .flip(punctFixup(original: w, flipped: whole, towardLang: flipLang), flippedScript)
         }
         // (2) со снятым хвостом реальной пунктуации — «ghtlkj;tybt,» → «продолжение» + «,».
@@ -124,11 +214,19 @@ enum SmartConvert {
         if !suffix.isEmpty, !body.isEmpty {
             let bflip = DynamicKeyMapping.convertBidirectional(body)
             let bc = letterCore(bflip)
-            if bc.count >= 2, bc.allSatisfy({ $0.isLetter }), Dict.isValidWord(bc.lowercased(), lang: flipLang) {
+            if bc.count >= 2, bc.allSatisfy({ $0.isLetter }),
+               isValidWord(bc.lowercased(), lang: flipLang, useSystemDictionary: useSystemDictionary) {
                 return .flip(bflip + DynamicKeyMapping.punctThroughPair(suffix, towardLang: flipLang), flippedScript)
             }
         }
         return .unresolved   // имя/бренд/термин, словарём не подтверждён → по сигналу
+    }
+
+    @MainActor
+    private static func isValidWord(_ word: String, lang: String, useSystemDictionary: Bool) -> Bool {
+        useSystemDictionary
+            ? Dict.isValidWord(word, lang: lang)
+            : Dict.isValidWordForAutomaticPath(word, lang: lang)
     }
 
     /// Флипаем неразрешённый токен ТОЛЬКО при явном сигнале (соседи флипнулись в одну сторону)
@@ -207,6 +305,18 @@ enum SmartConvert {
         while let f = chars.first, !f.isLetter { chars.removeFirst() }
         while let l = chars.last, !l.isLetter { chars.removeLast() }
         return String(chars)
+    }
+
+    private static func replacingLetterCore(in text: String, with replacement: String) -> String {
+        var leading = ""
+        var body = text
+        while let first = body.first, !first.isLetter {
+            leading.append(first)
+            body.removeFirst()
+        }
+        let (core, suffix) = splitTrailingNonLetters(body)
+        guard !core.isEmpty else { return text }
+        return leading + replacement + suffix
     }
 
     /// issue #33: пост-обработка флипа-целиком. Позиции, где НЕ-буква ПРЕВРАТИЛАСЬ в букву

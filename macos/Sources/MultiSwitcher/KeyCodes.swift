@@ -10,6 +10,7 @@ enum KC {
     static let tab: UInt16 = 48
     static let space: UInt16 = 49
     static let backspace: UInt16 = 51
+    static let hyphen: UInt16 = 27
     static let left: UInt16 = 123
     static let right: UInt16 = 124
     static let down: UInt16 = 125

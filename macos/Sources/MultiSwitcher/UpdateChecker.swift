@@ -36,9 +36,13 @@ enum UpdateChecker {
     /// Структура JSON версии
     private struct VersionInfo: Decodable {
         let version: String
+        let buildNumber: String?
+        let tag: String?
         let url: String?
         let notes: String?
         let sha256: String?
+
+        var updateIdentifier: String { "\(version)#\(buildNumber ?? "")" }
     }
 
     /// Проверить при запуске (с задержкой 5 сек, не чаще раза в сутки).
@@ -81,10 +85,12 @@ enum UpdateChecker {
 
         updateDefaults.set(Date(), forKey: lastCheckKey)
 
-        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        let currentInfo = Bundle.main.infoDictionary ?? [:]
+        let currentVersion = currentInfo["CFBundleShortVersionString"] as? String ?? "0"
+        let currentBuild = currentInfo["CFBundleVersion"] as? String ?? "0"
 
-        if compareVersions(info.version, isNewerThan: currentVersion) {
-            if updateDefaults.string(forKey: skippedVersionKey) == info.version && silent {
+        if isNewer(info, thanVersion: currentVersion, build: currentBuild) {
+            if updateDefaults.string(forKey: skippedVersionKey) == info.updateIdentifier && silent {
                 return // Пользователь пропустил эту версию
             }
             await showUpdateAlert(info: info)
@@ -108,6 +114,8 @@ enum UpdateChecker {
                   data.count <= 128 * 1024 else { return nil }
             let info = try JSONDecoder().decode(VersionInfo.self, from: data)
             guard info.version.range(of: "^[0-9]+(\\.[0-9]+){1,3}$", options: .regularExpression) != nil,
+                  info.buildNumber == nil || info.buildNumber?.range(of: "^[0-9]+(\\.[0-9]+)*$", options: .regularExpression) != nil,
+                  info.buildNumber == nil || info.tag == "v\(info.version)-build\(info.buildNumber ?? "")",
                   let sha = info.sha256,
                   sha.range(of: "^[0-9a-fA-F]{64}$", options: .regularExpression) != nil else { return nil }
             return info
@@ -121,7 +129,8 @@ enum UpdateChecker {
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = L10n.updateAvailable
-        alert.informativeText = "\(L10n.updateNewVersion) \(info.version)\n\(info.notes ?? "")"
+        let buildLine = info.buildNumber.map { " (build \($0))" } ?? ""
+        alert.informativeText = "\(L10n.updateNewVersion) \(info.version)\(buildLine)\n\(info.notes ?? "")"
         alert.addButton(withTitle: L10n.updateInstallRestart)  // 1st
         alert.addButton(withTitle: L10n.updateDownload)         // 2nd
         alert.addButton(withTitle: L10n.updateSkip)             // 3rd
@@ -134,7 +143,7 @@ enum UpdateChecker {
         case .alertSecondButtonReturn:
             openReleasePage()
         case .alertThirdButtonReturn:
-            updateDefaults.set(info.version, forKey: skippedVersionKey)
+            updateDefaults.set(info.updateIdentifier, forKey: skippedVersionKey)
         default:
             break
         }
@@ -165,7 +174,7 @@ enum UpdateChecker {
             return
         }
 
-        guard let dmgURL = releaseDMGURL(version: version) else {
+        guard let dmgURL = releaseDMGURL(info: info) else {
             await showInstallError(L10n.updateDownloadFailed)
             return
         }
@@ -270,6 +279,7 @@ enum UpdateChecker {
         }
         let mountedID = mountedInfo?["CFBundleIdentifier"] as? String
         let mountedVersion = mountedInfo?["CFBundleShortVersionString"] as? String
+        let mountedBuild = mountedInfo?["CFBundleVersion"] as? String
         guard mountedID == Bundle.main.bundleIdentifier else {
             rslog("Update: bundle id mismatch (\(mountedID ?? "nil"))")
             await showInstallError(L10n.updateIntegrityFailed)
@@ -277,6 +287,11 @@ enum UpdateChecker {
         }
         guard mountedVersion == version else {
             rslog("Update: bundle version mismatch — announced \(version), contains \(mountedVersion ?? "nil")")
+            await showInstallError(L10n.updateIntegrityFailed)
+            return
+        }
+        if let expectedBuild = info.buildNumber, mountedBuild != expectedBuild {
+            rslog("Update: bundle build mismatch — announced \(expectedBuild), contains \(mountedBuild ?? "nil")")
             await showInstallError(L10n.updateIntegrityFailed)
             return
         }
@@ -322,10 +337,13 @@ enum UpdateChecker {
         AppRelauncher.relaunch(bundlePath: currentApp.path)
     }
 
-    private static func releaseDMGURL(version: String) -> URL? {
+    private static func releaseDMGURL(info: VersionInfo) -> URL? {
         guard isConfigured, let base = configuredURL("MSReleaseBaseURL") else { return nil }
-        return base.appendingPathComponent("v\(version)")
-            .appendingPathComponent("MultiSwitcher-\(version)-arm64.dmg")
+        let tag = info.tag ?? "v\(info.version)"
+        guard tag.range(of: "^v[0-9]+(\\.[0-9]+){1,3}(?:-build[0-9]+(?:\\.[0-9]+)*)?$",
+                        options: .regularExpression) != nil else { return nil }
+        return base.appendingPathComponent(tag)
+            .appendingPathComponent("MultiSwitcher-\(info.version)-arm64.dmg")
     }
 
     private static func openReleasePage() {
@@ -434,6 +452,26 @@ enum UpdateChecker {
     /// получит обновление до финального «3.2.0», когда тот выйдет.
     private static func compareVersions(_ v1: String, isNewerThan v2: String) -> Bool {
         semverCompare(v1, v2) == .orderedDescending
+    }
+
+    private static func isNewer(_ info: VersionInfo, thanVersion version: String, build: String) -> Bool {
+        let versionOrder = semverCompare(info.version, version)
+        if versionOrder != .orderedSame { return versionOrder == .orderedDescending }
+        guard let candidateBuild = info.buildNumber else { return false }
+        return compareBuildNumbers(candidateBuild, build) == .orderedDescending
+    }
+
+    private static func compareBuildNumbers(_ lhs: String, _ rhs: String) -> ComparisonResult {
+        let left = lhs.split(separator: ".").compactMap { Int($0) }
+        let right = rhs.split(separator: ".").compactMap { Int($0) }
+        guard left.count == lhs.split(separator: ".").count,
+              right.count == rhs.split(separator: ".").count else { return .orderedSame }
+        for index in 0..<max(left.count, right.count) {
+            let a = index < left.count ? left[index] : 0
+            let b = index < right.count ? right[index] : 0
+            if a != b { return a < b ? .orderedAscending : .orderedDescending }
+        }
+        return .orderedSame
     }
 
     /// Разбирает версию на числовое ядро и необязательную букву-пред-релиз.

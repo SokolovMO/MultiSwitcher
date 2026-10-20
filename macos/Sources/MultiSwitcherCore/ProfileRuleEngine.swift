@@ -10,29 +10,26 @@ public enum ProfileRuleDecision: Equatable, Sendable {
 /// Evaluates typed local rules while keeping unverified Punto rows on the conservative exact fallback.
 public enum ProfileRuleEngine {
     public static func evaluate(typed: String, converted: String, rules: [ProfileRule]) -> ProfileRuleDecision {
-        let orderedRules = rules.enumerated().sorted { lhs, rhs in
-            func priority(_ origin: ProfileRuleOrigin) -> Int {
-                switch origin { case .user: return 0; case .learned: return 1; case .punto: return 2 }
-            }
-            let lp = priority(lhs.element.origin), rp = priority(rhs.element.origin)
-            return lp == rp ? lhs.offset < rhs.offset : lp < rp
-        }
-        for (_, rule) in orderedRules where rule.enabled && !rule.pattern.isEmpty {
-            switch rule.action {
-            case .neverConvert:
-                if matches(rule.pattern, in: typed, mode: rule.match, caseSensitive: rule.caseSensitive)
-                    || matches(rule.pattern, in: converted, mode: rule.match, caseSensitive: rule.caseSensitive) {
-                    return .neverConvert
-                }
-            case .alwaysConvert:
-                guard rule.origin == .user else { continue }
-                if matches(rule.pattern, in: converted, mode: rule.match, caseSensitive: rule.caseSensitive) {
-                    return .alwaysConvert
-                }
-            case .replace:
-                guard rule.origin == .user, let replacement = rule.replacement, !replacement.isEmpty else { continue }
-                if matches(rule.pattern, in: typed, mode: rule.match, caseSensitive: rule.caseSensitive) {
-                    return .replace(replacement)
+        // Keep the established precedence without sorting and allocating an indexed
+        // copy for every word boundary on the keyboard path.
+        for origin in [ProfileRuleOrigin.user, .learned, .punto] {
+            for rule in rules where rule.origin == origin && rule.enabled && !rule.pattern.isEmpty {
+                switch rule.action {
+                case .neverConvert:
+                    if matches(rule.pattern, in: typed, mode: rule.match, caseSensitive: rule.caseSensitive)
+                        || matches(rule.pattern, in: converted, mode: rule.match, caseSensitive: rule.caseSensitive) {
+                        return .neverConvert
+                    }
+                case .alwaysConvert:
+                    guard rule.origin == .user else { continue }
+                    if matches(rule.pattern, in: converted, mode: rule.match, caseSensitive: rule.caseSensitive) {
+                        return .alwaysConvert
+                    }
+                case .replace:
+                    guard rule.origin == .user, let replacement = rule.replacement, !replacement.isEmpty else { continue }
+                    if matches(rule.pattern, in: typed, mode: rule.match, caseSensitive: rule.caseSensitive) {
+                        return .replace(replacement)
+                    }
                 }
             }
         }

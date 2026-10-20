@@ -19,9 +19,7 @@ _local_backups/
 [Oo]bj/
 *.user
 
-# Local-only development notes and artifacts
+# Local-only development notes and agent instructions
 docs/
-MULTI_SWITCHER_PLAN.md
-replica/
 .agents/
 *.log

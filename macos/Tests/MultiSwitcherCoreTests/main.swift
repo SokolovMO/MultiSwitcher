@@ -67,6 +67,65 @@ private func testGlobalSpaceShortcutsPreserveOnlyLayoutSwitchWords() {
            "ordinary Space must remain an auto-conversion boundary")
 }
 
+private func testPauseStateExpiry() {
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+    expect(PauseStatePolicy.hasExpiredDeadline(now.addingTimeInterval(-1), now: now),
+           "an elapsed timed pause must expire")
+    expect(!PauseStatePolicy.hasExpiredDeadline(now.addingTimeInterval(60), now: now),
+           "a future timed pause remains active")
+    expect(!PauseStatePolicy.hasExpiredDeadline(nil, now: now),
+           "an indefinite pause has no automatic expiry")
+}
+
+private func testAppendedInputPolicy() {
+    expect(AppendedInputPolicy.canPreserveTypedSuffix(
+        generationDelta: 3, trackedKeyCount: 3, suffix: "abc"
+    ), "boundary correction can retain ordinary letters typed after the space")
+    expect(!AppendedInputPolicy.canPreserveTypedSuffix(
+        generationDelta: 4, trackedKeyCount: 3, suffix: "abc"
+    ), "an untracked key invalidates the captured replacement")
+    expect(!AppendedInputPolicy.canPreserveTypedSuffix(
+        generationDelta: 2, trackedKeyCount: 2, suffix: "a "
+    ), "a second boundary is not treated as typed text")
+    expect(!AppendedInputPolicy.canPreserveTypedSuffix(
+        generationDelta: 1, trackedKeyCount: 1, suffix: "🙂"
+    ), "emoji and multi-scalar suffixes are rejected safely")
+}
+
+private func testAutomaticShortWordPolicy() {
+    expect(ShortWordPolicy.decide(
+        typed: "lf", converted: "да", currentLanguage: "en", otherLanguage: "ru"
+    ) == .convert, "the first token in the reported phrase is a confirmed Russian short word")
+    expect(ShortWordPolicy.decide(
+        typed: "to", converted: "ещ", currentLanguage: "en", otherLanguage: "ru"
+    ) == .keep, "a common English short word is preserved")
+    expect(ShortWordPolicy.decide(
+        typed: "xx", converted: "чч", currentLanguage: "en", otherLanguage: "ru"
+    ) == .undecided, "unknown short combinations remain unchanged")
+    expect(ShortWordPolicy.decide(
+        typed: "lf", converted: "да", currentLanguage: "fr", otherLanguage: "ru"
+    ) == .undecided, "unsupported language pairs do not guess")
+}
+
+private func testModifiedBackspaceInvalidatesTrackedText() {
+    expect(KeyboardBufferEditPolicy.backspaceDisposition(command: false, option: false, control: false)
+           == .removePreviousCharacter, "plain Backspace removes one tracked character")
+    expect(KeyboardBufferEditPolicy.backspaceDisposition(command: true, option: false, control: false)
+           == .invalidateTrackedText, "Command-Backspace invalidates the buffer after deleting a line prefix")
+    expect(KeyboardBufferEditPolicy.backspaceDisposition(command: false, option: true, control: false)
+           == .invalidateTrackedText, "Option-Backspace invalidates the buffer after deleting a word")
+    expect(KeyboardBufferEditPolicy.backspaceDisposition(command: false, option: false, control: true)
+           == .invalidateTrackedText, "Control-Backspace invalidates the buffer after a modified delete")
+}
+
+private func testBundledWordLexicon() {
+    let lexicon = WordLexicon(wordList: "# sample\nПривет\nAPP\n\nслово\nnot a token\n")
+    expect(lexicon.count == 3, "word lists ignore comments, blanks, and non-token lines")
+    expect(lexicon.contains("привет") && lexicon.contains("APP"),
+           "word-list lookup is case-insensitive and keeps Unicode words")
+    expect(!lexicon.contains("приве"), "word-list lookup does not invent a near match")
+}
+
 private func testImportsRulesAndSeparatesLearnedHistory() throws {
     let profile: [String: Any] = [
         "userRulesDictionary": [
@@ -127,10 +186,9 @@ private func testMissingRulesAreRejected() throws {
 }
 
 
-private func testReviewedHistoryMigrationAndRuleProvenance() throws {
+private func testPuntoHistoryIsPreservedAndRuleProvenance() throws {
     let history: [String: Int] = [
-        "сделатй": 1, "нужн": 1, "шбор": 1, "ытой": 1, ";nj": 1, "shla": 1,
-        "еюьу": 2, "t.me": 1, "retained": 1,
+        "custom-history-a": 1, "custom-history-b": 1, "custom-link": 2,
     ]
     let profile: [String: Any] = [
         "userRulesDictionary": [
@@ -157,7 +215,7 @@ private func testReviewedHistoryMigrationAndRuleProvenance() throws {
     )
     expect(applied.rulesImported == 2, "all Punto rows are retained")
     expect(applied.unverifiedRules == 2, "unverified source semantics are explicit")
-    expect(applied.learningDiscardedByReview == 6, "the six approved history records are removed")
+    expect(applied.learningDiscardedByReview == 0, "a public import never applies another user's cleanup choices")
     expect(destination.rules.filter { $0.origin == .punto }.count == 2, "Punto provenance is assigned")
     expect(destination.rules.first(where: { $0.pattern == "second" })?.sourceFlags == [true, false, true],
            "raw rule flags are preserved")
@@ -165,26 +223,31 @@ private func testReviewedHistoryMigrationAndRuleProvenance() throws {
            "user rules survive import")
     expect(destination.learning.contains(where: { $0.word == "local" && $0.origin == .local }),
            "local learning survives import")
-    expect(destination.learning.count == 3, "renamed collision merges without discarding unrelated history")
-    let renamed = destination.learning.first(where: { $0.word == "t.me" })
-    expect(renamed?.cancellationCount == 2 && renamed?.isExcluded == false,
-           "еюьу is renamed to t.me and stays pending, not an active exception")
+    expect(destination.learning.count == 4, "all source history and local history remain present")
+    let preserved = Set(destination.learning.map(\.word))
+    expect(preserved.contains("custom-history-a") && preserved.contains("custom-history-b")
+            && preserved.contains("custom-link"),
+           "all source history entries are preserved for each importer")
     expect(destination.settings["com.multiswitcher.autoConvert"] == .bool(true),
            "verified automatic-correction setting is mapped")
 }
 
 private func testLearningNeedsTwoAutomaticUndos() throws {
     var profile = MultiSwitcherProfile()
-    let first = LearningEngine.recordAutomaticCancellation(word: "shiishka", in: &profile)
+    let first = LearningEngine.recordAutomaticCancellation(word: "customword", in: &profile)
     expect(first == .pending(cancellations: 1), "first cancellation remains pending")
     expect(!profile.rules.contains(where: { $0.origin == .learned }), "one undo does not create an exception")
-    let second = LearningEngine.recordAutomaticCancellation(word: "shiishka", in: &profile)
-    expect(second == .excluded(word: "shiishka"), "second cancellation creates the learned exception")
-    expect(profile.rules.contains(where: { $0.origin == .learned && $0.pattern == "shiishka" }),
+    let second = LearningEngine.recordAutomaticCancellation(word: "customword", in: &profile)
+    expect(second == .excluded(word: "customword"), "second cancellation creates the learned exception")
+    expect(profile.rules.contains(where: { $0.origin == .learned && $0.pattern == "customword" }),
            "learned rule is stored separately")
-    expect(LearningEngine.undoLearnedExclusion(word: "shiishka", in: &profile),
+    expect(LearningEngine.undoLearnedExclusion(word: "customword", in: &profile),
            "last learned exclusion can be undone")
     expect(!profile.rules.contains(where: { $0.origin == .learned }), "undo removes only learned rule")
+    expect(profile.learning.first(where: { $0.word == "customword" })?.cancellationCount == 0,
+           "undoing a learned exclusion clears its old evidence")
+    expect(LearningEngine.recordAutomaticCancellation(word: "customword", in: &profile)
+           == .pending(cancellations: 1), "two fresh cancellations are required to learn the word again")
 
     profile.settings["com.multiswitcher.learningEnabled"] = .bool(false)
     expect(LearningEngine.recordAutomaticCancellation(word: "another", in: &profile) == .disabled,
@@ -192,6 +255,33 @@ private func testLearningNeedsTwoAutomaticUndos() throws {
     profile.settings["com.multiswitcher.learningEnabled"] = .bool(true)
     expect(LearningEngine.recordAutomaticCancellation(word: "no", in: &profile) == .ineligible,
            "short combinations are ignored")
+}
+
+private func testLearningEvidenceMustMatchSameOperationContext() {
+    let completed = Date(timeIntervalSince1970: 100)
+    let evidence = LearningEvidence(operationID: "auto-1", word: "ghbdtn",
+                                    processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                                    textContextGeneration: 7, completedAt: completed)
+    expect(evidence.matchesUndo(operationID: "auto-1", processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                               textContextGeneration: 7,
+                               at: completed.addingTimeInterval(2)),
+           "a timely undo in the same app process and text field can create learning evidence")
+    expect(!evidence.matchesUndo(operationID: "other-operation", processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                                textContextGeneration: 7,
+                                at: completed.addingTimeInterval(2)),
+           "an undo for a different replacement cannot teach from this correction")
+    expect(!evidence.matchesUndo(operationID: "auto-1", processIdentifier: 43, bundleIdentifier: "com.example.Editor",
+                                textContextGeneration: 7,
+                                at: completed.addingTimeInterval(2)),
+           "undo in another app process cannot teach from the conversion")
+    expect(!evidence.matchesUndo(operationID: "auto-1", processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                                textContextGeneration: 8,
+                                at: completed.addingTimeInterval(2)),
+           "undo after the focused text context changed cannot teach from the conversion")
+    expect(!evidence.matchesUndo(operationID: "auto-1", processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                                textContextGeneration: 7,
+                                at: completed.addingTimeInterval(9)),
+           "an old conversion cannot be learned from after the undo window expires")
 }
 
 private func testPerAppLayoutMemorySurvivesProfileSerialization() throws {
@@ -234,6 +324,39 @@ private func testUserRuleFileRoundTripSanitizesProvenance() throws {
         expect(false, "malformed rule document must be rejected")
     } catch let error as UserRuleFileError {
         expect(error == .invalidDocument, "malformed rule document has a typed error")
+    }
+}
+
+private func testGenericTextRuleImportsAreExplicitAndPreviewable() throws {
+    do {
+        _ = try UserRuleFileCodec.previewImport(Data("customword\n".utf8), fileExtension: "txt")
+        expect(false, "a plain list cannot be assigned a behavior silently")
+    } catch let error as UserRuleFileError {
+        expect(error == .textIntentRequired, "plain text import requires an explicit rule intent")
+    }
+
+    let words = try UserRuleFileCodec.previewImport(
+        Data("customword\napp\ncustomword\n\n".utf8), fileExtension: "txt", textIntent: .neverConvert
+    )
+    expect(words.format == .wordList && words.sourceRowCount == 3 && words.duplicateRowCount == 1,
+           "word-list preview reports source rows and duplicates")
+    expect(words.rules.count == 2 && words.rules.allSatisfy { $0.action == .neverConvert },
+           "selected word-list behavior is applied to every distinct word")
+
+    let pairs = try UserRuleFileCodec.previewImport(
+        Data("pattern,replacement\n\"teh, typo\",\"the, correct\"\n".utf8), fileExtension: "csv"
+    )
+    expect(pairs.format == .pairs && pairs.rules.count == 1,
+           "CSV pair import recognizes a supported header")
+    expect(pairs.rules[0].pattern == "teh, typo" && pairs.rules[0].replacement == "the, correct"
+           && pairs.rules[0].action == .replace,
+           "quoted commas remain inside their CSV fields")
+
+    do {
+        _ = try UserRuleFileCodec.previewImport(Data("one,two,three\n".utf8), fileExtension: "csv")
+        expect(false, "unsupported CSV row shapes must not be imported partially")
+    } catch let error as UserRuleFileError {
+        expect(error == .invalidDelimitedRow(index: 1), "invalid CSV reports the row number")
     }
 }
 
@@ -327,6 +450,84 @@ private func testSpotlightRangePlannerPreservesQueryAndCaret() {
     expect(selection.location == (changed! as NSString).length && selection.length == 0,
            "caret stays after the preserved trailing text")
 
+    let safariText = "ghbdtn "
+    let safariPlan = TextReplacementPlanner.plan(
+        text: safariText,
+        selection: NSRange(location: (safariText as NSString).length, length: 0)
+    )
+    expect(safariPlan.map { (safariText as NSString).substring(with: $0.range) } == "ghbdtn",
+           "an editable browser address field targets the typed word before its space")
+    expect(safariPlan.flatMap {
+        TextReplacementPlanner.replacing(text: safariText, plan: $0, with: "привет")
+    } == "привет ", "browser replacement preserves the submitted trailing space")
+
+    // Reproduce an async word-boundary callback arriving after the next word has
+    // already started. Safari must target the captured word, not reject the edit
+    // because the caret now points after the newer token.
+    let delayedSafariText = "ghbdtn rfr "
+    let delayedSafariPlan = TextReplacementPlanner.planCapturedToken(
+        text: delayedSafariText,
+        selection: NSRange(location: (delayedSafariText as NSString).length, length: 0),
+        token: "ghbdtn"
+    )
+    expect(delayedSafariPlan.map { (delayedSafariText as NSString).substring(with: $0.range) } == "ghbdtn",
+           "a delayed Safari correction still targets the word captured at its boundary")
+    expect(delayedSafariPlan.flatMap {
+        TextReplacementPlanner.replacing(text: delayedSafariText, plan: $0, with: "привет")
+    } == "привет rfr ", "a later word remains untouched when the captured word is corrected")
+    expect(delayedSafariPlan.map {
+        TextReplacementPlanner.selectionAfterReplacement(plan: $0, replacement: "привет").location
+    } == ("привет rfr " as NSString).length,
+           "the caret remains after newer text when a previous word is replaced")
+
+    // Contextual short-word correction can be delayed until a later confirmed word.
+    // The captured line suffix must remain replaceable after the user has continued typing.
+    let delayedContextText = "z yt ghbdtn rfr "
+    let delayedContextPlan = TextReplacementPlanner.planCapturedSuffix(
+        text: delayedContextText,
+        selection: NSRange(location: (delayedContextText as NSString).length, length: 0),
+        suffix: "z yt ghbdtn "
+    )
+    expect(delayedContextPlan.map { (delayedContextText as NSString).substring(with: $0.range) } == "z yt ghbdtn ",
+           "a delayed contextual correction still targets the captured line suffix")
+    expect(delayedContextPlan.flatMap {
+        TextReplacementPlanner.replacing(text: delayedContextText, plan: $0, with: "я не могу ")
+    } == "я не могу rfr ", "context correction preserves a newer word")
+    expect(delayedContextPlan.map {
+        TextReplacementPlanner.selectionAfterReplacement(plan: $0, replacement: "я не могу ").location
+    } == ("я не могу rfr " as NSString).length,
+           "the caret remains after newer text when contextual correction is delayed")
+    expect(TextReplacementPlanner.planCapturedSuffix(
+        text: "xz yt ghbdtn rfr ",
+        selection: NSRange(location: ("xz yt ghbdtn rfr " as NSString).length, length: 0),
+        suffix: "z yt ghbdtn "
+    ) == nil, "captured context is not matched inside a longer word")
+    expect(TextReplacementPlanner.planCapturedSuffix(
+        text: "z yt ghbdtn rfr ",
+        selection: NSRange(location: 0, length: 2),
+        suffix: "z yt ghbdtn "
+    ) == nil, "context correction is not applied after the user creates a selection")
+
+    let punctuatedSafariText = "ghbdtn, rfr "
+    let punctuatedSafariPlan = TextReplacementPlanner.planCapturedToken(
+        text: punctuatedSafariText,
+        selection: NSRange(location: (punctuatedSafariText as NSString).length, length: 0),
+        token: "ghbdtn"
+    )
+    expect(punctuatedSafariPlan.map { (punctuatedSafariText as NSString).substring(with: $0.range) } == "ghbdtn",
+           "a captured word remains identifiable before punctuation and later input")
+
+    expect(TextReplacementPlanner.planCapturedToken(
+        text: "xghbdtn rfr ",
+        selection: NSRange(location: ("xghbdtn rfr " as NSString).length, length: 0),
+        token: "ghbdtn"
+    ) == nil, "a captured token inside another word is not replaced")
+    expect(TextReplacementPlanner.planCapturedToken(
+        text: "ghbdtnrfr",
+        selection: NSRange(location: ("ghbdtnrfr" as NSString).length, length: 0),
+        token: "ghbdtn"
+    ) == nil, "a captured token without its word boundary is not replaced")
+
     let selectedText = "🙂 one two"
     let selected = NSRange(location: 3, length: 3)
     let selectedPlan = TextReplacementPlanner.plan(text: selectedText, selection: selected)
@@ -342,6 +543,9 @@ private func testSpotlightRangePlannerPreservesQueryAndCaret() {
            "a keyboard punctuation joiner stays inside a mixed-script candidate")
     expect(mixedPlan.map { (mixed as NSString).substring(from: NSMaxRange($0.range)) } == ",   ",
            "trailing punctuation and spaces remain outside the candidate")
+    expect(mixedPlan.flatMap {
+        TextReplacementPlanner.replacing(text: mixed, plan: $0, with: "приложение")
+    } == "приложение,   ", "browser replacement converts the whole mixed token without shifting punctuation")
 
     let suffixText = "query z yt "
     let suffix = "z yt "
@@ -357,6 +561,28 @@ private func testSpotlightRangePlannerPreservesQueryAndCaret() {
         selection: NSRange(location: (suffixText as NSString).length - 1, length: 0),
         suffix: suffix
     ) == nil, "a moved caret prevents contextual suffix replacement")
+
+    let prefixedContext = "prefix z yt ghbdtn rfr "
+    let prefixedSuffix = "z yt ghbdtn "
+    let prefixedPlan = TextReplacementPlanner.planCapturedSuffix(
+        text: prefixedContext,
+        selection: NSRange(location: (prefixedContext as NSString).length, length: 0),
+        suffix: prefixedSuffix
+    )
+    expect(prefixedPlan.map { (prefixedContext as NSString).substring(with: $0.range) } == prefixedSuffix,
+           "a captured context suffix is found after an unrelated field prefix")
+
+    let urlQuery = "https://example.com/site/#contacts\n\n"
+    expect(TextReplacementPlanner.plan(
+        text: urlQuery,
+        selection: NSRange(location: (urlQuery as NSString).length, length: 0)
+    ) == nil, "a blank line after a URL never targets the URL's last path fragment")
+
+    let urlCaret = "https://example.com/site/#contacts"
+    expect(TextReplacementPlanner.plan(
+        text: urlCaret,
+        selection: NSRange(location: (urlCaret as NSString).length, length: 0)
+    ) == nil, "a URL fragment is not treated as an editable word candidate")
 }
 
 private func testSharedLayoutCorrectionPolicy() {
@@ -385,6 +611,58 @@ private func testSharedLayoutCorrectionPolicy() {
     expect(!LayoutCorrectionEngine.shouldApplyContextualRewrite(
         original: "z ", corrected: "я ", currentWordWasConfirmed: false
     ), "a one-letter token cannot create its own correction signal")
+    expect(LayoutCorrectionEngine.trustedTermDecision(typed: "iPhone", converted: "шЗрщту") == .preserve,
+           "a correctly typed trusted product name stays unchanged")
+    expect(LayoutCorrectionEngine.trustedTermDecision(typed: "шЗрщту", converted: "iphone") == .convert("iPhone"),
+           "a misspelled-layout product name returns canonical spelling")
+    expect(LayoutCorrectionEngine.trustedTermDecision(typed: "IPHONE", converted: "шЗрщту") == .preserve,
+           "trusted-term lookup does not reinterpret an all-caps token as a brand")
+    expect(LayoutCorrectionEngine.canonicalTrustedTerm(for: "iphone") == "iPhone",
+           "trusted terms expose their canonical spelling for smart conversion")
+    expect(LayoutCorrectionEngine.shouldApplyContextualRewrite(
+        original: "rfr kb jy ", corrected: "как ли он ", currentWordWasConfirmed: true,
+        hasAmbiguousShortWordCorrection: true
+    ), "a confirmed phrase can rewrite an ambiguous two-letter word")
+    expect(!LayoutCorrectionEngine.shouldApplyContextualRewrite(
+        original: "kb ", corrected: "ли ", currentWordWasConfirmed: true
+    ), "an ambiguous two-letter word cannot trigger its own contextual rewrite")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForTrustedName(
+        corrected: "iphone", prefix: "привет, я купил ", currentLanguage: "ru"
+    ), "a recognized product name does not switch the input language in a clear Russian phrase")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForTrustedName(
+        corrected: "iphone", prefix: "hello there ", currentLanguage: "ru"
+    ), "an English prefix does not get an unrelated Russian-layout override")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForTrustedName(
+        corrected: "iphone", prefix: "привет, я купил ", currentLanguage: "en"
+    ), "an explicit English input source remains authoritative")
+}
+
+private func testHyphenatedLayoutCorrectionPolicy() {
+    let targetWords: Set<String> = ["как", "то", "по", "английски"]
+    expect(HyphenatedTokenPolicy.shouldTrackHyphen(after: "r"),
+           "a hyphen after a letter remains attached to the current token")
+    expect(HyphenatedTokenPolicy.shouldTrackHyphen(after: "-"),
+           "a repeated hyphen remains in the same rejected token")
+    expect(!HyphenatedTokenPolicy.shouldTrackHyphen(after: nil),
+           "a leading hyphen does not start an auto-conversion token")
+    expect(!HyphenatedTokenPolicy.shouldTrackHyphen(after: ","),
+           "a hyphen after punctuation cannot attach to a stale word range")
+    expect(HyphenatedTokenPolicy.decide(
+        typed: "rfr-nj", converted: "как-то", currentLanguage: "en", targetLanguage: "ru",
+        isValidWord: { word, language in language == "ru" && targetWords.contains(word.lowercased()) }
+    ) == .convert, "a hyphenated RU phrase converts when every target segment is trusted")
+    expect(HyphenatedTokenPolicy.decide(
+        typed: "set-up", converted: "ыуе-гз", currentLanguage: "en", targetLanguage: "ru",
+        isValidWord: { word, language in language == "en" && word == "set" }
+    ) == .keep, "a valid source compound is preserved when its mapped form is not trusted")
+    expect(HyphenatedTokenPolicy.decide(
+        typed: "rfr--nj", converted: "как--то", currentLanguage: "en", targetLanguage: "ru",
+        isValidWord: { _, _ in true }
+    ) == .undecided, "malformed hyphen runs are never auto-converted")
+    expect(HyphenatedTokenPolicy.decide(
+        typed: "rfr-1j", converted: "как-1о", currentLanguage: "en", targetLanguage: "ru",
+        isValidWord: { _, _ in true }
+    ) == .undecided, "digit-containing compounds remain outside automatic conversion")
 }
 
 private func testReviewedRuleCleanupKeepsPuntoDeletionTombstones() {
@@ -482,6 +760,15 @@ private func testClipboardRestoreRequiresOwnership() {
            "an unchanged clipboard needs no restore")
 }
 
+private func testDiagnosticLogRedaction() {
+    let raw = "path=/Users/example-user/Library/Logs/app.log bundle=com.example.editor query=private words"
+    let report = DiagnosticLogRedactor.redact(raw, homeDirectory: "/Users/example-user")
+    expect(report.contains("~/Library/Logs/app.log"), "diagnostic reports do not expose the home directory")
+    expect(report.contains("[app-id]"), "diagnostic reports redact third-party bundle identifiers")
+    expect(!report.contains("com.example.editor") && !report.contains("private words"),
+           "sensitive log fields are removed before the user previews a report")
+}
+
 private func testProfileStoreImportIsRepeatableAndSnapshotsSource() throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("MultiSwitcher-Core-Test-\\(UUID().uuidString)", isDirectory: true)
@@ -521,6 +808,40 @@ private func testProfileStoreImportIsRepeatableAndSnapshotsSource() throws {
         at: store.backupsURL, includingPropertiesForKeys: nil
     )).filter { $0.lastPathComponent.hasPrefix("Punto-") }
     expect(snapshots.count == 2, "each import has its own recoverable source snapshot")
+}
+
+private func testProfileStoreRecoveryPreservesDamagedPrimary() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Recovery-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = ProfileStore(rootURL: root)
+    try store.update { $0.settings["recovery-marker"] = .string("previous-valid") }
+    try store.update { $0.settings["recovery-marker"] = .string("current-valid") }
+    let damaged = Data("not a profile".utf8)
+    try damaged.write(to: store.profileURL, options: .atomic)
+
+    let recoveryStore = ProfileStore(rootURL: root)
+    expect(recoveryStore.isInRecoveryMode, "an unreadable profile is surfaced as recovery mode")
+    expect(recoveryStore.canRestorePreviousProfile, "a valid previous generation is offered for recovery")
+    do {
+        try recoveryStore.update { $0.settings["recovery-marker"] = .string("must-not-write") }
+        expect(false, "profile writes stay blocked until recovery")
+    } catch {
+        expect(true, "an unreadable profile is never silently overwritten")
+    }
+
+    let restored = try recoveryStore.restorePreviousProfile()
+    expect(!recoveryStore.isInRecoveryMode, "successful restore clears recovery mode")
+    expect(restored.settings["recovery-marker"] == .string("previous-valid"),
+           "restore uses the previous valid generation")
+    expect(FileManager.default.contents(atPath: store.profileURL.path) != damaged,
+           "the active profile is repaired from the validated snapshot")
+    let recoveryFiles = try FileManager.default.contentsOfDirectory(
+        at: store.backupsURL, includingPropertiesForKeys: nil
+    ).filter { $0.lastPathComponent.hasPrefix("profile-unreadable-") }
+    expect(recoveryFiles.count == 1 && FileManager.default.contents(atPath: recoveryFiles[0].path) == damaged,
+           "the unreadable original is retained as a recovery backup")
 }
 
 private func testImportedRuleRemovalSurvivesReimportAndCanBeRestored() throws {
@@ -589,7 +910,7 @@ if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--import-punto
     let source = URL(fileURLWithPath: CommandLine.arguments[2])
     let root = URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)
     let report = try ProfileStore(rootURL: root).importPuntoProfile(from: source)
-    print("Punto profile imported: \(report.rulesImported) rules; \(report.learningImported) reviewed history entries; \(report.learningDiscardedByReview) history entries removed by prior review; snapshot \(report.snapshotName); SHA-256 \(report.sourceSHA256)")
+    print("Punto profile imported: \(report.rulesImported) rules; \(report.learningImported) source history entries; \(report.learningDiscardedByReview) source entries omitted; snapshot \(report.snapshotName); SHA-256 \(report.sourceSHA256)")
     exit(EXIT_SUCCESS)
 }
 
@@ -656,23 +977,33 @@ if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--cleanup-revi
 
 testSpotlightTargetClassification()
 testGlobalSpaceShortcutsPreserveOnlyLayoutSwitchWords()
+testPauseStateExpiry()
+testAppendedInputPolicy()
+testAutomaticShortWordPolicy()
+testHyphenatedLayoutCorrectionPolicy()
+testModifiedBackspaceInvalidatesTrackedText()
+testBundledWordLexicon()
 try testImportsRulesAndSeparatesLearnedHistory()
 try testUnicodeEquivalentWordsAreDeduplicated()
 try testMalformedRuleRejectsWholeImport()
 try testMissingRulesAreRejected()
-try testReviewedHistoryMigrationAndRuleProvenance()
+try testPuntoHistoryIsPreservedAndRuleProvenance()
 try testLearningNeedsTwoAutomaticUndos()
+testLearningEvidenceMustMatchSameOperationContext()
 testSpotlightRangePlannerPreservesQueryAndCaret()
 testSharedLayoutCorrectionPolicy()
 testReviewedRuleCleanupKeepsPuntoDeletionTombstones()
 testExactTextUndoTogglesOnlyUnchangedField()
 testTextFieldSnapshotRejectsStaleCaretOrTarget()
 testClipboardRestoreRequiresOwnership()
+testDiagnosticLogRedaction()
 testForgettingLearningPreservesImportedAndUserRules()
 try testProfileStoreImportIsRepeatableAndSnapshotsSource()
+try testProfileStoreRecoveryPreservesDamagedPrimary()
 try testImportedRuleRemovalSurvivesReimportAndCanBeRestored()
 try testPerAppLayoutMemorySurvivesProfileSerialization()
 testApplicationExclusionPolicy()
 testTypedRuleMatchingAndProvenance()
 try testUserRuleFileRoundTripSanitizesProvenance()
-print("MultiSwitcherCoreChecks: 21 checks passed")
+try testGenericTextRuleImportsAreExplicitAndPreviewable()
+print("MultiSwitcherCoreChecks: 34 checks passed")
