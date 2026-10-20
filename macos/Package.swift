@@ -8,9 +8,9 @@ var appDependencies: [Target.Dependency] = ["MultiSwitcherCore"]
 
 if crashReportingEnabled {
     packageDependencies.append(
-        .package(url: "https://github.com/getsentry/sentry-cocoa.git", exact: "9.29.0")
+        .package(url: "https://github.com/getsentry/sentry-apple-binaries.git", exact: "9.29.0")
     )
-    appDependencies.append(.product(name: "SentrySPM", package: "sentry-cocoa"))
+    appDependencies.append(.product(name: "Sentry-Static", package: "sentry-apple-binaries"))
 }
 
 let package = Package(

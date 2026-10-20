@@ -156,7 +156,7 @@ python3 "$REPO_DIR/scripts/prepare_thematic_lexicons.py" "$REPO_DIR/dicts/themes
     "$APP_BUNDLE/Contents/Resources/Lexicons/Themes"
 cp "$REPO_DIR/dicts/themes/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/MultiSwitcher-Thematic-Lexicons-MIT.txt"
 if [[ "$ENABLE_CRASH_REPORTING" == "1" ]]; then
-    SENTRY_LICENSE="$BUILD_ROOT/swiftpm/checkouts/sentry-cocoa/LICENSE.md"
+    SENTRY_LICENSE="$BUILD_ROOT/swiftpm/checkouts/sentry-apple-binaries/LICENSE.md"
     [[ -f "$SENTRY_LICENSE" ]] || { echo "Sentry license is missing from the resolved package: $SENTRY_LICENSE" >&2; exit 1; }
     cp "$SENTRY_LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/Sentry-MIT.txt"
 fi
