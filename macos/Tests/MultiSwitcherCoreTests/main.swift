@@ -77,6 +77,29 @@ private func testPauseStateExpiry() {
            "an indefinite pause has no automatic expiry")
 }
 
+private func testUpdateChannelSelection() {
+    let releases = [
+        PublishedRelease(tag: "v1.0.0-build2", version: "1.0.0", buildNumber: "2",
+                         isDraft: false, isPrerelease: false, publishedAt: "2026-10-12T10:00:00Z"),
+        PublishedRelease(tag: "beta-v1.1.0-build3", version: "1.1.0", buildNumber: "3",
+                         isDraft: false, isPrerelease: true, publishedAt: "2026-10-18T10:00:00Z"),
+        PublishedRelease(tag: "beta-v1.2.0-build4", version: "1.2.0", buildNumber: "4",
+                         isDraft: true, isPrerelease: true, publishedAt: "2026-10-19T10:00:00Z"),
+        PublishedRelease(tag: "v1.0.0-build9", version: "1.0.0", buildNumber: "9",
+                         isDraft: false, isPrerelease: false, publishedAt: "2026-10-19T10:00:00Z"),
+    ]
+    expect(UpdateChannelPolicy.select(releases, channel: .stable)?.tag == "v1.0.0-build9",
+           "stable channel selects the newest published stable release and ignores prereleases")
+    expect(UpdateChannelPolicy.select(releases, channel: .beta)?.tag == "beta-v1.1.0-build3",
+           "beta channel selects a published beta when it is newer than stable")
+    expect(UpdateChannelPolicy.isValidTag("beta-v0.3.0-build12", channel: .beta),
+           "beta release tags use an explicit beta prefix")
+    expect(!UpdateChannelPolicy.isValidTag("v0.3.0-build12", channel: .beta),
+           "stable tags cannot be misclassified as beta")
+    expect(!UpdateChannelPolicy.isValidTag("v999999999999999999999.0-build1", channel: .stable),
+           "oversized release numbers are rejected before comparison")
+}
+
 private func testAppendedInputPolicy() {
     expect(AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 3, trackedKeyCount: 3, suffix: "abc"
@@ -978,6 +1001,7 @@ if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--cleanup-revi
 testSpotlightTargetClassification()
 testGlobalSpaceShortcutsPreserveOnlyLayoutSwitchWords()
 testPauseStateExpiry()
+testUpdateChannelSelection()
 testAppendedInputPolicy()
 testAutomaticShortWordPolicy()
 testHyphenatedLayoutCorrectionPolicy()

@@ -22,5 +22,6 @@ jobs:
       - name: Build arm64 app bundle
         env:
           MULTISWITCHER_SIGN_IDENTITY: "-"
+          MULTISWITCHER_ENABLE_CRASH_REPORTING: "1"
           MULTISWITCHER_BUILD_ROOT: ${{ runner.temp }}/MultiSwitcher-CI-build
         run: bash macos/build_app.sh

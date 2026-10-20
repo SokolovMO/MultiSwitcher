@@ -1,6 +1,7 @@
 import CoreFoundation
 import Foundation
 import MultiSwitcherCore
+import MultiSwitcherCore
 import ServiceManagement
 
 /// Централизованное хранение настроек через UserDefaults
@@ -17,6 +18,7 @@ final class SettingsManager: @unchecked Sendable {
         static let layout2ID = "com.multiswitcher.layout2ID"
         static let debugLog = "com.multiswitcher.debugLog"
         static let checkUpdatesEnabled = "com.multiswitcher.checkUpdatesEnabled"
+        static let updateChannel = "com.multiswitcher.updateChannel"
         static let launchAtLogin = "com.multiswitcher.launchAtLogin"
         static let interfaceLanguage = "com.multiswitcher.interfaceLanguage"
         static let permissionsWereGranted = "com.multiswitcher.permissionsWereGranted"
@@ -245,6 +247,14 @@ final class SettingsManager: @unchecked Sendable {
     var checkUpdatesEnabled: Bool {
         get { defaults.object(forKey: Keys.checkUpdatesEnabled) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Keys.checkUpdatesEnabled) }
+    }
+
+    var updateChannel: UpdateChannel {
+        get {
+            let fallback = Bundle.main.object(forInfoDictionaryKey: "MSUpdateChannel") as? String ?? UpdateChannel.stable.rawValue
+            return UpdateChannel(rawValue: readString(Keys.updateChannel, default: fallback)) ?? .stable
+        }
+        set { write(newValue.rawValue, forKey: Keys.updateChannel) }
     }
 
     var debugLogEnabled: Bool {

@@ -57,6 +57,22 @@ BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO_PLIST"
 ENABLE_UPDATES="${MULTISWITCHER_ENABLE_UPDATES:-0}"
 UPDATE_REPO="${MULTISWITCHER_GITHUB_REPOSITORY:-}"
 DEVELOPER_TEAM_ID="${MULTISWITCHER_DEVELOPER_TEAM_ID:-}"
+UPDATE_CHANNEL="${MULTISWITCHER_UPDATE_CHANNEL:-stable}"
+ENABLE_CRASH_REPORTING="${MULTISWITCHER_ENABLE_CRASH_REPORTING:-0}"
+CRASH_REPORT_DSN="${MULTISWITCHER_SENTRY_DSN:-}"
+SWIFT_BUILD_SYSTEM="${MULTISWITCHER_SWIFT_BUILD_SYSTEM:-}"
+[[ "$UPDATE_CHANNEL" == "stable" || "$UPDATE_CHANNEL" == "beta" ]] || {
+    echo "MULTISWITCHER_UPDATE_CHANNEL must be stable or beta." >&2
+    exit 1
+}
+[[ "$ENABLE_CRASH_REPORTING" == "0" || "$ENABLE_CRASH_REPORTING" == "1" ]] || {
+    echo "MULTISWITCHER_ENABLE_CRASH_REPORTING must be 0 or 1." >&2
+    exit 1
+}
+if [[ -n "$CRASH_REPORT_DSN" && ! "$CRASH_REPORT_DSN" =~ ^https://[^/@]+@[^/]+/[0-9]+$ ]]; then
+    echo "MULTISWITCHER_SENTRY_DSN must be an HTTPS Sentry project DSN." >&2
+    exit 1
+fi
 if [[ "$ENABLE_UPDATES" == "1" ]]; then
     [[ "$UPDATE_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || {
         echo "Set MULTISWITCHER_GITHUB_REPOSITORY to owner/repository for release builds." >&2
@@ -69,6 +85,7 @@ if [[ "$ENABLE_UPDATES" == "1" ]]; then
 fi
 echo "Building $APP_NAME $VERSION ($BUILD_NUMBER) for arm64"
 echo "Staging directory: $BUILD_ROOT"
+export MULTISWITCHER_ENABLE_CRASH_REPORTING="$ENABLE_CRASH_REPORTING"
 
 mkdir -p "$BUILD_ROOT/module-cache"
 export CLANG_MODULE_CACHE_PATH="$BUILD_ROOT/module-cache"
@@ -88,6 +105,9 @@ SWIFT_OPTIONS=(
     -c release
     --arch arm64
 )
+if [[ -n "$SWIFT_BUILD_SYSTEM" ]]; then
+    SWIFT_OPTIONS+=(--build-system "$SWIFT_BUILD_SYSTEM")
+fi
 
 swift build "${SWIFT_OPTIONS[@]}" --product "$APP_NAME"
 BIN_DIR="$(swift build "${SWIFT_OPTIONS[@]}" --show-bin-path)"
@@ -101,12 +121,25 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources/Licenses" 
     "$APP_BUNDLE/Contents/Resources/Lexicons" "$APP_BUNDLE/Contents/Resources/Lexicons/Themes"
 cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 cp "$INFO_PLIST" "$APP_BUNDLE/Contents/Info.plist"
+if [[ "$ENABLE_CRASH_REPORTING" == "1" ]]; then
+    DSYM_BUNDLE="$BUILD_ROOT/$APP_NAME.app.dSYM"
+    /usr/bin/xcrun dsymutil "$APP_BUNDLE/Contents/MacOS/$APP_NAME" --out "$DSYM_BUNDLE"
+    [[ -s "$DSYM_BUNDLE/Contents/Resources/DWARF/$APP_NAME" ]] || {
+        echo "Sentry debug symbols are missing from the generated dSYM." >&2
+        exit 1
+    }
+    /usr/bin/dwarfdump --uuid "$DSYM_BUNDLE" | /usr/bin/grep -Fq "$APP_NAME"
+fi
 if [[ "$ENABLE_UPDATES" == "1" ]]; then
     INFO="$APP_BUNDLE/Contents/Info.plist"
-    /usr/libexec/PlistBuddy -c "Add :MSUpdateFeedURL string https://github.com/$UPDATE_REPO/releases/latest/download/version.json" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :MSReleaseBaseURL string https://github.com/$UPDATE_REPO/releases/download" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :MSReleasesURL string https://github.com/$UPDATE_REPO/releases" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :MSGitHubRepository string $UPDATE_REPO" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :MSUpdateChannel string $UPDATE_CHANNEL" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :MSDeveloperTeamID string $DEVELOPER_TEAM_ID" "$INFO"
+fi
+if [[ -n "$CRASH_REPORT_DSN" ]]; then
+    /usr/libexec/PlistBuddy -c "Add :MSCrashReportDSN string $CRASH_REPORT_DSN" "$APP_BUNDLE/Contents/Info.plist"
 fi
 cp "$PROJECT_DIR/MultiSwitcher.icns" "$APP_BUNDLE/Contents/Resources/MultiSwitcher.icns"
 cp "$PROJECT_DIR/icons/layout-ru.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-Layout-RU.svg"
@@ -122,6 +155,11 @@ cp "$REPO_DIR/dicts/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/FrequencyW
 python3 "$REPO_DIR/scripts/prepare_thematic_lexicons.py" "$REPO_DIR/dicts/themes" \
     "$APP_BUNDLE/Contents/Resources/Lexicons/Themes"
 cp "$REPO_DIR/dicts/themes/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/MultiSwitcher-Thematic-Lexicons-MIT.txt"
+if [[ "$ENABLE_CRASH_REPORTING" == "1" ]]; then
+    SENTRY_LICENSE="$BUILD_ROOT/swiftpm/checkouts/sentry-cocoa/LICENSE.md"
+    [[ -f "$SENTRY_LICENSE" ]] || { echo "Sentry license is missing from the resolved package: $SENTRY_LICENSE" >&2; exit 1; }
+    cp "$SENTRY_LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/Sentry-MIT.txt"
+fi
 printf 'APPL????' > "$APP_BUNDLE/Contents/PkgInfo"
 
 ARCHS="$(lipo -archs "$APP_BUNDLE/Contents/MacOS/$APP_NAME")"

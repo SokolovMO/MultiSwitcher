@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var badgeCache: [String: NSImage] = [:]  // монохромные плашки, чтобы не перерисовывать 2с-опросом
     func applicationDidFinishLaunching(_ notification: Notification) {
         SettingsManager.shared.clearExpiredPause()
+        CrashReporter.startIfConsented()
         UpdateChecker.checkOnLaunch()
         scheduleUpdateChecks()
         setupStatusItem()

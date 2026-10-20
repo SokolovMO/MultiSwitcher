@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+      - "beta-v*"
 
 permissions:
   contents: write
@@ -31,6 +32,10 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
           SIGNING_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
+          CRASH_REPORT_DSN: ${{ vars.MULTISWITCHER_SENTRY_DSN }}
+          SENTRY_ORG: ${{ vars.MULTISWITCHER_SENTRY_ORG_SLUG }}
+          SENTRY_PROJECT: ${{ vars.MULTISWITCHER_SENTRY_PROJECT_SLUG }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.MULTISWITCHER_SENTRY_AUTH_TOKEN }}
         run: |
           set -euo pipefail
           # Release tags must point at reviewed code already merged into main.
@@ -40,15 +45,25 @@ jobs:
           /usr/bin/git merge-base --is-ancestor "$release_commit" "$main_commit" || {
             echo "Release tag must point to a commit contained in main." >&2; exit 1;
           }
-          for name in CERTIFICATE CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD TEAM_ID SIGNING_IDENTITY; do
+          for name in CERTIFICATE CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD TEAM_ID SIGNING_IDENTITY CRASH_REPORT_DSN SENTRY_ORG SENTRY_PROJECT SENTRY_AUTH_TOKEN; do
             if [[ -z "${!name}" ]]; then echo "Missing required GitHub environment secret or variable: $name" >&2; exit 1; fi
           done
+          [[ "$CRASH_REPORT_DSN" =~ ^https://[^/@]+@[^/]+/[0-9]+$ ]] || { echo "MULTISWITCHER_SENTRY_DSN must be an HTTPS Sentry project DSN." >&2; exit 1; }
+          [[ "$SENTRY_ORG" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || { echo "MULTISWITCHER_SENTRY_ORG_SLUG must be a valid Sentry organization slug." >&2; exit 1; }
+          [[ "$SENTRY_PROJECT" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || { echo "MULTISWITCHER_SENTRY_PROJECT_SLUG must be a valid Sentry project slug." >&2; exit 1; }
           version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
           build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
           [[ "$build_number" =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "CFBundleVersion must be numeric." >&2; exit 1; }
-          expected_tag="v${version}-build${build_number}"
+          if [[ "$GITHUB_REF_NAME" == beta-v* ]]; then
+            channel=beta
+            expected_tag="beta-v${version}-build${build_number}"
+          else
+            channel=stable
+            expected_tag="v${version}-build${build_number}"
+          fi
           [[ "$GITHUB_REF_NAME" == "$expected_tag" ]] || { echo "Expected release tag $expected_tag, got $GITHUB_REF_NAME." >&2; exit 1; }
           [[ "$TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "Developer Team ID must be 10 uppercase letters or digits." >&2; exit 1; }
+          echo "MULTISWITCHER_RELEASE_CHANNEL=$channel" >> "$GITHUB_ENV"
 
       - name: Import Developer ID certificate into temporary keychain
         env:
@@ -74,12 +89,31 @@ jobs:
       - name: Build Developer ID app
         env:
           MULTISWITCHER_ENABLE_UPDATES: "1"
+          MULTISWITCHER_ENABLE_CRASH_REPORTING: "1"
           MULTISWITCHER_GITHUB_REPOSITORY: ${{ github.repository }}
+          MULTISWITCHER_UPDATE_CHANNEL: ${{ env.MULTISWITCHER_RELEASE_CHANNEL }}
+          MULTISWITCHER_SENTRY_DSN: ${{ vars.MULTISWITCHER_SENTRY_DSN }}
           MULTISWITCHER_DEVELOPER_TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
           MULTISWITCHER_SIGN_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
           MULTISWITCHER_CODESIGN_TIMESTAMP: "1"
           MULTISWITCHER_BUILD_ROOT: ${{ runner.temp }}/MultiSwitcher-release-build
         run: bash macos/build_app.sh
+
+      - name: Upload crash-reporting debug symbols
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.MULTISWITCHER_SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.MULTISWITCHER_SENTRY_ORG_SLUG }}
+          SENTRY_PROJECT: ${{ vars.MULTISWITCHER_SENTRY_PROJECT_SLUG }}
+          SENTRY_FORCE_ENV_TOKEN: "1"
+          SENTRY_CLI_NO_TELEMETRY: "1"
+          DO_NOT_TRACK: "1"
+        run: |
+          set -euo pipefail
+          INSTALL_DIR="$RUNNER_TEMP/sentry-cli"
+          curl -fsSL https://cli.sentry.dev/install | SENTRY_VERSION=0.42.2 SENTRY_INSTALL_DIR="$INSTALL_DIR" bash -s -- --no-modify-path --no-completions --no-agent-skills
+          SENTRY_CLI="$INSTALL_DIR/sentry"
+          "$SENTRY_CLI" --version
+          "$SENTRY_CLI" debug-files upload "$RUNNER_TEMP/MultiSwitcher-release-build/MultiSwitcher.app.dSYM" --type dsym --wait
 
       - name: Configure notarization credentials
         env:
@@ -102,6 +136,7 @@ jobs:
           APP="$RUNNER_TEMP/MultiSwitcher-release-build/MultiSwitcher.app"
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
           BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
+          CHANNEL="$MULTISWITCHER_RELEASE_CHANNEL"
           /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
           SIGNATURE=$(/usr/bin/codesign -dv --verbose=4 "$APP" 2>&1)
           /usr/bin/grep -Fxq "TeamIdentifier=$TEAM_ID" <<<"$SIGNATURE" || {
@@ -128,10 +163,12 @@ jobs:
           /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
           python3 scripts/create_update_manifest.py \
             --version "$VERSION" --build-number "$BUILD_NUMBER" --tag "$GITHUB_REF_NAME" \
+            --channel "$CHANNEL" \
             --repository "$GITHUB_REPOSITORY" \
             --dmg "$DMG" --output "$RUNNER_TEMP/version.json"
-          gh release create "$GITHUB_REF_NAME" "$DMG" "$RUNNER_TEMP/version.json" \
-            --verify-tag --draft --title "MultiSwitcher $VERSION" --generate-notes
+          RELEASE_ARGS=("$GITHUB_REF_NAME" "$DMG" "$RUNNER_TEMP/version.json" --verify-tag --draft --title "MultiSwitcher $VERSION ($CHANNEL)" --generate-notes)
+          if [[ "$CHANNEL" == "beta" ]]; then RELEASE_ARGS+=(--prerelease); fi
+          gh release create "${RELEASE_ARGS[@]}"
 
       - name: Remove signing material
         if: always()

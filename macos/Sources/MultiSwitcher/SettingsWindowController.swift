@@ -1037,27 +1037,63 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         y -= 22
 
         if UpdateChecker.isConfigured {
+            let channelLabel = NSTextField(labelWithString: L10n.settingsUpdateChannel)
+            channelLabel.frame = NSRect(x: 20, y: 355, width: 420, height: 20)
+            channelLabel.font = SystemTypography.font(.footnote, weight: .semibold)
+            view.addSubview(channelLabel)
+
+            let channelPopup = NSPopUpButton(frame: NSRect(x: 20, y: 324, width: 220, height: 26),
+                                             pullsDown: false)
+            channelPopup.addItem(withTitle: L10n.settingsUpdateStable)
+            channelPopup.lastItem?.representedObject = UpdateChannel.stable.rawValue
+            channelPopup.addItem(withTitle: L10n.settingsUpdateBeta)
+            channelPopup.lastItem?.representedObject = UpdateChannel.beta.rawValue
+            channelPopup.selectItem(at: SettingsManager.shared.updateChannel == .beta ? 1 : 0)
+            channelPopup.target = self
+            channelPopup.action = #selector(updateChannelChanged(_:))
+            view.addSubview(channelPopup)
+
             let updateCheck = NSButton(checkboxWithTitle: L10n.settingsCheckUpdates,
                                        target: self, action: #selector(updateChecksChanged(_:)))
-            updateCheck.frame = NSRect(x: 20, y: 312, width: 420, height: 22)
+            updateCheck.frame = NSRect(x: 20, y: 290, width: 420, height: 22)
             updateCheck.state = SettingsManager.shared.checkUpdatesEnabled ? .on : .off
             view.addSubview(updateCheck)
 
             let checkNow = NSButton(title: L10n.menuCheckUpdates, target: self,
                                     action: #selector(checkForUpdatesNow(_:)))
-            checkNow.frame = NSRect(x: 20, y: 270, width: 190, height: 30)
+            checkNow.frame = NSRect(x: 20, y: 250, width: 190, height: 30)
             view.addSubview(checkNow)
         }
 
+        if CrashReporter.isAvailable {
+            let crashReports = NSButton(checkboxWithTitle: L10n.settingsCrashReports,
+                                        target: self, action: #selector(crashReportsChanged(_:)))
+            crashReports.frame = NSRect(x: 20, y: 211, width: 420, height: 22)
+            crashReports.state = CrashReporter.isEnabled ? .on : .off
+            view.addSubview(crashReports)
+
+            let crashReportsHint = NSTextField(wrappingLabelWithString: L10n.settingsCrashReportsHint)
+            crashReportsHint.frame = NSRect(x: 20, y: 161, width: 420, height: 48)
+            crashReportsHint.font = SystemTypography.font(.footnote)
+            crashReportsHint.textColor = .secondaryLabelColor
+            view.addSubview(crashReportsHint)
+        } else {
+            let unavailable = NSTextField(wrappingLabelWithString: L10n.settingsCrashReportsUnavailable)
+            unavailable.frame = NSRect(x: 20, y: 190, width: 420, height: 38)
+            unavailable.font = SystemTypography.font(.footnote)
+            unavailable.textColor = .secondaryLabelColor
+            view.addSubview(unavailable)
+        }
+
         let localNotice = NSTextField(wrappingLabelWithString: L10n.settingsAboutLocalNotice)
-        localNotice.frame = NSRect(x: 20, y: 174, width: 420, height: 64)
+        localNotice.frame = NSRect(x: 20, y: 99, width: 420, height: 54)
         localNotice.font = SystemTypography.font(.footnote)
         localNotice.textColor = .secondaryLabelColor
         view.addSubview(localNotice)
 
         if ProfileStore.shared.isInRecoveryMode {
             let recoveryNote = NSTextField(wrappingLabelWithString: L10n.profileRecoveryNotice)
-            recoveryNote.frame = NSRect(x: 20, y: 92, width: 420, height: 58)
+            recoveryNote.frame = NSRect(x: 20, y: 38, width: 420, height: 52)
             recoveryNote.font = SystemTypography.font(.footnote)
             recoveryNote.textColor = .systemOrange
             view.addSubview(recoveryNote)
@@ -1065,7 +1101,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
             let restore = NSButton(title: L10n.profileRecoveryRestore,
                                    target: self, action: #selector(restorePreviousProfile))
-            restore.frame = NSRect(x: 20, y: 48, width: 240, height: 30)
+            restore.frame = NSRect(x: 20, y: 5, width: 240, height: 30)
             restore.isEnabled = ProfileStore.shared.canRestorePreviousProfile
             restore.setAccessibilityLabel(L10n.profileRecoveryRestore)
             view.addSubview(restore)
@@ -1500,6 +1536,17 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
     @objc private func updateChecksChanged(_ sender: NSButton) {
         SettingsManager.shared.checkUpdatesEnabled = sender.state == .on
+    }
+
+    @objc private func updateChannelChanged(_ sender: NSPopUpButton) {
+        guard let rawValue = sender.selectedItem?.representedObject as? String,
+              let channel = UpdateChannel(rawValue: rawValue) else { return }
+        SettingsManager.shared.updateChannel = channel
+        UpdateChecker.channelDidChange()
+    }
+
+    @objc private func crashReportsChanged(_ sender: NSButton) {
+        CrashReporter.setConsent(sender.state == .on)
     }
 
     @objc private func restorePreviousProfile() {

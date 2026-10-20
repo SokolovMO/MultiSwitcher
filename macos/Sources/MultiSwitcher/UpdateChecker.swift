@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import MultiSwitcherCore
 
 /// Проверяет наличие обновлений через GitHub
 @MainActor
@@ -10,17 +11,20 @@ enum UpdateChecker {
     private static let updateDefaults = UserDefaults.standard
 
     static var isConfigured: Bool {
-        guard let feed = configuredURL("MSUpdateFeedURL"),
+        guard let repository = Bundle.main.object(forInfoDictionaryKey: "MSGitHubRepository") as? String,
+              repository.range(of: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", options: .regularExpression) != nil,
               let releaseBase = configuredURL("MSReleaseBaseURL"),
+              let releasesURL = configuredURL("MSReleasesURL"),
               let teamID = Bundle.main.object(forInfoDictionaryKey: "MSDeveloperTeamID") as? String,
               teamID.range(of: "^[A-Z0-9]{10}$", options: .regularExpression) != nil else { return false }
-        return feed.path.hasSuffix("/releases/latest/download/version.json")
-            && releaseBase.path.hasSuffix("/releases/download")
+        return releaseBase.absoluteString == "https://github.com/\(repository)/releases/download"
+            && releasesURL.absoluteString == "https://github.com/\(repository)/releases"
     }
 
     private static func configuredURL(_ key: String) -> URL? {
         guard let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String,
-              let url = URL(string: raw), url.scheme == "https", url.host == "github.com" else { return nil }
+              let url = URL(string: raw), url.scheme == "https", url.host == "github.com",
+              url.user == nil, url.password == nil, url.query == nil, url.fragment == nil else { return nil }
         return url
     }
 
@@ -38,11 +42,41 @@ enum UpdateChecker {
         let version: String
         let buildNumber: String?
         let tag: String?
+        let channel: String?
         let url: String?
         let notes: String?
         let sha256: String?
 
-        var updateIdentifier: String { "\(version)#\(buildNumber ?? "")" }
+        var releaseChannel: UpdateChannel { UpdateChannel(rawValue: channel ?? "stable") ?? .stable }
+        var updateIdentifier: String { "\(releaseChannel.rawValue)#\(version)#\(buildNumber ?? "")" }
+    }
+
+    private struct GitHubRelease: Decodable {
+        struct Asset: Decodable {
+            let name: String
+            let browserDownloadURL: String
+
+            enum CodingKeys: String, CodingKey {
+                case name
+                case browserDownloadURL = "browser_download_url"
+            }
+        }
+
+        let tagName: String
+        let draft: Bool
+        let prerelease: Bool
+        let publishedAt: String?
+        let createdAt: String
+        let assets: [Asset]
+
+        enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+            case draft
+            case prerelease
+            case publishedAt = "published_at"
+            case createdAt = "created_at"
+            case assets
+        }
     }
 
     /// Проверить при запуске (с задержкой 5 сек, не чаще раза в сутки).
@@ -75,10 +109,15 @@ enum UpdateChecker {
         Task { await check(silent: false) }
     }
 
+    static func channelDidChange() {
+        updateDefaults.removeObject(forKey: lastCheckKey)
+        updateDefaults.removeObject(forKey: skippedVersionKey)
+        checkNow()
+    }
+
     private static func check(silent: Bool) async {
         guard let info = await fetchApplicableInfo() else {
-            // The stable feed could not be reached (for example, a network error).
-            rslog("UpdateChecker: stable feed unreachable")
+            rslog("UpdateChecker: GitHub Releases lookup unavailable")
             if !silent { await showErrorAlert() }
             return
         }
@@ -101,11 +140,75 @@ enum UpdateChecker {
 
     /// Загружает только HTTPS-фид, зашитый в подписанное приложение.
     private static func fetchApplicableInfo() async -> VersionInfo? {
-        guard isConfigured, let feed = configuredURL("MSUpdateFeedURL") else { return nil }
-        return await fetchInfo(from: feed.absoluteString)
+        guard isConfigured,
+              let repository = Bundle.main.object(forInfoDictionaryKey: "MSGitHubRepository") as? String else { return nil }
+        let requestedChannel = SettingsManager.shared.updateChannel
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.github.com"
+        components.path = "/repos/\(repository)/releases"
+        if requestedChannel == .stable {
+            components.path += "/latest"
+        } else {
+            components.queryItems = [URLQueryItem(name: "per_page", value: "100")]
+        }
+        guard let releasesURL = components.url else { return nil }
+
+        do {
+            var request = URLRequest(url: releasesURL)
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            request.setValue("MultiSwitcher/\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")",
+                             forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await updateSession.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  data.count <= 2 * 1024 * 1024 else { return nil }
+            let releases: [GitHubRelease]
+            if requestedChannel == .stable {
+                releases = [try JSONDecoder().decode(GitHubRelease.self, from: data)]
+            } else {
+                releases = try JSONDecoder().decode([GitHubRelease].self, from: data)
+            }
+            guard let candidate = UpdateChannelPolicy.select(
+                releases.compactMap(policyRelease), channel: requestedChannel
+            ),
+                  let release = releases.first(where: { $0.tagName == candidate.tag }),
+                  let asset = release.assets.first(where: { $0.name == "version.json" }),
+                  isExpectedGitHubAsset(asset.browserDownloadURL, repository: repository,
+                                        tag: release.tagName, name: "version.json") else { return nil }
+            guard let info = await fetchInfo(from: asset.browserDownloadURL),
+                  info.tag == release.tagName,
+                  info.releaseChannel == (release.prerelease ? .beta : .stable),
+                  info.url == "https://github.com/\(repository)/releases/download/\(release.tagName)/MultiSwitcher-\(info.version)-arm64.dmg" else { return nil }
+            return info
+        } catch {
+            rslog("UpdateChecker GitHub release lookup failed: \(error.localizedDescription)")
+            return nil
+        }
     }
 
-    /// Скачивает и декодирует VersionInfo из стабильного фида.
+    private static func policyRelease(_ release: GitHubRelease) -> PublishedRelease? {
+        let channel: UpdateChannel = release.prerelease ? .beta : .stable
+        guard UpdateChannelPolicy.isValidTag(release.tagName, channel: channel) else { return nil }
+        let prefix = channel == .beta ? "beta-v" : "v"
+        let value = String(release.tagName.dropFirst(prefix.count))
+        guard let marker = value.range(of: "-build") else { return nil }
+        let version = String(value[..<marker.lowerBound])
+        let build = String(value[marker.upperBound...])
+        return PublishedRelease(tag: release.tagName, version: version, buildNumber: build,
+                                isDraft: release.draft, isPrerelease: release.prerelease,
+                                publishedAt: release.publishedAt ?? release.createdAt)
+    }
+
+    private static func isExpectedGitHubAsset(_ rawURL: String, repository: String,
+                                               tag: String, name: String) -> Bool {
+        guard let url = URL(string: rawURL), url.scheme == "https", url.host == "github.com" else {
+            return false
+        }
+        return url.path == "/\(repository)/releases/download/\(tag)/\(name)"
+    }
+
+    /// Скачивает и проверяет метаданные выбранного канала.
     private static func fetchInfo(from urlString: String) async -> VersionInfo? {
         guard let url = URL(string: urlString), url.scheme == "https", url.host == "github.com" else { return nil }
         do {
@@ -114,13 +217,17 @@ enum UpdateChecker {
                   data.count <= 128 * 1024 else { return nil }
             let info = try JSONDecoder().decode(VersionInfo.self, from: data)
             guard info.version.range(of: "^[0-9]+(\\.[0-9]+){1,3}$", options: .regularExpression) != nil,
-                  info.buildNumber == nil || info.buildNumber?.range(of: "^[0-9]+(\\.[0-9]+)*$", options: .regularExpression) != nil,
-                  info.buildNumber == nil || info.tag == "v\(info.version)-build\(info.buildNumber ?? "")",
+                  let buildNumber = info.buildNumber,
+                  buildNumber.range(of: "^[0-9]+(\\.[0-9]+)*$", options: .regularExpression) != nil,
+                  let channel = UpdateChannel(rawValue: info.channel ?? "stable"),
+                  let tag = info.tag,
+                  UpdateChannelPolicy.isValidTag(tag, channel: channel),
+                  tag == "\(channel == .beta ? "beta-v" : "v")\(info.version)-build\(buildNumber)",
                   let sha = info.sha256,
                   sha.range(of: "^[0-9a-fA-F]{64}$", options: .regularExpression) != nil else { return nil }
             return info
         } catch {
-            rslog("UpdateChecker fetch \(urlString): \(error)")
+            rslog("UpdateChecker manifest fetch failed: \(error.localizedDescription)")
             return nil
         }
     }
@@ -130,7 +237,8 @@ enum UpdateChecker {
         alert.alertStyle = .informational
         alert.messageText = L10n.updateAvailable
         let buildLine = info.buildNumber.map { " (build \($0))" } ?? ""
-        alert.informativeText = "\(L10n.updateNewVersion) \(info.version)\(buildLine)\n\(info.notes ?? "")"
+        let channelLine = info.releaseChannel == .beta ? "\n\(L10n.updateBetaChannel)" : ""
+        alert.informativeText = "\(L10n.updateNewVersion) \(info.version)\(buildLine)\(channelLine)\n\(info.notes ?? "")"
         alert.addButton(withTitle: L10n.updateInstallRestart)  // 1st
         alert.addButton(withTitle: L10n.updateDownload)         // 2nd
         alert.addButton(withTitle: L10n.updateSkip)             // 3rd
@@ -141,7 +249,7 @@ enum UpdateChecker {
         case .alertFirstButtonReturn:
             await installAndRestart(info: info)
         case .alertSecondButtonReturn:
-            openReleasePage()
+            openReleasePage(tag: info.tag)
         case .alertThirdButtonReturn:
             updateDefaults.set(info.updateIdentifier, forKey: skippedVersionKey)
         default:
@@ -339,15 +447,23 @@ enum UpdateChecker {
 
     private static func releaseDMGURL(info: VersionInfo) -> URL? {
         guard isConfigured, let base = configuredURL("MSReleaseBaseURL") else { return nil }
-        let tag = info.tag ?? "v\(info.version)"
-        guard tag.range(of: "^v[0-9]+(\\.[0-9]+){1,3}(?:-build[0-9]+(?:\\.[0-9]+)*)?$",
-                        options: .regularExpression) != nil else { return nil }
+        guard let tag = info.tag,
+              UpdateChannelPolicy.isValidTag(tag, channel: info.releaseChannel) else { return nil }
         return base.appendingPathComponent(tag)
             .appendingPathComponent("MultiSwitcher-\(info.version)-arm64.dmg")
     }
 
-    private static func openReleasePage() {
-        guard let url = configuredURL("MSReleasesURL") else { return }
+    private static func openReleasePage(tag: String? = nil) {
+        guard let releasesURL = configuredURL("MSReleasesURL") else { return }
+        let url: URL
+        if let tag,
+           let repository = Bundle.main.object(forInfoDictionaryKey: "MSGitHubRepository") as? String,
+           UpdateChannelPolicy.isValidTag(tag, channel: tag.hasPrefix("beta-") ? .beta : .stable),
+           let releaseURL = URL(string: "https://github.com/\(repository)/releases/tag/\(tag)") {
+            url = releaseURL
+        } else {
+            url = releasesURL
+        }
         NSWorkspace.shared.open(url)
     }
 

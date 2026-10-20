@@ -214,6 +214,13 @@ enum L10n {
     static var supportReportShare: String { s("support.report.share") }
     static var supportReportUnavailable: String { s("support.report.unavailable") }
     static var settingsCheckUpdates: String { s("settings.checkUpdates") }
+    static var settingsUpdateChannel: String { s("settings.updateChannel") }
+    static var settingsUpdateStable: String { s("settings.updateChannel.stable") }
+    static var settingsUpdateBeta: String { s("settings.updateChannel.beta") }
+    static var updateBetaChannel: String { s("update.betaChannel") }
+    static var settingsCrashReports: String { s("settings.crashReports") }
+    static var settingsCrashReportsHint: String { s("settings.crashReports.hint") }
+    static var settingsCrashReportsUnavailable: String { s("settings.crashReports.unavailable") }
     static func settingsImportPuntoDetails(_ rows: Int, _ supported: Int, _ added: Int, _ existing: Int, _ learned: Int, _ unsupported: Int) -> String {
         String(format: s("settings.importPunto.details"), rows, supported, added, existing, learned, unsupported)
     }
@@ -303,6 +310,7 @@ enum L10n {
             "update.downloadCorrupted": "The downloaded file failed its integrity check. Try downloading it again from GitHub Releases.",
             "update.integrityFailed": "The update authenticity check failed. Installation was cancelled.",
             "update.downloadFailed": "Could not download the update. Check your internet connection.",
+            "update.betaChannel": "Open beta release",
             "menu.settings": "Settings…",
             "menu.quit": "Quit",
 
@@ -347,6 +355,12 @@ enum L10n {
             "onboard.autoConvert.text": "MultiSwitcher can fix the keyboard layout automatically as you type. It's off by default. The manual trigger (Option) always works and undoes a fix. Enable automatic conversion now?",
             "settings.tab.exceptions": "Autocorrection",
             "settings.tab.rules": "Rules",
+            "settings.updateChannel": "Update channel",
+            "settings.updateChannel.stable": "Stable",
+            "settings.updateChannel.beta": "Open beta",
+            "settings.crashReports": "Send crash reports",
+            "settings.crashReports.hint": "Optional. Sends unhandled crash details, stack frames, app/macOS versions, and limited technical runtime context to Sentry. Never sends typed text, clipboard, windows, rules, or dictionaries. Sentry receives normal network metadata such as your IP address. Turn this off any time.",
+            "settings.crashReports.unavailable": "Crash reports are not configured for this build. No diagnostic data is sent automatically.",
             "settings.expandPage": "Expand this page to fill the window",
             "settings.restoreSidebar": "Show the sidebar again",
             "settings.compactMode": "Use compact settings rows",
@@ -460,7 +474,7 @@ enum L10n {
             "settings.importPunto.failure": "Could not import Punto Switcher data",
             "settings.importPunto.appliedDetails": "%d rule rows were copied (%d retain unverified matching details). %d learning entries were imported; %d source entries were omitted. Backup: %@.",
             "settings.importPunto.details": "%d rule rows scanned; %d unique supported words (%d added, %d already present). %d learned-history entries were kept separate. %d unsupported rows were skipped.",
-            "settings.about.localNotice": "MultiSwitcher processes text on this Mac. If updates are configured, it checks GitHub Releases; typed text is never sent.",
+            "settings.about.localNotice": "Text conversion and dictionaries stay on this Mac. Update checks contact GitHub. Crash reports remain off unless you enable them above; see the Privacy Policy for details.",
             "profile.recovery.notice": "The saved profile could not be read, so profile changes cannot be saved. The damaged file is preserved. You can try restoring the previous saved copy below.",
             "profile.recovery.restore": "Restore previous profile…",
             "profile.recovery.restored": "Previous profile restored. Your damaged file remains in the recovery backups.",
@@ -523,6 +537,7 @@ enum L10n {
             "update.downloadCorrupted": "Файл не прошёл проверку целостности. Попробуйте скачать его снова из GitHub Releases.",
             "update.integrityFailed": "Подлинность обновления не подтверждена. Установка отменена.",
             "update.downloadFailed": "Не удалось скачать обновление. Проверьте интернет-соединение.",
+            "update.betaChannel": "Открытая тестовая версия",
             "menu.settings": "Настройки…",
             "menu.quit": "Выход",
 
@@ -567,6 +582,12 @@ enum L10n {
             "onboard.autoConvert.text": "MultiSwitcher может исправлять раскладку автоматически по ходу набора. По умолчанию выключено. Ручной триггер (Option) всегда работает — им же отменяется замена. Включить автоматическую конверсию сейчас?",
             "settings.tab.exceptions": "Автокоррекция",
             "settings.tab.rules": "Правила",
+            "settings.updateChannel": "Канал обновлений",
+            "settings.updateChannel.stable": "Стабильный",
+            "settings.updateChannel.beta": "Открытая бета",
+            "settings.crashReports": "Отправлять отчёты о сбоях",
+            "settings.crashReports.hint": "Необязательно. В Sentry отправляются сведения о необработанном сбое, стек вызовов, версии приложения и macOS и ограниченные технические данные среды. Набранный текст, буфер обмена, окна, правила и словари не отправляются. Sentry получает обычные сетевые данные, например IP-адрес. Отправку можно отключить в любой момент.",
+            "settings.crashReports.unavailable": "Сбор отчётов не настроен в этой сборке. Диагностические данные автоматически не отправляются.",
             "settings.expandPage": "Развернуть страницу на всё окно",
             "settings.restoreSidebar": "Вернуть боковую панель",
             "settings.compactMode": "Компактный вид настроек",
@@ -679,7 +700,7 @@ enum L10n {
             "settings.importPunto.failure": "Не удалось импортировать данные Punto Switcher",
             "settings.importPunto.appliedDetails": "Скопировано строк правил: %d (для %d способ сопоставления пока не подтверждён). Записей истории обучения: %d; пропущено записей источника: %d. Резервная копия: %@.",
             "settings.importPunto.details": "Проверено строк правил: %d; уникальных поддерживаемых слов: %d (добавлено %d, уже было %d). Записей обученной истории: %d, они сохранены отдельно. Пропущено неподдерживаемых строк: %d.",
-            "settings.about.localNotice": "MultiSwitcher обрабатывает текст на этом Mac. При настроенных обновлениях приложение проверяет GitHub Releases; введённый текст не отправляется.",
+            "settings.about.localNotice": "Текст и словари обрабатываются на этом Mac. Проверка обновлений обращается к GitHub. Отчёты о сбоях выключены, пока вы не включите их выше. Подробности — в политике конфиденциальности.",
             "profile.recovery.notice": "Не удалось прочитать сохранённый профиль, поэтому новые настройки не сохраняются. Повреждённый файл сохранён. Ниже можно попробовать восстановить предыдущую копию.",
             "profile.recovery.restore": "Восстановить предыдущий профиль…",
             "profile.recovery.restored": "Предыдущий профиль восстановлен. Исходный файл сохранён в резервных копиях восстановления.",
