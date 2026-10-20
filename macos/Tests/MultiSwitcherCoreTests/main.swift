@@ -791,14 +791,14 @@ private func testClipboardRestoreRequiresOwnership() {
 
 private func testDiagnosticLogRedaction() {
     let fakeCredential = "ghp_" + String(repeating: "A", count: 36)
-    let raw = "path=/Users/example-user/Library/Logs/app.log\nother=/Users/other-person/Documents/private.txt\nbundle=com.example.editor\nquery=private words\nurl=https://example.com/private?token=abc\nopened https://example.org/secret/path\ncontact person@example.com\nremote 192.0.2.4\ncredential \(fakeCredential)"
+    let raw = "path=/Users/example-user/Library/Logs/app.log\nother=/Users/other-person/Documents/private.txt\nbundle=com.example.editor\nquery=private words\nurl=https://example.com/private?token=abc\nopened https://example.org/secret/path\ncontact person@example.com\nremote 192.0.2.4\nremote6 2001:db8::1\ncredential \(fakeCredential)"
     let report = DiagnosticLogRedactor.redact(raw, homeDirectory: "/Users/example-user")
     expect(report.contains("~/Library/Logs/app.log") && report.contains("[local-path]"),
            "diagnostic reports redact the home directory and other absolute local paths")
     expect(report.contains("[app-id]"), "diagnostic reports redact third-party bundle identifiers")
     expect(!report.contains("com.example.editor") && !report.contains("private words")
            && !report.contains("example.com/private") && !report.contains("example.org/secret") && !report.contains("person@example.com")
-           && !report.contains("192.0.2.4") && !report.contains(fakeCredential),
+           && !report.contains("192.0.2.4") && !report.contains("2001:db8::1") && !report.contains(fakeCredential),
            "diagnostic reports redact message values, URLs, emails, IP addresses, and credentials before preview")
 }
 

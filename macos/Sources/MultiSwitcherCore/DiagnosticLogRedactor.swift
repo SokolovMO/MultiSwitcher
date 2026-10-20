@@ -31,6 +31,11 @@ public enum DiagnosticLogRedactor {
             template: "[credential]"
         )
         result = replacing(
+            pattern: #"(?i)(?<![0-9a-f:])(?:[0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}(?![0-9a-f:])"#,
+            in: result,
+            template: "[ip]"
+        )
+        result = replacing(
             pattern: #"(?i)(?<![A-Za-z0-9])(?:\d{1,3}\.){3}\d{1,3}(?![A-Za-z0-9])"#,
             in: result,
             template: "[ip]"
