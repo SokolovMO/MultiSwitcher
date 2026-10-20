@@ -77,8 +77,6 @@ enum CrashReporter {
             options.enableAutoBreadcrumbTracking = false
             options.enableAutoPerformanceTracing = false
             options.tracesSampleRate = 0
-            options.attachScreenshot = false
-            options.attachViewHierarchy = false
             options.beforeSend = { event in
                 guard defaults.bool(forKey: consentKey) else { return nil }
                 if let revokedAt = UserDefaults.standard.object(forKey: revokedAtKey) as? Date,
