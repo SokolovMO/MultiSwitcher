@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Run core checks
         run: swift run --package-path macos MultiSwitcherCoreTests
+      - name: Check signed appcast release gate
+        run: python3 scripts/test_sparkle_appcast_validator.py
       - name: Check selected-text conversion with native keyboard maps
         run: bash scripts/check_selection_conversion.sh
       - name: Build arm64 app bundle
@@ -27,3 +29,7 @@ jobs:
           MULTISWITCHER_ENABLE_CRASH_REPORTING: "1"
           MULTISWITCHER_BUILD_ROOT: ${{ runner.temp }}/MultiSwitcher-CI-build
         run: bash macos/build_app.sh
+      - name: Compile Sparkle updater branch
+        env:
+          MULTISWITCHER_ENABLE_UPDATES: "1"
+        run: swift build --package-path macos --product MultiSwitcher

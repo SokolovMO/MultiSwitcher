@@ -14,6 +14,20 @@ private enum CheckCounter {
     nonisolated(unsafe) static var total = 0
 }
 
+private func testTrailingKeyboardPunctuation() {
+    let caret = KeyboardPunctuationPolicy.splitTrailing(from: "utybq^")
+    expect(caret.coreLength == 5 && caret.suffix == "^",
+           "US Shift+6 punctuation is split from a wrong-layout word before dictionary lookup")
+
+    let question = KeyboardPunctuationPolicy.splitTrailing(from: "gthtdtkjcm?")
+    expect(question.coreLength == 10 && question.suffix == "?",
+           "question punctuation remains outside the candidate word")
+
+    let apostropheWord = KeyboardPunctuationPolicy.splitTrailing(from: "'nj")
+    expect(apostropheWord.coreLength == 3 && apostropheWord.suffix.isEmpty,
+           "a leading apostrophe key that can represent a Russian letter stays in the token")
+}
+
 private func propertyListData(_ value: Any) throws -> Data {
     try PropertyListSerialization.data(fromPropertyList: value, format: .xml, options: 0)
 }
@@ -129,6 +143,9 @@ private func testAutomaticShortWordPolicy() {
         typed: "to", converted: "ещ", currentLanguage: "en", otherLanguage: "ru"
     ) == .keep, "a common English short word is preserved")
     expect(ShortWordPolicy.decide(
+        typed: "yt", converted: "не", currentLanguage: "en", otherLanguage: "ru"
+    ) == .convert, "the reported two-letter word maps to a curated common Russian word")
+    expect(ShortWordPolicy.decide(
         typed: "xx", converted: "чч", currentLanguage: "en", otherLanguage: "ru"
     ) == .undecided, "unknown short combinations remain unchanged")
     expect(ShortWordPolicy.decide(
@@ -145,6 +162,56 @@ private func testModifiedBackspaceInvalidatesTrackedText() {
            == .invalidateTrackedText, "Option-Backspace invalidates the buffer after deleting a word")
     expect(KeyboardBufferEditPolicy.backspaceDisposition(command: false, option: false, control: true)
            == .invalidateTrackedText, "Control-Backspace invalidates the buffer after a modified delete")
+}
+
+private func testSerialReplacementQueueIsBoundedAndFIFO() {
+    var queue = SerialReplacementQueue<String>(capacity: 2)
+    let acceptedFirst = queue.enqueue("first")
+    let acceptedSecond = queue.enqueue("second")
+    let rejectedOverflow = queue.enqueue("overflow")
+    expect(acceptedFirst && acceptedSecond && !rejectedOverflow,
+           "replacement queue accepts up to its configured waiting capacity")
+
+    let first = queue.beginNext()
+    expect(first == "first" && queue.isActive && queue.pendingCount == 1,
+           "starting a replacement removes the FIFO head and marks one operation active")
+    let concurrentStart = queue.beginNext()
+    expect(concurrentStart == nil,
+           "a second replacement cannot start before the active one finishes")
+
+    let acceptedWhileActive = queue.enqueue("third")
+    let rejectedWhileFull = queue.enqueue("fourth")
+    expect(acceptedWhileActive && !rejectedWhileFull,
+           "queue capacity bounds waiting work while allowing one active operation")
+
+    queue.finishCurrent()
+    let second = queue.beginNext()
+    expect(second == "second", "the second replacement starts after the first completes")
+    queue.finishCurrent()
+    let third = queue.beginNext()
+    expect(third == "third", "newer replacement remains ordered behind earlier work")
+    queue.finishCurrent()
+    let empty = queue.beginNext()
+    expect(empty == nil && !queue.isActive,
+           "an empty queue has no active operation")
+}
+
+private func testBufferReplacementLifecycleTracksExactUndoDirection() {
+    var lifecycle = BufferReplacementLifecycle()
+    expect(lifecycle.toggle() == nil,
+           "an uncommitted buffer replacement cannot produce undo evidence")
+    lifecycle.commit(operationID: "buffer-op-1")
+    expect(lifecycle.isConverted && lifecycle.operationID == "buffer-op-1",
+           "a confirmed replacement starts in converted state with its operation ID")
+    expect(lifecycle.toggle() == "buffer-op-1" && !lifecycle.isConverted,
+           "the reverse toggle restores source text and identifies the undone operation")
+    expect(lifecycle.toggle() == nil && lifecycle.isConverted,
+           "toggling forward cannot be mistaken for another undo")
+    expect(lifecycle.toggle() == "buffer-op-1" && !lifecycle.isConverted,
+           "a later exact return to source keeps the same operation identity")
+    lifecycle.clear()
+    expect(lifecycle.operationID == nil && !lifecycle.isConverted,
+           "clearing replacement state removes stale undo evidence")
 }
 
 private func testBundledWordLexicon() {
@@ -252,6 +319,9 @@ private func testPuntoHistoryIsPreservedAndRuleProvenance() throws {
            "user rules survive import")
     expect(destination.learning.contains(where: { $0.word == "local" && $0.origin == .local }),
            "local learning survives import")
+    expect(destination.learning.first(where: { $0.word == "custom-link" })?.cancellationCount == 0
+           && destination.learning.first(where: { $0.word == "custom-link" })?.importedCancellationCount == 2,
+           "Punto history stays visible but does not count as fresh local learning evidence")
     expect(destination.learning.count == 4, "all source history and local history remain present")
     let preserved = Set(destination.learning.map(\.word))
     expect(preserved.contains("custom-history-a") && preserved.contains("custom-history-b")
@@ -286,6 +356,213 @@ private func testLearningNeedsTwoAutomaticUndos() throws {
            "short combinations are ignored")
 }
 
+private func testManualOptionLearningNeedsReview() {
+    var profile = MultiSwitcherProfile()
+    let first = LearningEngine.recordManualOptionRoundTrip(word: "cmd", in: &profile)
+    expect(first == .manualCandidate(roundTrips: 1), "first manual round trip is recorded as a candidate")
+    expect(profile.learning.first?.cancellationCount == 0 && profile.rules.isEmpty,
+           "manual Option does not count as an automatic undo or activate an exception")
+    let second = LearningEngine.recordManualOptionRoundTrip(word: "cmd", in: &profile)
+    expect(second == .manualCandidate(roundTrips: 2), "second complete Option round trip reaches review")
+    expect(profile.rules.isEmpty, "manual candidate still needs explicit confirmation")
+    expect(LearningEngine.confirmManualCandidate(word: "cmd", in: &profile),
+           "review action confirms the manual candidate")
+    expect(profile.rules.contains(where: {
+        $0.pattern == "cmd" && $0.origin == .learned && $0.action == .neverConvert
+    }), "confirmed manual candidate becomes a learned exact exclusion")
+    expect(LearningEngine.recordManualOptionRoundTrip(word: "cmd", in: &profile) == .alreadyExcluded,
+           "active exclusion cannot accumulate another manual candidate")
+    expect(LearningEngine.recordManualOptionRoundTrip(word: "multi word", in: &profile) == .ineligible,
+           "multiword selection cannot become a single-word learning candidate")
+}
+
+private func testLearningCandidatesAppearBeforeImportedHistory() {
+    let entries = [
+        LearningEntry(word: "z-punto", cancellationCount: 0, origin: .punto),
+        LearningEntry(word: "a-pending", cancellationCount: 1, origin: .local),
+        LearningEntry(word: "b-candidate", cancellationCount: 0, origin: .local,
+                      manualRoundTripCount: LearningEngine.requiredManualRoundTrips),
+        LearningEntry(word: "c-excluded", cancellationCount: 0, isExcluded: true, origin: .local),
+    ]
+
+    let ordered = LearningEngine.sortedForReview(entries).map(\.word)
+    expect(ordered == ["b-candidate", "c-excluded", "a-pending", "z-punto"],
+           "actionable manual candidates appear before local evidence and imported Punto history")
+}
+
+private func testManualOptionLearningRequiresExactToggleChain() {
+    var evidence = ManualOptionLearningEvidence(
+        operationID: "manual-1", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 10
+    )
+    let toggledForward = evidence.completeToggle(
+        operationID: "manual-1", undoneOperationID: nil, processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 10,
+        resultingContextGeneration: 11
+    )
+    expect(toggledForward == false, "the conversion toggle advances evidence without learning")
+    let restored = evidence.completeToggle(
+        operationID: "manual-1", undoneOperationID: "manual-1", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 11,
+        resultingContextGeneration: 12
+    )
+    expect(restored == true && evidence.textContextGeneration == 12,
+           "only the exact return toggle in the same field completes a round trip")
+    expect(evidence.completeToggle(
+        operationID: "manual-1", undoneOperationID: "manual-1", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 99,
+        resultingContextGeneration: 100
+    ) == nil, "moving the text context invalidates manual learning evidence")
+
+    var otherField = ManualOptionLearningEvidence(
+        operationID: "manual-2", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 20
+    )
+    expect(otherField.completeToggle(
+        operationID: "manual-2", undoneOperationID: "manual-2", processIdentifier: 43,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 20,
+        resultingContextGeneration: 21
+    ) == nil, "switching applications cannot count toward learning")
+
+    var profile = MultiSwitcherProfile()
+    var cycles = ManualOptionLearningEvidence(
+        operationID: "cmd-toggle", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 30
+    )
+    for cycle in 0..<2 {
+        let generation = UInt64(30 + cycle * 2)
+        let forward = cycles.completeToggle(
+            operationID: "cmd-toggle", undoneOperationID: nil, processIdentifier: 42,
+            bundleIdentifier: "com.example.Editor", textContextGeneration: generation,
+            resultingContextGeneration: generation + 1
+        )
+        if forward == true {
+            _ = LearningEngine.recordManualOptionRoundTrip(word: cycles.word, in: &profile)
+        }
+        let back = cycles.completeToggle(
+            operationID: "cmd-toggle", undoneOperationID: "cmd-toggle", processIdentifier: 42,
+            bundleIdentifier: "com.example.Editor", textContextGeneration: generation + 1,
+            resultingContextGeneration: generation + 2
+        )
+        if back == true {
+            _ = LearningEngine.recordManualOptionRoundTrip(word: cycles.word, in: &profile)
+        }
+    }
+    expect(profile.learning.first(where: { $0.word == "cmd" })?.manualRoundTripCount == 2,
+           "two exact manual Option round trips create a visible review candidate")
+}
+
+private func testQueuedManualOptionToggleCanFollowItsOwnReplacement() {
+    let evidence = ManualOptionLearningEvidence(
+        operationID: "manual-queued", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", inputGeneration: 20,
+        textContextGeneration: 11
+    )
+    expect(evidence.matchesQueuedToggle(
+        snapshotInputGeneration: 20,
+        snapshotTextContextGeneration: 10,
+        currentInputGeneration: 20,
+        currentTextContextGeneration: 11,
+        processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor",
+        operationID: "manual-queued"
+    ), "a queued Option toggle may follow the successful replacement that advanced its own context")
+    expect(!evidence.matchesQueuedToggle(
+        snapshotInputGeneration: 20,
+        snapshotTextContextGeneration: 10,
+        currentInputGeneration: 21,
+        currentTextContextGeneration: 11,
+        processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor",
+        operationID: "manual-queued"
+    ), "typing after the captured Option tap invalidates the queued continuation")
+    expect(!evidence.matchesQueuedToggle(
+        snapshotInputGeneration: 20,
+        snapshotTextContextGeneration: 10,
+        currentInputGeneration: 20,
+        currentTextContextGeneration: 11,
+        processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor",
+        operationID: "different-operation"
+    ), "an unrelated replacement cannot rebase a queued Option toggle")
+
+    var continued = evidence
+    let restored = continued.completeToggle(
+        operationID: "manual-queued",
+        undoneOperationID: "manual-queued",
+        processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor",
+        inputGeneration: 20,
+        textContextGeneration: 11,
+        resultingContextGeneration: 12
+    )
+    expect(restored == true && continued.textContextGeneration == 12,
+           "a rebased queued return toggle can complete the same learning cycle")
+}
+
+private func testTenManualOptionTapsCreateVisibleReviewCandidate() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Manual-Learning-\\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = ProfileStore(rootURL: root)
+    var evidence = ManualOptionLearningEvidence(
+        operationID: "cmd-ten-taps", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 50
+    )
+    var generation: UInt64 = 50
+    var isConverted = true
+
+    for _ in 1...10 {
+        isConverted.toggle()
+        generation += 1
+        let restored = evidence.completeToggle(
+            operationID: "cmd-ten-taps",
+            undoneOperationID: isConverted ? nil : "cmd-ten-taps",
+            processIdentifier: 42,
+            bundleIdentifier: "com.example.Editor",
+            textContextGeneration: generation - 1,
+            resultingContextGeneration: generation
+        )
+        if restored == true {
+            try store.update { profile in
+                _ = LearningEngine.recordManualOptionRoundTrip(word: evidence.word, in: &profile)
+            }
+        }
+    }
+
+    let reloadedStore = ProfileStore(rootURL: root)
+    let reloaded = reloadedStore.current
+    let candidate = LearningEngine.sortedForReview(reloaded.learning).first
+    expect(reloaded.learning.first?.manualRoundTripCount == LearningEngine.requiredManualRoundTrips,
+           "ten consecutive Option toggles persist the required complete round trips")
+    expect(candidate?.word == "cmd", "the completed Option candidate is the first learning row")
+    expect(!reloaded.rules.contains(where: { $0.origin == .learned && $0.pattern == "cmd" }),
+           "manual Option evidence stays a review candidate until the user confirms it")
+}
+
+private func testAutomaticLearningUsesFreshUniqueOperations() {
+    var profile = MultiSwitcherProfile(learning: [
+        LearningEntry(word: "importedword", cancellationCount: 99, origin: .punto)
+    ])
+    let first = LearningEvidence(operationID: "auto-1", word: "importedword",
+                                 processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                                 textContextGeneration: 7)
+    let duplicate = LearningEngine.recordAutomaticCancellation(evidence: first, in: &profile)
+    expect(duplicate == .pending(cancellations: 1), "one operation id contributes at most one cancellation")
+    expect(profile.learning.first?.importedCancellationCount == 99
+           && profile.learning.first?.cancellationCount == 1,
+           "imported history remains separate from fresh cancellation evidence")
+    _ = LearningEngine.recordAutomaticCancellation(evidence: first, in: &profile)
+    expect(profile.learning.first?.cancellationCount == 1,
+           "duplicate completion for the same operation is idempotent")
+    let second = LearningEvidence(operationID: "auto-2", word: "importedword",
+                                  processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                                  textContextGeneration: 8)
+    let result = LearningEngine.recordAutomaticCancellation(evidence: second, in: &profile)
+    expect(result == .excluded(word: "importedword"),
+           "two distinct local undo operations can activate learning despite old imported counts")
+}
+
 private func testLearningEvidenceMustMatchSameOperationContext() {
     let completed = Date(timeIntervalSince1970: 100)
     let evidence = LearningEvidence(operationID: "auto-1", word: "ghbdtn",
@@ -307,10 +584,10 @@ private func testLearningEvidenceMustMatchSameOperationContext() {
                                 textContextGeneration: 8,
                                 at: completed.addingTimeInterval(2)),
            "undo after the focused text context changed cannot teach from the conversion")
-    expect(!evidence.matchesUndo(operationID: "auto-1", processIdentifier: 42, bundleIdentifier: "com.example.Editor",
-                                textContextGeneration: 7,
-                                at: completed.addingTimeInterval(9)),
-           "an old conversion cannot be learned from after the undo window expires")
+    expect(evidence.matchesUndo(operationID: "auto-1", processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                               textContextGeneration: 7,
+                               at: completed.addingTimeInterval(90)),
+           "the exact operation remains eligible after a delay while its field context is unchanged")
 }
 
 private func testPerAppLayoutMemorySurvivesProfileSerialization() throws {
@@ -843,6 +1120,32 @@ private func testProfileStoreImportIsRepeatableAndSnapshotsSource() throws {
     expect(snapshots.count == 2, "each import has its own recoverable source snapshot")
 }
 
+private func testProfileSchemaMigrationSeparatesImportedHistory() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Schema-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+    let legacy = MultiSwitcherProfile(
+        schemaVersion: 1,
+        learning: [LearningEntry(word: "legacy-history", cancellationCount: 97, origin: .punto)]
+    )
+    try JSONEncoder().encode(legacy).write(to: root.appendingPathComponent("profile.json"))
+
+    let store = ProfileStore(rootURL: root)
+    let migrated = store.current
+    expect(migrated.schemaVersion == MultiSwitcherProfile.currentSchemaVersion,
+           "schema 1 profile migrates in memory to the current schema")
+    expect(migrated.learning.first?.cancellationCount == 0
+           && migrated.learning.first?.importedCancellationCount == 97,
+           "migration separates Punto history from fresh automatic undo counts")
+    try store.update { $0.settings["migration-check"] = .bool(true) }
+    let saved = try JSONDecoder().decode(MultiSwitcherProfile.self,
+                                         from: Data(contentsOf: store.profileURL))
+    expect(saved.schemaVersion == MultiSwitcherProfile.currentSchemaVersion,
+           "the next profile write persists the migrated schema")
+}
+
 private func testProfileBackupSnapshotIsPrivateAndVerifiable() throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("MultiSwitcher-Backup-Test-\(UUID().uuidString)", isDirectory: true)
@@ -1037,6 +1340,8 @@ testAppendedInputPolicy()
 testAutomaticShortWordPolicy()
 testHyphenatedLayoutCorrectionPolicy()
 testModifiedBackspaceInvalidatesTrackedText()
+testSerialReplacementQueueIsBoundedAndFIFO()
+testBufferReplacementLifecycleTracksExactUndoDirection()
 testBundledWordLexicon()
 try testImportsRulesAndSeparatesLearnedHistory()
 try testUnicodeEquivalentWordsAreDeduplicated()
@@ -1044,6 +1349,12 @@ try testMalformedRuleRejectsWholeImport()
 try testMissingRulesAreRejected()
 try testPuntoHistoryIsPreservedAndRuleProvenance()
 try testLearningNeedsTwoAutomaticUndos()
+testManualOptionLearningNeedsReview()
+testLearningCandidatesAppearBeforeImportedHistory()
+testManualOptionLearningRequiresExactToggleChain()
+testQueuedManualOptionToggleCanFollowItsOwnReplacement()
+try testTenManualOptionTapsCreateVisibleReviewCandidate()
+testAutomaticLearningUsesFreshUniqueOperations()
 testLearningEvidenceMustMatchSameOperationContext()
 testSpotlightRangePlannerPreservesQueryAndCaret()
 testSharedLayoutCorrectionPolicy()
@@ -1055,6 +1366,7 @@ testDiagnosticLogRedaction()
 try testProfileBackupSnapshotIsPrivateAndVerifiable()
 testForgettingLearningPreservesImportedAndUserRules()
 try testProfileStoreImportIsRepeatableAndSnapshotsSource()
+try testProfileSchemaMigrationSeparatesImportedHistory()
 try testProfileStoreRecoveryPreservesDamagedPrimary()
 try testImportedRuleRemovalSurvivesReimportAndCanBeRestored()
 try testPerAppLayoutMemorySurvivesProfileSerialization()
@@ -1062,4 +1374,5 @@ testApplicationExclusionPolicy()
 testTypedRuleMatchingAndProvenance()
 try testUserRuleFileRoundTripSanitizesProvenance()
 try testGenericTextRuleImportsAreExplicitAndPreviewable()
+testTrailingKeyboardPunctuation()
 print("MultiSwitcherCoreChecks: \(CheckCounter.total) checks passed")

@@ -47,10 +47,11 @@ public final class ProfileStore: @unchecked Sendable {
         if FileManager.default.fileExists(atPath: profileURL.path) {
             do {
                 let data = try Data(contentsOf: profileURL)
-                let decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
+                var decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
                 guard decoded.schemaVersion <= MultiSwitcherProfile.currentSchemaVersion else {
                     throw ProfileStoreError.unsupportedSchema(decoded.schemaVersion)
                 }
+                decoded.migrateToCurrentSchema()
                 self.cached = decoded
             } catch {
                 self.cached = MultiSwitcherProfile()
@@ -95,12 +96,13 @@ public final class ProfileStore: @unchecked Sendable {
             throw ProfileStoreError.noPreviousProfile
         }
         let data = try Data(contentsOf: previousURL)
-        let decoded: MultiSwitcherProfile
+        var decoded: MultiSwitcherProfile
         do {
             decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
             guard decoded.schemaVersion <= MultiSwitcherProfile.currentSchemaVersion else {
                 throw ProfileStoreError.unsupportedSchema(decoded.schemaVersion)
             }
+            decoded.migrateToCurrentSchema()
         } catch {
             throw ProfileStoreError.invalidPreviousProfile
         }
@@ -116,7 +118,8 @@ public final class ProfileStore: @unchecked Sendable {
             try manager.copyItem(at: profileURL, to: recoveryURL)
             try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: recoveryURL.path)
         }
-        try data.write(to: profileURL, options: .atomic)
+        let restoredData = try JSONEncoder.multiSwitcher.encode(decoded)
+        try restoredData.write(to: profileURL, options: .atomic)
         try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: profileURL.path)
         cached = decoded
         loadFailure = nil
@@ -129,6 +132,7 @@ public final class ProfileStore: @unchecked Sendable {
         defer { lock.unlock() }
         if loadFailure != nil { throw ProfileStoreError.unreadableProfile }
         var next = cached
+        next.migrateToCurrentSchema()
         try change(&next)
         next.schemaVersion = MultiSwitcherProfile.currentSchemaVersion
         try writeAtomically(next)
@@ -146,10 +150,11 @@ public final class ProfileStore: @unchecked Sendable {
         }
         do {
             let data = try Data(contentsOf: profileURL)
-            let decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
+            var decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
             guard decoded.schemaVersion <= MultiSwitcherProfile.currentSchemaVersion else {
                 throw ProfileStoreError.unsupportedSchema(decoded.schemaVersion)
             }
+            decoded.migrateToCurrentSchema()
             cached = decoded
             loadFailure = nil
             return decoded

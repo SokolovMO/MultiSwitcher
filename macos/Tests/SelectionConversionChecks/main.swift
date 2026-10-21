@@ -19,6 +19,13 @@ struct SelectionConversionChecks {
                 print("FAIL \(name): actual=\(actual.debugDescription), expected=\(expected.debugDescription)")
             }
         }
+        func checkVerdict(_ name: String, _ actual: LayoutVerdict, _ expected: LayoutVerdict) {
+            assertions += 1
+            if actual != expected {
+                failures += 1
+                print("FAIL \(name): actual=\(actual), expected=\(expected)")
+            }
+        }
 
         let settings = SettingsManager.shared
         settings.smartConversion = true
@@ -28,8 +35,56 @@ struct SelectionConversionChecks {
         check("native keyboard map", DynamicKeyMapping.convertBidirectional("щзуткщгеук"), "openrouter")
         check("openrouter is packaged vocabulary", String(Dict.isValidWord("openrouter", lang: "en")), "true")
 
+        for (name, typed, converted, current, other, expected) in [
+            ("automatic Russian typo", "руддщ", "hello", "ru", "en", LayoutVerdict.switchToConverted),
+            ("correct Russian stays", "привет", "ghbdtn", "ru", "en", LayoutVerdict.keep),
+            ("correct English stays", "hello", "руддщ", "en", "ru", LayoutVerdict.keep),
+            ("technical product typo", "шзрщту", "iphone", "ru", "en", LayoutVerdict.switchToConverted),
+            ("technical product casing", "шЗрщту", "iPhone", "ru", "en", LayoutVerdict.switchToConverted),
+            ("correct iPhone stays", "iPhone", "шЗщрту", "en", "ru", LayoutVerdict.keep),
+            ("bad typo candidate waits", "шзщту", "ipone", "ru", "en", LayoutVerdict.keep),
+            ("app abbreviation converts", "фзз", "app", "ru", "en", LayoutVerdict.switchToConverted),
+            ("single-letter English a waits", "a", "ф", "en", "ru", LayoutVerdict.undecided),
+            ("technical term stays", "openrouter", "щзуткщгеук", "en", "ru", LayoutVerdict.keep),
+        ] {
+            checkVerdict(name, LayoutDetector.decide(typed: typed, converted: converted,
+                                                     currentLang: current, otherLang: other,
+                                                     capsLock: false), expected)
+        }
+
+        let mixedInput = "ghbkj;ение"
+        let mixedRussian = DynamicKeyMapping.convertMixedScript(mixedInput, towardLang: "ru") ?? ""
+        let mixedEnglish = DynamicKeyMapping.convertMixedScript(mixedInput, towardLang: "en") ?? ""
+        check("mixed candidate preserves the Russian fragment", mixedRussian, "приложение")
+        let selectedMixed = LayoutCorrectionEngine.uniqueMixedCandidate(
+            typed: mixedInput,
+            currentLanguage: "ru",
+            oppositeLanguage: "en",
+            currentCandidate: mixedRussian,
+            oppositeCandidate: mixedEnglish,
+            isValidWord: { word, language in
+                Dict.isValidWordForAutomaticPath(String(word.filter(\.isLetter).lowercased()), lang: language)
+            }
+        )
+        check("mixed automatic path chooses the unique dictionary word",
+              selectedMixed?.text ?? "", "приложение")
+
+        for (word, language) in [
+            ("cmd", "en"), ("keybinding", "en"), ("affordance", "en"),
+            ("monospace", "en"), ("rizz", "en"), ("bussin", "en"),
+            ("сдвигается", "ru"), ("душнила", "ru"),
+        ] {
+            check("curated terminology (word)",
+                  String(Dict.isValidWordForAutomaticPath(word, lang: language)), "true")
+            check("curated term stays (word)",
+                  SmartConvert.selection(word, useSystemDictionary: false), word)
+        }
+
         let examples = [
             ("щзуткщгеук", "openrouter"),
+            ("ye cldbuftncz", "ye сдвигается"),
+            ("ye cldbuftncz ktdfz", "ну сдвигается левая"),
+            ("ye cldbuftncz ktdfz xfcnm", "ну сдвигается левая часть"),
             ("привет купи iphone", "привет купи iphone"),
             ("ghbdtn купи iphone", "привет купи iphone"),
             ("привет купи шзрщту", "привет купи iphone"),

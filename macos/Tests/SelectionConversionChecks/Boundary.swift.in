@@ -30,8 +30,10 @@ struct TextConverter {
     /* SELECTION_ROUTING */
 }
 
-enum LayoutDetector {
-    /* DETECTOR_HELPERS */
+/* DETECTOR_STUBS */
+
+enum AutoSwitchPolicy {
+    static func isAlwaysConvert(_ converted: String) -> Bool { false }
 }
 
 // Structural dependencies for unused DynamicKeyMapping entry points.

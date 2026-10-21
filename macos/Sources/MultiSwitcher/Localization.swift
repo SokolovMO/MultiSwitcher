@@ -21,6 +21,7 @@ enum L10n {
     static var updateIntegrityFailed: String { s("update.integrityFailed") }
     static var updateDownloadFailed: String { s("update.downloadFailed") }
     static var menuSettings: String { s("menu.settings") }
+    static var menuCloseWindow: String { s("menu.closeWindow") }
     static var menuQuit: String { s("menu.quit") }
 
     // MARK: - Визард разрешений
@@ -95,6 +96,24 @@ enum L10n {
     static func learningPendingBody(_ count: Int) -> String { String(format: s("learning.pending.body"), count) }
     static var learningAddedTitle: String { s("learning.added.title") }
     static var learningAddedBody: String { s("learning.added.body") }
+    static var learningManualCandidateTitle: String { s("learning.manualCandidate.title") }
+    static func learningManualCandidateBody(_ word: String) -> String {
+        String(format: s("learning.manualCandidate.body"), word)
+    }
+    static var learningManualProgressTitle: String { s("learning.manual.progress.title") }
+    static func learningManualProgressBody(_ word: String) -> String {
+        String(format: s("learning.manual.progress.body"), word)
+    }
+    static var learningManualNotTrackedTitle: String { s("learning.manual.notTracked.title") }
+    static var learningManualNotTrackedBody: String { s("learning.manual.notTracked.body") }
+    static var learningManualAlreadyExcludedTitle: String { s("learning.manual.alreadyExcluded.title") }
+    static var learningManualAlreadyExcludedBody: String { s("learning.manual.alreadyExcluded.body") }
+    static var learningDisabledTitle: String { s("learning.disabled.title") }
+    static var learningConfirmManual: String { s("learning.manualCandidate.confirm") }
+    static var learningManualCandidateState: String { s("learning.manualCandidate.state") }
+    static func learningManualRoundTripCount(_ count: Int) -> String {
+        String(format: s("learning.manualCandidate.count"), count)
+    }
     static var learningRemovedBody: String { s("learning.removed.body") }
     static var learningEnabledBody: String { s("learning.enabled.body") }
     static var learningDisabledBody: String { s("learning.disabled.body") }
@@ -127,6 +146,7 @@ enum L10n {
     static var learningColumnState: String { s("learning.column.state") }
     static var learningStateExcluded: String { s("learning.state.excluded") }
     static var learningStatePending: String { s("learning.state.pending") }
+    static var learningStateImportedHistory: String { s("learning.state.imported") }
     static var learningForget: String { s("learning.forget") }
     static var learningListHint: String { s("learning.list.hint") }
     static var settingsRemoteDesktopHint: String { s("settings.remoteDesktop.hint") }
@@ -317,6 +337,7 @@ enum L10n {
             "update.downloadFailed": "Could not download the update. Check your internet connection.",
             "update.betaChannel": "Open beta release",
             "menu.settings": "Settings…",
+            "menu.closeWindow": "Close Window",
             "menu.quit": "Quit",
 
             "wizard.permissionsReset.title": "Permissions Reset After Update",
@@ -449,9 +470,21 @@ enum L10n {
             "learning.pending.body": "Cancelled automatically %d time(s); another undo may add an exception.",
             "learning.added.title": "Learned exception added",
             "learning.added.body": "This word will be left unchanged automatically.",
+            "learning.manualCandidate.title": "Review a learning candidate",
+            "learning.manualCandidate.body": "You switched “%@” back with Option twice. Confirm it in Learning to keep it unchanged automatically.",
+            "learning.manual.progress.title": "Option cycle recorded",
+            "learning.manual.progress.body": "“%@” — 1 of 2 cycles. Switch the same single word back with Option once more; then confirm it in Learning.",
+            "learning.manual.notTracked.title": "Not added to Learning",
+            "learning.manual.notTracked.body": "Learning counts only the same single word with at least three letters. Select one word; phrases and short words are not tracked.",
+            "learning.manual.alreadyExcluded.title": "Already protected",
+            "learning.manual.alreadyExcluded.body": "This word is already excluded from automatic conversion, so no new learning entry was added.",
+            "learning.manualCandidate.confirm": "Don’t convert this word",
+            "learning.manualCandidate.state": "Review candidate",
+            "learning.manualCandidate.count": "%d Option cycles",
             "learning.removed.body": "The learned exception was removed.",
             "learning.enabled.body": "Self-learning is on.",
             "learning.disabled.body": "Self-learning is off.",
+            "learning.disabled.title": "Self-learning is off",
             "pause.active.body": "MultiSwitcher is paused.",
             "pause.resumed.body": "MultiSwitcher resumed.",
             "settings.tab.learning": "Learning",
@@ -463,12 +496,13 @@ enum L10n {
             "settings.dictionaryPacks.slang": "Informal language",
             "learning.search": "Search words",
             "learning.column.word": "Word",
-            "learning.column.count": "Undo count",
+            "learning.column.count": "Count",
             "learning.column.state": "State",
             "learning.state.excluded": "Excluded",
-            "learning.state.pending": "History",
+            "learning.state.pending": "Pending",
+            "learning.state.imported": "Punto history",
             "learning.forget": "Forget",
-            "learning.list.hint": "Imported Punto history is shown separately and never activates a rule by itself.",
+            "learning.list.hint": "After two complete Option round trips, a word appears at the top as a candidate. Select it and confirm it to create an exception. Imported Punto history never activates rules by itself.",
             "settings.remoteDesktop.hint": "For Apple Screen Sharing: run MultiSwitcher on the remote Mac too and enable this on both.",
             "settings.exceptions.apps": "Don’t auto-convert in these apps",
             "settings.exceptions.allActions": "Disable all MultiSwitcher actions in these apps",
@@ -547,6 +581,7 @@ enum L10n {
             "update.downloadFailed": "Не удалось скачать обновление. Проверьте интернет-соединение.",
             "update.betaChannel": "Открытая тестовая версия",
             "menu.settings": "Настройки…",
+            "menu.closeWindow": "Закрыть окно",
             "menu.quit": "Выход",
 
             "wizard.permissionsReset.title": "Разрешения сброшены после обновления",
@@ -678,9 +713,21 @@ enum L10n {
             "learning.pending.body": "Автоисправление отменено %d раз; после ещё одной отмены слово станет исключением.",
             "learning.added.title": "Выученное исключение добавлено",
             "learning.added.body": "Это слово больше не будет исправляться автоматически.",
+            "learning.manualCandidate.title": "Проверьте новое исключение",
+            "learning.manualCandidate.body": "Вы дважды вернули «%@» через Option. Подтвердите его в разделе «Обучение», чтобы слово больше не исправлялось автоматически.",
+            "learning.manual.progress.title": "Цикл Option записан",
+            "learning.manual.progress.body": "«%@» — 1 из 2 циклов. Ещё раз переключите туда и обратно то же отдельное слово; затем подтвердите его в разделе «Обучение».",
+            "learning.manual.notTracked.title": "Не добавлено в обучение",
+            "learning.manual.notTracked.body": "Учитывается только одно и то же слово длиной от трёх букв. Выделите одно слово: фразы и короткие слова не записываются.",
+            "learning.manual.alreadyExcluded.title": "Слово уже защищено",
+            "learning.manual.alreadyExcluded.body": "Это слово уже исключено из автоконверсии, поэтому новая запись обучения не создана.",
+            "learning.manualCandidate.confirm": "Не исправлять это слово",
+            "learning.manualCandidate.state": "Нужно подтвердить",
+            "learning.manualCandidate.count": "Циклов Option: %d",
             "learning.removed.body": "Выученное исключение удалено.",
             "learning.enabled.body": "Самообучение включено.",
             "learning.disabled.body": "Самообучение выключено.",
+            "learning.disabled.title": "Самообучение выключено",
             "pause.active.body": "MultiSwitcher приостановлен.",
             "pause.resumed.body": "MultiSwitcher продолжил работу.",
             "settings.tab.learning": "Обучение",
@@ -692,12 +739,13 @@ enum L10n {
             "settings.dictionaryPacks.slang": "Разговорная речь",
             "learning.search": "Поиск слов",
             "learning.column.word": "Слово",
-            "learning.column.count": "Отмены",
+            "learning.column.count": "Счётчик",
             "learning.column.state": "Состояние",
             "learning.state.excluded": "Исключено",
-            "learning.state.pending": "История",
+            "learning.state.pending": "Ожидает",
+            "learning.state.imported": "История Punto",
             "learning.forget": "Забыть",
-            "learning.list.hint": "История Punto показана отдельно и сама по себе не включает правило.",
+            "learning.list.hint": "После двух полных циклов Option слово появится сверху как кандидат. Выберите его и подтвердите, чтобы создать исключение. История Punto сама по себе правила не включает.",
             "settings.remoteDesktop.hint": "Для Apple Screen Sharing: запустите MultiSwitcher и на удалённом Mac, включив этот режим на обоих.",
             "settings.exceptions.apps": "Не конвертировать в этих приложениях",
             "settings.exceptions.allActions": "Отключить MultiSwitcher в этих приложениях",
@@ -765,6 +813,7 @@ enum L10n {
             "menu.autoSwitch": "MultiSwitcher aktivieren",
             "menu.checkPermissions": "Berechtigungen prüfen…",
             "menu.settings": "Einstellungen…",
+            "menu.closeWindow": "Fenster schließen",
             "menu.quit": "Beenden",
             "wizard.accessibility.title": "Schritt 1 von 2: Bedienungshilfen",
             "wizard.accessibility.text": "MultiSwitcher benötigt die Berechtigung für Bedienungshilfen.\n\nDie Einstellungen werden geöffnet — fügen Sie MultiSwitcher hinzu.\nDie App erkennt es automatisch.",
@@ -858,6 +907,7 @@ enum L10n {
             "menu.autoSwitch": "Activer MultiSwitcher",
             "menu.checkPermissions": "Vérifier les autorisations…",
             "menu.settings": "Préférences…",
+            "menu.closeWindow": "Fermer la fenêtre",
             "menu.quit": "Quitter",
             "wizard.accessibility.title": "Étape 1 sur 2 : Accessibilité",
             "wizard.accessibility.text": "MultiSwitcher a besoin de l'autorisation Accessibilité.\n\nLes réglages vont s'ouvrir — ajoutez MultiSwitcher.",
@@ -951,6 +1001,7 @@ enum L10n {
             "menu.autoSwitch": "Activar MultiSwitcher",
             "menu.checkPermissions": "Verificar permisos…",
             "menu.settings": "Ajustes…",
+            "menu.closeWindow": "Cerrar ventana",
             "menu.quit": "Salir",
             "wizard.accessibility.title": "Paso 1 de 2: Accesibilidad",
             "wizard.accessibility.text": "MultiSwitcher necesita permiso de Accesibilidad.\n\nSe abrirán los ajustes — añada MultiSwitcher.",
@@ -1044,6 +1095,7 @@ enum L10n {
             "menu.autoSwitch": "Ativar MultiSwitcher",
             "menu.checkPermissions": "Verificar permissões…",
             "menu.settings": "Configurações…",
+            "menu.closeWindow": "Fechar janela",
             "menu.quit": "Sair",
             "wizard.openSettings": "Abrir configurações",
             "wizard.later": "Mais tarde",
@@ -1137,6 +1189,7 @@ enum L10n {
             "menu.autoSwitch": "启用 MultiSwitcher",
             "menu.checkPermissions": "检查权限…",
             "menu.settings": "设置…",
+            "menu.closeWindow": "关闭窗口",
             "menu.quit": "退出",
             "wizard.openSettings": "打开设置",
             "wizard.later": "稍后",
@@ -1230,6 +1283,7 @@ enum L10n {
             "menu.autoSwitch": "MultiSwitcher を有効にする",
             "menu.checkPermissions": "権限を確認…",
             "menu.settings": "設定…",
+            "menu.closeWindow": "ウインドウを閉じる",
             "menu.quit": "終了",
             "wizard.openSettings": "設定を開く",
             "wizard.later": "後で",
@@ -1323,6 +1377,7 @@ enum L10n {
             "menu.autoSwitch": "MultiSwitcher 사용",
             "menu.checkPermissions": "권한 확인…",
             "menu.settings": "설정…",
+            "menu.closeWindow": "윈도우 닫기",
             "menu.quit": "종료",
             "wizard.openSettings": "설정 열기",
             "wizard.later": "나중에",
@@ -1416,6 +1471,7 @@ enum L10n {
             "menu.autoSwitch": "Увімкнути MultiSwitcher",
             "menu.checkPermissions": "Перевірити дозволи…",
             "menu.settings": "Налаштування…",
+            "menu.closeWindow": "Закрити вікно",
             "menu.quit": "Вихід",
 
             "wizard.permissionsReset.title": "Дозволи скинуті після оновлення",
@@ -1512,6 +1568,7 @@ enum L10n {
             "menu.autoSwitch": "Уключыць MultiSwitcher",
             "menu.checkPermissions": "Праверыць дазволы…",
             "menu.settings": "Налады…",
+            "menu.closeWindow": "Закрыць акно",
             "menu.quit": "Выхад",
 
             "wizard.permissionsReset.title": "Дазволы скінуты пасля абнаўлення",
@@ -1608,6 +1665,7 @@ enum L10n {
             "menu.autoSwitch": "Włącz MultiSwitcher",
             "menu.checkPermissions": "Sprawdź uprawnienia…",
             "menu.settings": "Ustawienia…",
+            "menu.closeWindow": "Zamknij okno",
             "menu.quit": "Zakończ",
             "wizard.openSettings": "Otwórz ustawienia",
             "wizard.later": "Później",
@@ -1699,6 +1757,7 @@ enum L10n {
             "menu.autoSwitch": "Ενεργοποίηση MultiSwitcher",
             "menu.checkPermissions": "Έλεγχος δικαιωμάτων…",
             "menu.settings": "Ρυθμίσεις…",
+            "menu.closeWindow": "Κλείσιμο παραθύρου",
             "menu.quit": "Έξοδος",
             "wizard.permissionsReset.title": "Τα δικαιώματα επαναφέρθηκαν μετά την ενημέρωση",
             "wizard.permissionsReset.text": "Το macOS επανέφερε τα δικαιώματα επειδή η εφαρμογή ενημερώθηκε.\n\nΤο MultiSwitcher θα αφαιρέσει τις παλιές καταχωρήσεις και θα ζητήσει ξανά δικαιώματα.\nΑρκεί να ενεργοποιήσετε τους διακόπτες.",
@@ -1790,6 +1849,7 @@ enum L10n {
             "menu.autoSwitch": "Включи MultiSwitcher",
             "menu.checkPermissions": "Проверка на разрешения…",
             "menu.settings": "Настройки…",
+            "menu.closeWindow": "Затвори прозореца",
             "menu.quit": "Изход",
             "wizard.permissionsReset.title": "Разрешенията са нулирани след актуализация",
             "wizard.permissionsReset.text": "macOS нулира разрешенията, защото приложението беше актуализирано.\n\nMultiSwitcher ще премахне старите записи и ще поиска разрешения отново.\nТрябва само да включите превключвателите.",
@@ -1881,6 +1941,7 @@ enum L10n {
             "menu.autoSwitch": "Միացնել MultiSwitcher",
             "menu.checkPermissions": "Ստուգել թույլտվությունները…",
             "menu.settings": "Կարգավորումներ…",
+            "menu.closeWindow": "Փակել պատուհանը",
             "menu.quit": "Ելք",
             "wizard.permissionsReset.title": "Թույլտվությունները զրոյացվել են թարմացումից հետո",
             "wizard.permissionsReset.text": "macOS-ը զրոյացրել է թույլտվությունները, քանի որ ծրագիրը թարմացվել է.\n\nMultiSwitcher-ը կհեռացնի հին գրառումները և կրկին կպահանջի թույլտվություններ.\nՊարզապես միացրեք անջատիչները.",
@@ -1972,6 +2033,7 @@ enum L10n {
             "menu.autoSwitch": "MultiSwitcher-ის ჩართვა",
             "menu.checkPermissions": "ნებართვების შემოწმება…",
             "menu.settings": "პარამეტრები…",
+            "menu.closeWindow": "ფანჯრის დახურვა",
             "menu.quit": "გასვლა",
             "wizard.permissionsReset.title": "ნებართვები განულდა განახლების შემდეგ",
             "wizard.permissionsReset.text": "macOS-მა განულა ნებართვები, რადგან აპი განახლდა.\n\nMultiSwitcher წაშლის ძველ ჩანაწერებს და თავიდან მოითხოვს ნებართვებს.\nუბრალოდ ჩართეთ გადამრთველები.",

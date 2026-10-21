@@ -81,8 +81,8 @@ enum SmartConvert {
             if !ambiguousShorts.contains(i) {
                 results[i] = signalFlip(toks[i].str, target: target, latLang: latLang, cyrLang: cyrLang)
             } else if let target,
-                      hasConfirmedWordsOnBothSides(of: i, target: target, tokens: toks,
-                                                   flipDirections: flipDirections) {
+                      hasConfirmedContext(of: i, target: target, tokens: toks,
+                                          flipDirections: flipDirections) {
                 results[i] = signalFlip(toks[i].str, target: target, latLang: latLang, cyrLang: cyrLang)
             } else {
                 results[i] = toks[i].str
@@ -91,18 +91,22 @@ enum SmartConvert {
         return results.map { $0 ?? "" }.joined()
     }
 
-    /// Ambiguous two-letter words change only when independently confirmed corrections
-    /// sit immediately on both sides; this keeps standalone `kb` and code-like tokens safe.
-    private static func hasConfirmedWordsOnBothSides(
+    /// Ambiguous two-letter words change only with independent evidence. Inside a phrase,
+    /// require confirmed corrections on both sides. At the very beginning, allow two later
+    /// words to confirm the direction so a leading `ye` can resolve in `ye cldbuftncz ktdfz`.
+    private static func hasConfirmedContext(
         of index: Int,
         target: Script,
         tokens: [(isWord: Bool, str: String)],
         flipDirections: [Script?]
     ) -> Bool {
-        let left = tokens.indices[..<index].reversed().first(where: { tokens[$0].isWord })
-        let right = tokens.indices[(index + 1)...].first(where: { tokens[$0].isWord })
-        guard let left, let right else { return false }
-        return flipDirections[left] == target && flipDirections[right] == target
+        let leftIndices = tokens.indices.filter { $0 < index }
+        let rightIndices = tokens.indices.filter { $0 > index }
+        let leftConfirmed = leftIndices.filter { tokens[$0].isWord && flipDirections[$0] == target }.count
+        let rightConfirmed = rightIndices.filter { tokens[$0].isWord && flipDirections[$0] == target }.count
+        if leftConfirmed > 0 && rightConfirmed > 0 { return true }
+        let hasEarlierWord = leftIndices.contains { tokens[$0].isWord }
+        return !hasEarlierWord && rightConfirmed >= 2
     }
 
     @MainActor

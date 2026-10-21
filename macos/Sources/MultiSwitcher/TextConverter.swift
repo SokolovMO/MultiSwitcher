@@ -13,7 +13,7 @@ final class TextConverter {
     private var ownedClipboardChangeCount: Int?
     private var clipboardRestoreWork: DispatchWorkItem?
     private var isConverting = false
-    private var pendingBufferReplacements: [PendingBufferReplacement] = []
+    private var replacementQueue = SerialReplacementQueue<PendingTextReplacement>(capacity: 8)
     /// Очередь для инжекта нажатий буферного движка — чтобы usleep не блокировал
     /// main-поток, на котором висит event tap (иначе тап голодает → лаги/потери нажатий).
     nonisolated private let injectQueue = DispatchQueue(label: "com.ruswitcher.inject", qos: .userInteractive)
@@ -26,8 +26,9 @@ final class TextConverter {
     private(set) var lastConversionChangesLayout = false
     private(set) var lastConversionOperationID: String?
     private(set) var lastUndoneOperationID: String?
+    private(set) var lastConversionSourceToken: String?
     private(set) var lastPreservedSuffixKeyCount = 0
-    private var bufferIsCurrentlyConverted = false
+    private var bufferReplacementLifecycle = BufferReplacementLifecycle()
     /// Последняя clipboard-конверсия содержала RTL — реконверт стрелками небезопасен.
     private var lastClipboardRTL = false
 
@@ -48,8 +49,24 @@ final class TextConverter {
         let performIfCurrent: @Sendable (@escaping @Sendable (String) -> Void) -> String?
         let completion: @MainActor @Sendable (Bool) -> Void
     }
+
+    private struct PendingSerializedReplacement {
+        let processIdentifier: pid_t?
+        let isContextCurrent: @MainActor @Sendable () -> Bool
+        let perform: @MainActor @Sendable (@escaping @MainActor @Sendable (Bool) -> Void) -> Void
+        let completion: @MainActor @Sendable (Bool) -> Void
+    }
+
+    private enum PendingTextReplacement {
+        case buffer(PendingBufferReplacement)
+        case serialized(PendingSerializedReplacement)
+    }
     private var spotlightUndo: SpotlightUndo?
     private var safariUndo: SpotlightUndo?
+    /// Exact direction tracking for the copy/paste fallback. Without this state,
+    /// every other toggle could be mistaken for restoring the original word and
+    /// incorrectly increment manual learning.
+    private var clipboardUndoState: ExactTextUndoState?
 
     private struct VerifiedSelection {
         let processID: pid_t
@@ -158,11 +175,12 @@ final class TextConverter {
 
         guard let pair = DynamicKeyMapping.convertKeys(keys) else {
             // A rule replacement cannot safely fall through to a clipboard conversion.
-            if replacementOverride != nil { return false }
+            if replacementOverride != nil { completion(false); return false }
             // Clipboard-путь про суффикс не знает (селекция посчиталась бы неверно) —
             // точность важнее полноты: с суффиксом тихо отказываемся.
             guard passthroughSuffix.isEmpty else {
                 rslog("buffer convert: suffix + unresolved layouts — bail")
+                completion(false)
                 return false
             }
             rslog("buffer convert: layouts not resolved — fallback to clipboard")
@@ -172,7 +190,7 @@ final class TextConverter {
             return completed
         }
 
-        guard !isConverting else { return false }
+        guard !isConverting else { completion(false); return false }
         isConverting = true
 
         let spaces = String(repeating: " ", count: trailingSpaces)
@@ -181,13 +199,17 @@ final class TextConverter {
         // после «tkrb?»→«елки,» восстанавливал бы «tkrb,» вместо «tkrb?».
         let originalSuffix = typedSuffix.isEmpty ? passthroughSuffix : typedSuffix
         let targetWord = replacementOverride ?? pair.converted
-        guard !targetWord.isEmpty else { isConverting = false; return false }
+        guard !targetWord.isEmpty else {
+            isConverting = false
+            completion(false)
+            return false
+        }
         let insert = targetWord + passthroughSuffix + spaces
         lastOriginal = pair.original + originalSuffix + spaces
         lastConverted = targetWord + passthroughSuffix + spaces
+        lastConversionSourceToken = pair.original
         lastConversionOperationID = UUID().uuidString
         lastUndoneOperationID = nil
-        bufferIsCurrentlyConverted = true
         bufferProcessIdentifier = NSWorkspace.shared.frontmostApplication?.processIdentifier
         lastWasBuffer = true
         lastConversionChangesLayout = changesLayout
@@ -203,7 +225,11 @@ final class TextConverter {
             }
             Task { @MainActor in
                 self.isConverting = false
-                if !committed { self.clearState() }
+                if committed {
+                    self.bufferReplacementLifecycle.commit(operationID: self.lastConversionOperationID ?? "")
+                } else {
+                    self.clearState()
+                }
                 completion(committed)
             }
         }
@@ -320,35 +346,19 @@ final class TextConverter {
         performIfCurrent: @escaping @Sendable (@escaping @Sendable () -> Void) -> Bool,
         completion: @escaping @MainActor @Sendable (Bool) -> Void
     ) -> Bool {
-        guard !isConverting, !lineKeys.isEmpty else { return false }
+        guard !lineKeys.isEmpty else { return false }
         guard let original = DynamicKeyMapping.lineString(from: lineKeys), !original.isEmpty else { return false }
         let converted = convertSelectionText(original)
         guard converted != original else { return false }   // строка уже верная — no-op
-        isConverting = true
-        lastWasBuffer = true
-        lastOriginal = original
-        lastConverted = converted
-        lastConversionOperationID = UUID().uuidString
-        lastUndoneOperationID = nil
-        bufferIsCurrentlyConverted = true
-        bufferProcessIdentifier = NSWorkspace.shared.frontmostApplication?.processIdentifier
-        lastConversionChangesLayout = true
-        let bsCount = original.count
         rslog("line convert (terminal buffer): \(original.count)→\(converted.count) chars")
-        injectQueue.async { [weak self] in
-            guard let self else { return }
-            let committed = performIfCurrent {
-                self.backspace(bsCount)
-                usleep(20_000)  // дать целевому приложению обработать удаление до Unicode-вставки
-                self.insertText(converted)
-            }
-            Task { @MainActor in
-                self.isConverting = false
-                if !committed { self.clearState() }
-                completion(committed)
-            }
-        }
-        return true
+        return replaceBufferText(
+            original: original,
+            converted: converted,
+            backspaceCount: original.count,
+            changesLayout: true,
+            performIfCurrent: performIfCurrent,
+            completion: completion
+        )
     }
 
     // MARK: - issue #29: смена регистра (как Alt+Break в Punto)
@@ -418,6 +428,8 @@ final class TextConverter {
         caseWord = nil   // выделение сбрасывает буферный цикл
         let pasteboard = NSPasteboard.general
         cancelClipboardRestore()
+        lastConversionOperationID = nil
+        lastUndoneOperationID = nil
         captureClipboardSnapshotIfNeeded(pasteboard)
         isConverting = true
         var ok = false
@@ -478,11 +490,17 @@ final class TextConverter {
 
     /// Replaces only the selected span or final word in Spotlight using AX.
     /// The next Option restores the exact full query and selection if the field is unchanged.
-    func convertSpotlight() -> Bool {
+    func convertSpotlight(expectedProcessID: pid_t? = nil,
+                          expectedIdentity: CFHashCode? = nil) -> Bool {
         guard !isConverting else { return false }
         guard case .active(let field) = SpotlightAX.inspect() else {
             rslog("spotlight: not confidently editable; skipped")
             spotlightUndo = nil
+            return false
+        }
+        guard expectedProcessID == nil || field.processID == expectedProcessID,
+              expectedIdentity == nil || field.identity == expectedIdentity else {
+            rslog("spotlight: target changed before conversion")
             return false
         }
 
@@ -540,6 +558,7 @@ final class TextConverter {
         )
         lastOriginal = field.value
         lastConverted = replacement
+        lastConversionSourceToken = source
         lastConversionOperationID = operationID
         lastUndoneOperationID = nil
         lastConvertedCount = 0
@@ -552,7 +571,9 @@ final class TextConverter {
     /// Automatic Spotlight replacement uses the same exact-range AX transaction.
     /// Autocomplete selections and stale typed words are skipped.
     func convertSpotlightWord(original: String, converted: String, boundaryCount: Int = 1,
-                              changesLayout: Bool = true) -> Bool {
+                              changesLayout: Bool = true,
+                              expectedProcessID: pid_t? = nil,
+                              expectedIdentity: CFHashCode? = nil) -> Bool {
         guard !isConverting else { rslog("spotlight-auto: bail conversion-busy"); return false }
         guard !original.isEmpty, !converted.isEmpty else {
             rslog("spotlight-auto: bail empty-word")
@@ -567,6 +588,11 @@ final class TextConverter {
             return false
         case .uncertain:
             rslog("spotlight-auto: bail field-uncertain")
+            return false
+        }
+        guard expectedProcessID == nil || field.processID == expectedProcessID,
+              expectedIdentity == nil || field.identity == expectedIdentity else {
+            rslog("spotlight-auto: bail target-changed")
             return false
         }
         guard field.selection.length == 0 else {
@@ -610,6 +636,7 @@ final class TextConverter {
         )
         lastOriginal = field.value
         lastConverted = replacement
+        lastConversionSourceToken = original
         lastConversionOperationID = operationID
         lastUndoneOperationID = nil
         lastConvertedCount = 0
@@ -622,9 +649,13 @@ final class TextConverter {
     /// Replaces the captured context suffix, preserving text entered after its boundary.
     /// AX must still report the same field and a collapsed caret before the transaction commits.
     func convertSpotlightSuffix(originalSuffix: String, convertedSuffix: String,
-                                changesLayout: Bool = true) -> Bool {
+                                changesLayout: Bool = true,
+                                expectedProcessID: pid_t? = nil,
+                                expectedIdentity: CFHashCode? = nil) -> Bool {
         guard !isConverting, !originalSuffix.isEmpty, !convertedSuffix.isEmpty,
               case .active(let field) = SpotlightAX.inspect(),
+              (expectedProcessID == nil || field.processID == expectedProcessID),
+              (expectedIdentity == nil || field.identity == expectedIdentity),
               field.selection.length == 0,
               let plan = TextReplacementPlanner.planCapturedSuffix(
                 text: field.value, selection: field.selection, suffix: originalSuffix
@@ -653,6 +684,7 @@ final class TextConverter {
         )
         lastOriginal = field.value
         lastConverted = replacement
+        lastConversionSourceToken = originalSuffix
         lastConversionOperationID = operationID
         lastUndoneOperationID = nil
         lastWasBuffer = false
@@ -665,10 +697,16 @@ final class TextConverter {
     /// Safari's address/search field has a stable Accessibility identifier. Use its
     /// value and selected range directly so browser autocomplete cannot consume a
     /// synthetic Backspace or leave the first character behind.
-    func convertSafariAddressBar() -> Bool {
+    func convertSafariAddressBar(expectedProcessID: pid_t? = nil,
+                                 expectedIdentity: CFHashCode? = nil) -> Bool {
         guard !isConverting else { return false }
         guard case .active(let field) = SafariAddressBarAX.inspect() else {
             safariUndo = nil
+            return false
+        }
+        guard expectedProcessID == nil || field.processID == expectedProcessID,
+              expectedIdentity == nil || field.identity == expectedIdentity else {
+            rslog("Safari address bar: target changed before conversion")
             return false
         }
 
@@ -710,16 +748,20 @@ final class TextConverter {
         guard SafariAddressBarAX.replace(target: field, expectedValue: field.value,
                                          with: replacement, selection: convertedSelection) else { return false }
         storeSafariUndo(field: field, replacement: replacement, selection: convertedSelection,
-                        changesLayout: true)
+                        changesLayout: true, sourceToken: source)
         return true
     }
 
     /// Automatic correction of the word at Safari's caret. The captured keystroke
     /// word must still match exactly; stale autocomplete or moved-caret states are skipped.
     func convertSafariAddressBarWord(original: String, converted: String, boundaryCount: Int = 1,
-                                     changesLayout: Bool = true) -> Bool {
+                                     changesLayout: Bool = true,
+                                     expectedProcessID: pid_t? = nil,
+                                     expectedIdentity: CFHashCode? = nil) -> Bool {
         guard !isConverting, !original.isEmpty, !converted.isEmpty,
               case .active(let field) = SafariAddressBarAX.inspect(), field.selection.length == 0,
+              expectedProcessID == nil || field.processID == expectedProcessID,
+              expectedIdentity == nil || field.identity == expectedIdentity,
               let plan = TextReplacementPlanner.planCapturedToken(
                 text: field.value, selection: field.selection, token: original,
                 boundaryCount: boundaryCount
@@ -730,16 +772,20 @@ final class TextConverter {
         guard SafariAddressBarAX.replace(target: field, expectedValue: field.value,
                                          with: replacement, selection: selection) else { return false }
         storeSafariUndo(field: field, replacement: replacement, selection: selection,
-                        changesLayout: changesLayout)
+                        changesLayout: changesLayout, sourceToken: original)
         return true
     }
 
     /// Contextual short-word correction may arrive after more typing. Replace only the
     /// exact captured suffix and preserve the newer text and caret position.
     func convertSafariAddressBarSuffix(originalSuffix: String, convertedSuffix: String,
-                                       changesLayout: Bool = true) -> Bool {
+                                       changesLayout: Bool = true,
+                                       expectedProcessID: pid_t? = nil,
+                                       expectedIdentity: CFHashCode? = nil) -> Bool {
         guard !isConverting, !originalSuffix.isEmpty, !convertedSuffix.isEmpty,
               case .active(let field) = SafariAddressBarAX.inspect(), field.selection.length == 0,
+              expectedProcessID == nil || field.processID == expectedProcessID,
+              expectedIdentity == nil || field.identity == expectedIdentity,
               let plan = TextReplacementPlanner.planCapturedSuffix(
                 text: field.value, selection: field.selection, suffix: originalSuffix
               ),
@@ -750,12 +796,12 @@ final class TextConverter {
         guard SafariAddressBarAX.replace(target: field, expectedValue: field.value,
                                          with: replacement, selection: selection) else { return false }
         storeSafariUndo(field: field, replacement: replacement, selection: selection,
-                        changesLayout: changesLayout)
+                        changesLayout: changesLayout, sourceToken: originalSuffix)
         return true
     }
 
     private func storeSafariUndo(field: SafariAddressBarAX.Field, replacement: String,
-                                 selection: NSRange, changesLayout: Bool) {
+                                 selection: NSRange, changesLayout: Bool, sourceToken: String) {
         let operationID = UUID().uuidString
         safariUndo = SpotlightUndo(
             processID: field.processID,
@@ -767,6 +813,7 @@ final class TextConverter {
         )
         lastOriginal = field.value
         lastConverted = replacement
+        lastConversionSourceToken = sourceToken
         lastConversionOperationID = operationID
         lastUndoneOperationID = nil
         lastConvertedCount = 0
@@ -790,11 +837,7 @@ final class TextConverter {
             rslog("buffer replacement unavailable: invalid replacement request")
             return false
         }
-        guard pendingBufferReplacements.count < 8 else {
-            rslog("buffer replacement queue full; request refused")
-            return false
-        }
-        pendingBufferReplacements.append(PendingBufferReplacement(
+        guard replacementQueue.enqueue(.buffer(PendingBufferReplacement(
             original: original,
             converted: converted,
             backspaceCount: backspaceCount,
@@ -804,8 +847,11 @@ final class TextConverter {
                 performIfCurrent { operation("") } ? "" : nil
             },
             completion: completion
-        ))
-        processNextBufferReplacement()
+        ))) else {
+            rslog("buffer replacement queue full; request refused")
+            return false
+        }
+        processNextReplacement()
         return true
     }
 
@@ -821,11 +867,11 @@ final class TextConverter {
         completion: @escaping @MainActor @Sendable (Bool) -> Void
     ) -> Bool {
         guard !original.isEmpty, !converted.isEmpty, original != converted,
-              backspaceCount > 0, pendingBufferReplacements.count < 8 else {
+              backspaceCount > 0 else {
             rslog("buffer replacement unavailable: invalid request or queue full")
             return false
         }
-        pendingBufferReplacements.append(PendingBufferReplacement(
+        guard replacementQueue.enqueue(.buffer(PendingBufferReplacement(
             original: original,
             converted: converted,
             backspaceCount: backspaceCount,
@@ -833,19 +879,68 @@ final class TextConverter {
             processIdentifier: processIdentifier,
             performIfCurrent: performIfCurrent,
             completion: completion
-        ))
-        processNextBufferReplacement()
+        ))) else {
+            rslog("buffer replacement queue full; request refused")
+            return false
+        }
+        processNextReplacement()
         return true
     }
 
-    private func processNextBufferReplacement() {
-        guard !isConverting, !pendingBufferReplacements.isEmpty else { return }
-        let request = pendingBufferReplacements.removeFirst()
+    /// Serializes non-buffer operations with injected replacements. Requests retain
+    /// only their captured operation data and are revalidated at the moment of apply.
+    @discardableResult
+    func enqueueSerializedReplacement(
+        processIdentifier: pid_t?,
+        isContextCurrent: @escaping @MainActor @Sendable () -> Bool,
+        perform: @escaping @MainActor @Sendable (@escaping @MainActor @Sendable (Bool) -> Void) -> Void,
+        completion: @escaping @MainActor @Sendable (Bool) -> Void
+    ) -> Bool {
+        guard replacementQueue.enqueue(.serialized(PendingSerializedReplacement(
+            processIdentifier: processIdentifier,
+            isContextCurrent: isContextCurrent,
+            perform: perform,
+            completion: completion
+        ))) else {
+            rslog("replacement queue full; request refused")
+            return false
+        }
+        processNextReplacement()
+        return true
+    }
+
+    private func processNextReplacement() {
+        guard !isConverting, let next = replacementQueue.beginNext() else { return }
+
+        if case .serialized(let request) = next {
+            let sameProcess = request.processIdentifier != nil
+                && request.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier
+            guard sameProcess, request.isContextCurrent() else {
+                rslog("serialized replacement cancelled: captured process or input changed")
+                request.completion(false)
+                replacementQueue.finishCurrent()
+                processNextReplacement()
+                return
+            }
+            request.perform { [weak self] completed in
+                guard let self else { return }
+                request.completion(completed)
+                self.replacementQueue.finishCurrent()
+                self.processNextReplacement()
+            }
+            return
+        }
+
+        guard case .buffer(let request) = next else {
+            replacementQueue.finishCurrent()
+            processNextReplacement()
+            return
+        }
         isConverting = true
         injectQueue.async { [weak self] in
             guard let self else { return }
-            let sameProcess = request.processIdentifier
-                == NSWorkspace.shared.frontmostApplication?.processIdentifier
+            let sameProcess = request.processIdentifier != nil
+                && request.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier
             let preservedSuffix = sameProcess ? request.performIfCurrent { typedSuffix in
                 self.backspace(request.backspaceCount + typedSuffix.count)
                 usleep(20_000)
@@ -862,9 +957,10 @@ final class TextConverter {
                     self.lastConverted = request.converted + suffix
                     self.lastConversionOperationID = UUID().uuidString
                     self.lastUndoneOperationID = nil
-                    self.bufferIsCurrentlyConverted = true
+                    self.bufferReplacementLifecycle.commit(operationID: self.lastConversionOperationID ?? "")
                     self.bufferProcessIdentifier = request.processIdentifier
                     self.lastWasBuffer = true
+                    self.lastConversionSourceToken = request.original
                     self.lastConversionChangesLayout = request.changesLayout
                     self.lastConvertedCount = 0
                     self.lastBoundaryCount = 0
@@ -872,7 +968,8 @@ final class TextConverter {
                     rslog("buffer replacement committed")
                 }
                 request.completion(committed)
-                self.processNextBufferReplacement()
+                self.replacementQueue.finishCurrent()
+                self.processNextReplacement()
             }
         }
     }
@@ -882,15 +979,16 @@ final class TextConverter {
         performIfCurrent: @escaping @Sendable (@escaping @Sendable () -> Void) -> Bool,
         completion: @escaping @MainActor @Sendable (Bool) -> Void
     ) -> Bool {
-        guard !isConverting else { return false }
+        guard !isConverting else { completion(false); return false }
         if lastWasBuffer {
             guard let bufferProcessIdentifier,
                   NSWorkspace.shared.frontmostApplication?.processIdentifier == bufferProcessIdentifier else {
                 rslog("buffer reconvert: foreground process changed; stale undo discarded")
                 clearState()
+                completion(false)
                 return false
             }
-            guard !lastConverted.isEmpty else { return false }
+            guard !lastConverted.isEmpty else { completion(false); return false }
             isConverting = true
             rslog("buffer reconvert")
             let bsCount = lastConverted.count
@@ -907,9 +1005,7 @@ final class TextConverter {
                     if committed {
                         swap(&self.lastOriginal, &self.lastConverted)
                         self.lastWasBuffer = true
-                        self.bufferIsCurrentlyConverted.toggle()
-                        self.lastUndoneOperationID = self.bufferIsCurrentlyConverted
-                            ? nil : self.lastConversionOperationID
+                        self.lastUndoneOperationID = self.bufferReplacementLifecycle.toggle()
                     } else {
                         self.clearState()
                     }
@@ -934,6 +1030,7 @@ final class TextConverter {
         isConverting = true
         lastWasBuffer = false
         bufferProcessIdentifier = nil
+        clipboardUndoState = nil
         lastConversionChangesLayout = true
         defer { isConverting = false }
 
@@ -942,6 +1039,8 @@ final class TextConverter {
         }
         let pasteboard = NSPasteboard.general
         cancelClipboardRestore()
+        lastConversionOperationID = nil
+        lastUndoneOperationID = nil
         // Скептик 3.2.0: не перезаписываем сохранённый буфер при повторной конверсии в окне
         // восстановления (2с) — иначе «оригиналом» стал бы промежуточный конвертированный текст.
         captureClipboardSnapshotIfNeeded(pasteboard)
@@ -982,6 +1081,15 @@ final class TextConverter {
             // инвертируется, особенно смешанный результат).
             lastOriginal = text
             lastConverted = converted
+            lastConversionSourceToken = text
+            let operationID = UUID().uuidString
+            lastConversionOperationID = operationID
+            lastUndoneOperationID = nil
+            clipboardUndoState = ExactTextUndoState(
+                originalText: text, convertedText: converted,
+                originalSelection: NSRange(location: 0, length: 0),
+                convertedSelection: NSRange(location: 0, length: 0)
+            )
             // RTL: реконверт этого результата шёл бы стрелочной селекцией, а стрелки
             // двигают каретку ВИЗУАЛЬНО — в RTL выделился бы не тот диапазон и
             // конверсия заменила бы чужой текст (ревью-находка). Помечаем, чтобы
@@ -1044,6 +1152,15 @@ final class TextConverter {
         lastBoundaryCount = usedBoundary
         lastOriginal = text          // issue #22: точное восстановление в reconvert
         lastConverted = converted
+        lastConversionSourceToken = text
+        let operationID = UUID().uuidString
+        lastConversionOperationID = operationID
+        lastUndoneOperationID = nil
+        clipboardUndoState = ExactTextUndoState(
+            originalText: text, convertedText: converted,
+            originalSelection: NSRange(location: 0, length: 0),
+            convertedSelection: NSRange(location: 0, length: 0)
+        )
         // Симметрично Попытке 1: актуализируем флаг, чтобы прошлое RTL-выделение
         // не блокировало реконверт свежей LTR-конверсии (залипший флаг).
         lastClipboardRTL = TextConverter.containsRTL(text) || TextConverter.containsRTL(converted)
@@ -1093,12 +1210,28 @@ final class TextConverter {
         // исходник точно (умный/тотальный флип односторонней convert не инвертируется).
         // Иначе (текст изменился) — безопасный фолбэк на обычную одностороннюю конверсию.
         let converted: String
-        if text == lastConverted, !lastOriginal.isEmpty {
-            converted = lastOriginal
-            let tmp = lastOriginal; lastOriginal = lastConverted; lastConverted = tmp   // toggle
-            rslog("reconvert: restored original (len=\(converted.count))")
+        let restoredOriginal: Bool
+        if var state = clipboardUndoState, let step = state.toggle(currentText: text) {
+            converted = step.text
+            restoredOriginal = !step.isConverted
+            clipboardUndoState = state
+            swap(&lastOriginal, &lastConverted)
+            rslog(restoredOriginal
+                  ? "reconvert: restored original (len=\(converted.count))"
+                  : "reconvert: restored converted form (len=\(converted.count))")
         } else {
             converted = TextConverter.normalizedForInsert(DynamicKeyMapping.convert(text))
+            restoredOriginal = false
+            let newOperationID = UUID().uuidString
+            lastConversionOperationID = newOperationID
+            clipboardUndoState = ExactTextUndoState(
+                originalText: text, convertedText: converted,
+                originalSelection: NSRange(location: 0, length: 0),
+                convertedSelection: NSRange(location: 0, length: 0)
+            )
+            lastOriginal = text
+            lastConverted = converted
+            lastConversionSourceToken = text
             rslog("reconvert: len=\(text.count) → converting (fallback)")
         }
         pasteText(converted, pasteboard: pasteboard)
@@ -1106,6 +1239,11 @@ final class TextConverter {
         moveRight(lastBoundaryCount)
 
         lastConvertedCount = converted.count
+        if restoredOriginal {
+            lastUndoneOperationID = lastConversionOperationID
+        } else {
+            lastUndoneOperationID = nil
+        }
         scheduleClipboardRestore()
         return true
     }
@@ -1115,14 +1253,16 @@ final class TextConverter {
         lastBoundaryCount = 0
         lastOriginal = ""
         lastConverted = ""
+        lastConversionSourceToken = nil
         lastWasBuffer = false
         lastConversionOperationID = nil
         lastUndoneOperationID = nil
-        bufferIsCurrentlyConverted = false
+        bufferReplacementLifecycle.clear()
         lastClipboardRTL = false
         lastConversionChangesLayout = false
         spotlightUndo = nil
         safariUndo = nil
+        clipboardUndoState = nil
     }
 
     // MARK: - Private

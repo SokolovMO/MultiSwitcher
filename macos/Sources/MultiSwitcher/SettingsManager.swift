@@ -195,9 +195,7 @@ final class SettingsManager: @unchecked Sendable {
     }
 
     var learningEntries: [LearningEntry] {
-        profileStore.current.learning.sorted {
-            $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending
-        }
+        LearningEngine.sortedForReview(profileStore.current.learning)
     }
 
     var hasLearnedExclusions: Bool {
@@ -219,6 +217,19 @@ final class SettingsManager: @unchecked Sendable {
         } catch {
             rslog("Learning profile save failed: \(error.localizedDescription)")
         }
+    }
+
+    @discardableResult
+    func confirmManualLearningCandidate(_ word: String) -> Bool {
+        var confirmed = false
+        do {
+            try profileStore.update { profile in
+                confirmed = LearningEngine.confirmManualCandidate(word: word, in: &profile)
+            }
+        } catch {
+            rslog("Manual learning confirmation failed: \(error.localizedDescription)")
+        }
+        return confirmed
     }
 
     @discardableResult

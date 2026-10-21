@@ -328,6 +328,12 @@ final class KeyboardMonitor: @unchecked Sendable {
         return inputGeneration == expected
     }
 
+    var currentInputGeneration: UInt64 {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        return inputGeneration
+    }
+
     private func clearConvertedBuffers() {
         currentWordLength = 0
         wordBeforeBoundaryLength = 0
@@ -343,6 +349,12 @@ final class KeyboardMonitor: @unchecked Sendable {
         inputLock.lock()
         defer { inputLock.unlock() }
         return textContextGeneration == expected
+    }
+
+    var currentTextContextGeneration: UInt64 {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        return textContextGeneration
     }
 
     /// Drop input and pending hotkeys while an all-actions application is focused.

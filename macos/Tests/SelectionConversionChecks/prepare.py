@@ -31,12 +31,11 @@ def declaration(source: str, signature: str) -> str:
 def main() -> None:
     repo, destination = map(Path, sys.argv[1:])
     app = repo / "macos/Sources/MultiSwitcher"
-    for name in ("SmartConvert.swift", "DynamicKeyMapping.swift", "KeyMapping.swift"):
+    for name in ("SmartConvert.swift", "DynamicKeyMapping.swift", "KeyMapping.swift", "LayoutDetector.swift"):
         shutil.copyfile(app / name, destination / name)
 
     settings = (app / "SettingsManager.swift").read_text()
     converter = (app / "TextConverter.swift").read_text()
-    detector = (app / "AutoSwitch.swift").read_text()
     template = Path(__file__).with_name("Boundary.swift.in").read_text()
     replacements = {
         "/* SETTINGS_PROPERTIES */": "\n".join(
@@ -46,10 +45,7 @@ def main() -> None:
         "/* SELECTION_ROUTING */": "@MainActor\n" + declaration(
             converter, "private func convertSelectionText("
         ).replace("private func", "func", 1),
-        "/* DETECTOR_HELPERS */": "\n".join(
-            declaration(detector, f"static func {name}(_ s: String) -> Bool")
-            for name in ("isAllCaps", "hasInternalUppercase")
-        ),
+        "/* DETECTOR_STUBS */": "",
     }
     for marker, body in replacements.items():
         assert template.count(marker) == 1, f"Expected exactly one {marker}"

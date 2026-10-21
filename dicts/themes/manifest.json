@@ -3,13 +3,77 @@
   "source": "Manually curated MultiSwitcher vocabulary; independent of external word-list packages",
   "license": "MIT; see Resources/Licenses/MultiSwitcher-Thematic-Lexicons-MIT.txt",
   "packs": [
-    {"id":"brands","language":"en","version":2,"file":"brands.en.words","count":27,"size":194,"sha256":"b8d5a54ef4ffb0fc5de30b6ce7a6a48ea29b15432f1b25abcd9d3a1fd8ee44f8"},
-    {"id":"brands","language":"ru","version":1,"file":"brands.ru.words","count":21,"size":275,"sha256":"cef170345f0e34a547b40cd8a749594ce5d5fcd8e8cf92be23d26e438b06c337"},
-    {"id":"design","language":"en","version":1,"file":"design.en.words","count":67,"size":604,"sha256":"c4a048e6785b5be9ca99fe17a77a403798347ab203b6a14214ea8375fb53e1b3"},
-    {"id":"design","language":"ru","version":1,"file":"design.ru.words","count":57,"size":950,"sha256":"3539d58f89ede8dc089754fc94eb4fe53deb367d725325dc42dd83e81c36b2a7"},
-    {"id":"slang","language":"en","version":1,"file":"slang.en.words","count":24,"size":128,"sha256":"e9d539f41155c82a0615d0276a82d8870aa3c39c3e2f88abea034e49e07d0284"},
-    {"id":"slang","language":"ru","version":1,"file":"slang.ru.words","count":34,"size":482,"sha256":"639b23f527099e1beaae38bf10fd029d678d4da363adfed38e369b3c37b3bdf9"},
-    {"id":"technology","language":"en","version":1,"file":"technology.en.words","count":195,"size":1628,"sha256":"9db9d41e04f4da4afa83db4b3cbde7c152185d8d3d9a7d256507eeb7163509b7"},
-    {"id":"technology","language":"ru","version":1,"file":"technology.ru.words","count":133,"size":2442,"sha256":"20048d8bf0146341b7b238a0b14d3221183df70c097de56c1b61e919b2ea32d0"}
+    {
+      "id": "brands",
+      "language": "en",
+      "version": 3,
+      "file": "brands.en.words",
+      "count": 33,
+      "size": 238,
+      "sha256": "4d2578a119136a00af01ec76c6e77c17b7c6f9e4aba6caf1e6b1bb03babf5798"
+    },
+    {
+      "id": "brands",
+      "language": "ru",
+      "version": 1,
+      "file": "brands.ru.words",
+      "count": 21,
+      "size": 275,
+      "sha256": "cef170345f0e34a547b40cd8a749594ce5d5fcd8e8cf92be23d26e438b06c337"
+    },
+    {
+      "id": "design",
+      "language": "en",
+      "version": 2,
+      "file": "design.en.words",
+      "count": 75,
+      "size": 695,
+      "sha256": "b81ffacf04354736f352a90c61984c0a48af67b0a31ff5731255215d628e6f49"
+    },
+    {
+      "id": "design",
+      "language": "ru",
+      "version": 3,
+      "file": "design.ru.words",
+      "count": 62,
+      "size": 1067,
+      "sha256": "6121099547aaa8c90a5609fe5d80d9ce689b31114fc592bf403d311830001864"
+    },
+    {
+      "id": "slang",
+      "language": "en",
+      "version": 2,
+      "file": "slang.en.words",
+      "count": 44,
+      "size": 242,
+      "sha256": "7c7072d72d772873390333de2c1b03f8c1a8fec891476c053ce94bb2a0e43662"
+    },
+    {
+      "id": "slang",
+      "language": "ru",
+      "version": 2,
+      "file": "slang.ru.words",
+      "count": 45,
+      "size": 603,
+      "sha256": "48772985d4c515691819ccb5558e477f75da7e3df649471fddb43a69f8046920"
+    },
+    {
+      "id": "technology",
+      "language": "en",
+      "version": 2,
+      "file": "technology.en.words",
+      "count": 204,
+      "size": 1719,
+      "sha256": "43213d6fb3a9cffed0df3c60a653975cf0d3a582cf89de770f0ed28b84d9ffad"
+    },
+    {
+      "id": "technology",
+      "language": "ru",
+      "version": 2,
+      "file": "technology.ru.words",
+      "count": 134,
+      "size": 2463,
+      "sha256": "507ee2c1e53b9d911a1493d3dd8ca0fe5d5dd1ca47b23d118aa650ddc49de1cb"
+    }
   ]
 }

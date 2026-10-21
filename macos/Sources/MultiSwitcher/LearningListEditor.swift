@@ -1,6 +1,10 @@
 import AppKit
 import MultiSwitcherCore
 
+extension Notification.Name {
+    static let multiSwitcherLearningDidChange = Notification.Name("MultiSwitcherLearningDidChange")
+}
+
 @MainActor
 final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate {
     private enum Column {
@@ -12,8 +16,15 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
     private let table = NSTableView()
     private let searchField = NSSearchField()
     private let forgetButton = NSButton()
+    private let confirmButton = NSButton()
     private var entries: [LearningEntry] = []
     private var visibleEntries: [LearningEntry] = []
+
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(learningDidChange(_:)),
+                                               name: .multiSwitcherLearningDidChange, object: nil)
+    }
 
     func setCompactMode(_ compact: Bool) {
         table.rowHeight = compact ? 20 : 24
@@ -56,6 +67,15 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         forgetButton.action = #selector(forgetSelected)
         forgetButton.isEnabled = false
         root.addSubview(forgetButton)
+
+        confirmButton.frame = NSRect(x: 108, y: 0, width: 190, height: 26)
+        confirmButton.autoresizingMask = [.maxYMargin]
+        confirmButton.title = L10n.learningConfirmManual
+        confirmButton.bezelStyle = .rounded
+        confirmButton.target = self
+        confirmButton.action = #selector(confirmSelectedCandidate)
+        confirmButton.isEnabled = false
+        root.addSubview(confirmButton)
         return root
     }
 
@@ -77,8 +97,17 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         let value: String
         switch id {
         case Column.word: value = entry.word
-        case Column.count: value = String(entry.cancellationCount)
-        case Column.state: value = entry.isExcluded ? L10n.learningStateExcluded : L10n.learningStatePending
+        case Column.count:
+            if let cycles = entry.manualRoundTripCount, cycles > 0 {
+                value = L10n.learningManualRoundTripCount(cycles)
+            } else {
+                value = String(max(entry.cancellationCount, entry.importedCancellationCount ?? 0))
+            }
+        case Column.state:
+            value = entry.isExcluded ? L10n.learningStateExcluded
+                : isManualCandidate(entry) ? L10n.learningManualCandidateState
+                : entry.origin == .punto ? L10n.learningStateImportedHistory
+                : L10n.learningStatePending
         default: return nil
         }
         let cell = NSTableCellView()
@@ -97,12 +126,16 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
-        forgetButton.isEnabled = table.selectedRow >= 0 && table.selectedRow < visibleEntries.count
+        updateActionButtons()
     }
 
     func reloadFromStore() {
         entries = SettingsManager.shared.learningEntries
         applySearch()
+    }
+
+    @objc private func learningDidChange(_ notification: Notification) {
+        reloadFromStore()
     }
 
     @objc private func searchChanged(_ sender: NSSearchField) {
@@ -115,7 +148,7 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
             ? entries
             : entries.filter { $0.word.localizedCaseInsensitiveContains(query) }
         table.reloadData()
-        forgetButton.isEnabled = false
+        updateActionButtons()
     }
 
     @objc private func forgetSelected() {
@@ -123,5 +156,28 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         guard visibleEntries.indices.contains(row) else { return }
         SettingsManager.shared.forgetLearnedWord(visibleEntries[row].word)
         reloadFromStore()
+    }
+
+    @objc private func confirmSelectedCandidate() {
+        let row = table.selectedRow
+        guard visibleEntries.indices.contains(row),
+              isManualCandidate(visibleEntries[row]),
+              SettingsManager.shared.confirmManualLearningCandidate(visibleEntries[row].word) else { return }
+        reloadFromStore()
+    }
+
+    private func updateActionButtons() {
+        guard visibleEntries.indices.contains(table.selectedRow) else {
+            forgetButton.isEnabled = false
+            confirmButton.isEnabled = false
+            return
+        }
+        let selected = visibleEntries[table.selectedRow]
+        forgetButton.isEnabled = true
+        confirmButton.isEnabled = isManualCandidate(selected)
+    }
+
+    private func isManualCandidate(_ entry: LearningEntry) -> Bool {
+        !entry.isExcluded && (entry.manualRoundTripCount ?? 0) >= LearningEngine.requiredManualRoundTrips
     }
 }

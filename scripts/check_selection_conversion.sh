@@ -25,7 +25,7 @@ xcrun swiftc -swift-version 6 -module-cache-path "$CHECK_TEMP/module-cache" \
 xcrun swiftc -swift-version 6 -module-cache-path "$CHECK_TEMP/module-cache" \
     -I "$CHECK_TEMP" -L "$CHECK_TEMP" -lMultiSwitcherCore \
     -Xlinker -rpath -Xlinker "$CHECK_TEMP" -framework Carbon -framework AppKit \
-    "$CHECK_TEMP/Boundary.swift" "$CHECK_TEMP/SmartConvert.swift" \
+    "$CHECK_TEMP/Boundary.swift" "$CHECK_TEMP/SmartConvert.swift" "$CHECK_TEMP/LayoutDetector.swift" \
     "$CHECK_TEMP/DynamicKeyMapping.swift" "$CHECK_TEMP/KeyMapping.swift" \
     "$CHECK_TESTS/main.swift" -parse-as-library -o "$CHECK_TEMP/SelectionConversionChecks"
 

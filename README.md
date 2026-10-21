@@ -4,7 +4,7 @@ A native macOS menu-bar utility for correcting text typed in the wrong keyboard 
 
 ## Status
 
-MultiSwitcher is preparing its first public alpha. The source candidate is 0.3.2 (10); no signed, notarized end-user release has been published. Input integrity, hands-on compatibility on macOS 15/26/27, and update recovery remain release gates. See [Release readiness](RELEASE.md).
+MultiSwitcher is preparing its first public alpha. The local source candidate is 0.3.3 (22); no signed, notarized end-user release has been published. Input integrity, hands-on compatibility on macOS 15/26/27, and update recovery remain release gates. See [Release readiness](RELEASE.md).
 
 ## Requirements
 
@@ -14,9 +14,9 @@ MultiSwitcher is preparing its first public alpha. The source candidate is 0.3.2
 
 ## Install
 
-When Public Alpha 1 passes its gates and is manually published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted. The planned first alpha tag is `beta-v0.3.2-build10`; stable 1.0 will be a separate release. The website source is in `docs/`; a repository owner must enable GitHub Pages once.
+When Public Alpha 1 passes its gates and is manually published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted. The planned first alpha tag is `beta-v0.3.3-build22`; stable 1.0 will be a separate release. The website source is in `docs/`; a repository owner must enable GitHub Pages once.
 
-The current source has a custom GitHub Releases update path, but it has not been verified end to end with a signed public release. Sparkle appcast migration is a remaining release gate. A commit or tag alone does not deliver updates. See [RELEASE.md](RELEASE.md) before relying on the updater.
+Release builds use pinned Sparkle 2.10 with signed appcasts. The updater has not yet been verified end to end with a notarized public release; a commit or tag alone does not deliver updates. See [RELEASE.md](RELEASE.md) before relying on the updater.
 
 ## Build and checks
 

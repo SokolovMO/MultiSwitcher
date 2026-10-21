@@ -1,3 +1,4 @@
+#if !canImport(Sparkle)
 import AppKit
 import Foundation
 import MultiSwitcherCore
@@ -107,6 +108,12 @@ enum UpdateChecker {
     /// Проверить вручную (всегда показывает результат)
     static func checkNow() {
         Task { await check(silent: false) }
+    }
+
+    /// The setting is already persisted by SettingsManager; keep the release
+    /// and local-build updater implementations behind the same UI contract.
+    static func automaticChecksDidChange(_ enabled: Bool) {
+        updateDefaults.set(enabled, forKey: autoCheckKey)
     }
 
     static func channelDidChange() {
@@ -670,3 +677,4 @@ enum UpdateChecker {
         return pa < pb ? .orderedAscending : .orderedDescending
     }
 }
+#endif

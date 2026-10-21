@@ -8,15 +8,22 @@ import UniformTypeIdentifiers
 /// standard close shortcut at the window level so it also works from text fields.
 @MainActor
 private final class SettingsWindow: NSWindow {
+    var onQuitShortcut: (() -> Void)?
+
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let extraModifiers = modifiers.intersection([.shift, .option, .control])
-        if event.type == .keyDown,
-           modifiers.contains(.command),
-           extraModifiers.isEmpty,
-           event.keyCode == 13 {
-            performClose(nil)
-            return true
+        if event.type == .keyDown, modifiers.contains(.command), extraModifiers.isEmpty {
+            switch event.keyCode {
+            case 13: // W — close Settings, leave the menu-bar app running.
+                close()
+                return true
+            case 12: // Q — quit the app through its normal cleanup path.
+                onQuitShortcut?()
+                return true
+            default:
+                break
+            }
         }
         return super.performKeyEquivalent(with: event)
     }
@@ -93,9 +100,11 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private weak var profileRecoveryNoteLabel: NSTextField?
     private weak var restoreProfileButton: NSButton?
     private var pageTransitionGeneration = 0
+    private var windowShortcutMonitor: Any?
 
     /// Callback для обновления меню
     var onAutoSwitchChanged: ((Bool) -> Void)?
+    var onQuitRequested: (() -> Void)?
     var onPerAppLayoutChanged: ((Bool) -> Void)?
     var onLanguageChanged: (() -> Void)?
     var onTriggerChanged: (() -> Void)?
@@ -111,6 +120,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             learningListEditor?.reloadFromStore()
             ruleEditor?.reloadFromStore()
             NSApp.setActivationPolicy(.regular)
+            installWindowShortcutMonitor(for: window)
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             onWindowVisibilityChanged?(true)
@@ -125,10 +135,10 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             backing: .buffered,
             defer: false
         )
+        win.onQuitShortcut = { [weak self] in self?.onQuitRequested?() }
         win.title = L10n.settingsTitle
         win.appearance = nil // Inherit the current macOS light/dark appearance.
         win.collectionBehavior = [.managed, .fullScreenPrimary]
-        win.center()
         win.isReleasedWhenClosed = false
         win.delegate = self
 
@@ -248,14 +258,53 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         let desiredHeight = min(max(680, tallest + 16), availableHeight)
         win.setContentSize(NSSize(width: 800, height: max(minimumHeight, desiredHeight)))
         win.minSize = NSSize(width: 800, height: minimumHeight)
-        win.center()
+        let autosaveName = "MultiSwitcher.SettingsWindow"
+        win.setFrameAutosaveName(autosaveName)
+        let restoredFrame = win.setFrameUsingName(autosaveName)
+        if !restoredFrame || visibleFrame.map({ !win.frame.intersects($0) }) == true {
+            win.center()
+        }
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
         window = win
+        installWindowShortcutMonitor(for: win)
         setSidebarWidth(sidebarWidth)
         onWindowVisibilityChanged?(true)
         updatePagePresentation()
+    }
+
+    func closeSettingsWindow() {
+        window?.close()
+    }
+
+    /// A menu-bar app's menu key equivalents can be skipped by some AppKit
+    /// configurations while its settings window is the only regular window. A local
+    /// monitor runs before responder dispatch and makes ⌘W reliable even in text fields.
+    /// It is active only while this app's Settings window is visible; it never sees keys
+    /// typed in other applications.
+    private func installWindowShortcutMonitor(for window: NSWindow) {
+        guard windowShortcutMonitor == nil else { return }
+        windowShortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak window] event in
+            guard let window, window.isVisible, NSApp.isActive else { return event }
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard modifiers.contains(.command),
+                  modifiers.intersection([.shift, .option, .control]).isEmpty else { return event }
+
+            // Hardware key codes are stable across ABC/Russian input sources. Keep the
+            // character fallback as well for synthetic keyboard events from accessibility
+            // tools and remote sessions, which may report a translated character instead.
+            let key = event.charactersIgnoringModifiers?.lowercased()
+            guard event.keyCode == 13 || key == "w" || key == "ц" else { return event }
+            window.close()
+            return nil
+        }
+    }
+
+    private func removeWindowShortcutMonitor() {
+        guard let windowShortcutMonitor else { return }
+        NSEvent.removeMonitor(windowShortcutMonitor)
+        self.windowShortcutMonitor = nil
     }
 
     private func installPageAccessory(on window: NSWindow) {
@@ -411,6 +460,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
     func windowWillClose(_ notification: Notification) {
         guard (notification.object as? NSWindow) === window else { return }
+        removeWindowShortcutMonitor()
         pageTransitionGeneration += 1
         paneScrollView?.alphaValue = 1
         expandedPage = false
@@ -1535,7 +1585,9 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     }
 
     @objc private func updateChecksChanged(_ sender: NSButton) {
-        SettingsManager.shared.checkUpdatesEnabled = sender.state == .on
+        let enabled = sender.state == .on
+        SettingsManager.shared.checkUpdatesEnabled = enabled
+        UpdateChecker.automaticChecksDidChange(enabled)
     }
 
     @objc private func updateChannelChanged(_ sender: NSPopUpButton) {

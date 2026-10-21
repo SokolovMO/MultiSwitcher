@@ -6,21 +6,60 @@ on:
     paths:
       - "docs/**"
       - ".github/workflows/pages.yml"
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: github-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+      - name: Preserve the latest signed appcast
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_EVENT_TAG: ${{ github.event.release.tag_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          DOWNLOAD_DIR: ${{ runner.temp }}/multiswitcher-appcast
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "release" ]]; then
+            release_tag="$RELEASE_EVENT_TAG"
+          else
+            release_tag="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
+              --json tagName,isDraft,publishedAt \
+              --jq 'map(select(.isDraft == false)) | sort_by(.publishedAt) | last | .tagName // empty')"
+          fi
+          if [[ -z "$release_tag" ]]; then
+            echo "No published release yet; omitting the Sparkle feed from this first site deploy."
+            exit 0
+          fi
+
+          mkdir -m 700 -p "$DOWNLOAD_DIR"
+          attempt=1
+          until gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" \
+            --pattern appcast.xml --dir "$DOWNLOAD_DIR" --clobber; do
+            if [[ "$attempt" -ge 5 ]]; then
+              echo "Could not download appcast.xml from published release $release_tag." >&2
+              exit 1
+            fi
+            sleep 5
+            attempt=$((attempt + 1))
+          done
+          test -s "$DOWNLOAD_DIR/appcast.xml"
+          cp "$DOWNLOAD_DIR/appcast.xml" docs/appcast.xml
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
           path: docs
@@ -31,9 +70,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      pages: write
-      id-token: write
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
