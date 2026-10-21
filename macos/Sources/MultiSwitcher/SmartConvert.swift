@@ -20,7 +20,7 @@ import MultiSwitcherCore
 /// (DynamicKeyMapping.convertBidirectional). Пары не «латиница+кириллица» — обычный путь.
 enum SmartConvert {
     private enum Script { case cyr, lat, other, mixed }
-    private enum WordDecision { case keep, canonicalize(String), flip(String, Script), unresolved, ambiguousShort }
+    private enum WordDecision { case keep, flip(String, Script), unresolved, ambiguousShort }
 
     // Частотные однобуквенные слова — доп. страховка для флипа ОДИНОЧНЫХ букв по сигналу.
     private static let cyr1: Set<Character> = ["я", "в", "с", "к", "о", "у", "а", "и"]
@@ -29,12 +29,16 @@ enum SmartConvert {
     /// Умная по-словная конверсия выделения. При неизвестной паре или недоступном словаре
     /// сохраняет текст без изменений: smart mode никогда не становится слепым full flip.
     @MainActor
-    static func selection(_ text: String, useSystemDictionary: Bool = true) -> String {
+    static func selection(_ text: String, useSystemDictionary: Bool = true,
+                          allowUnrecognizedSingleWord: Bool = false) -> String {
         guard let (latLang, cyrLang) = classifyPair(),
               Dict.isAvailable(latLang), Dict.isAvailable(cyrLang) else {
             return text
         }
         let toks = tokenize(text)
+        // Only an explicitly verified manual selection can override an unknown word.
+        // Automatic correction and multiword smart conversion remain dictionary based.
+        let singleSelectedWord = allowUnrecognizedSingleWord && toks.filter(\.isWord).count == 1
         var results = [String?](repeating: nil, count: toks.count)
         var pending: [Int] = []                  // неразрешённые токены — решаем в пасе 2 по сигналу
         var ambiguousShorts = Set<Int>()
@@ -48,14 +52,16 @@ enum SmartConvert {
                               useSystemDictionary: useSystemDictionary) {
             case .keep:
                 results[i] = tok.str
-            case let .canonicalize(value):
-                results[i] = value
             case let .flip(s, toScript):
                 results[i] = s
                 flipDirections[i] = toScript
                 if toScript == .cyr { flippedCyr += 1 } else if toScript == .lat { flippedLat += 1 }
             case .unresolved:
-                pending.append(i)
+                if singleSelectedWord, let converted = manualSingleWordFlip(tok.str) {
+                    results[i] = converted
+                } else {
+                    pending.append(i)
+                }
             case .ambiguousShort:
                 pending.append(i)
                 ambiguousShorts.insert(i)
@@ -149,11 +155,11 @@ enum SmartConvert {
         if LayoutDetector.isAllCaps(core) { return .keep }
         switch LayoutCorrectionEngine.trustedTermDecision(typed: core, converted: mappedCore) {
         case .preserve:
-            guard let canonical = LayoutCorrectionEngine.canonicalTrustedTerm(for: core),
-                  canonical != core else { return .keep }
-            return .canonicalize(replacingLetterCore(in: w, with: canonical))
-        case .convert(let canonical):
-            return .flip(replacingLetterCore(in: w, with: canonical), .lat)
+            return .keep
+        case .convert:
+            // Recognition is case-insensitive; replacement preserves the case actually
+            // typed: шзрщту → iphone, шЗрщту → iPhone. Correct names stay byte-for-byte.
+            return .flip(replacingLetterCore(in: w, with: mappedCore), .lat)
         case nil:
             break
         }
@@ -227,6 +233,19 @@ enum SmartConvert {
         useSystemDictionary
             ? Dict.isValidWord(word, lang: lang)
             : Dict.isValidWordForAutomaticPath(word, lang: lang)
+    }
+
+    @MainActor
+    private static func manualSingleWordFlip(_ word: String) -> String? {
+        guard (3...128).contains(word.count), word.allSatisfy(\.isLetter),
+              !LayoutDetector.isAllCaps(word), !LayoutDetector.hasInternalUppercase(word) else { return nil }
+        let source = dominantScript(word)
+        guard source == .cyr || source == .lat else { return nil }
+        let converted = DynamicKeyMapping.convertBidirectional(word)
+        let target = dominantScript(converted)
+        guard converted != word, converted.allSatisfy(\.isLetter),
+              (source == .cyr && target == .lat) || (source == .lat && target == .cyr) else { return nil }
+        return converted
     }
 
     /// Флипаем неразрешённый токен ТОЛЬКО при явном сигнале (соседи флипнулись в одну сторону)

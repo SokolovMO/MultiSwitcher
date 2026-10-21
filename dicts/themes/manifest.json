@@ -3,7 +3,7 @@
   "source": "Manually curated MultiSwitcher vocabulary; independent of external word-list packages",
   "license": "MIT; see Resources/Licenses/MultiSwitcher-Thematic-Lexicons-MIT.txt",
   "packs": [
-    {"id":"brands","language":"en","version":1,"file":"brands.en.words","count":26,"size":183,"sha256":"02231b43cf4e80c2c893c6e98670d06baf5255c36e95401ff4621959aa05ee4c"},
+    {"id":"brands","language":"en","version":2,"file":"brands.en.words","count":27,"size":194,"sha256":"b8d5a54ef4ffb0fc5de30b6ce7a6a48ea29b15432f1b25abcd9d3a1fd8ee44f8"},
     {"id":"brands","language":"ru","version":1,"file":"brands.ru.words","count":21,"size":275,"sha256":"cef170345f0e34a547b40cd8a749594ce5d5fcd8e8cf92be23d26e438b06c337"},
     {"id":"design","language":"en","version":1,"file":"design.en.words","count":67,"size":604,"sha256":"c4a048e6785b5be9ca99fe17a77a403798347ab203b6a14214ea8375fb53e1b3"},
     {"id":"design","language":"ru","version":1,"file":"design.ru.words","count":57,"size":950,"sha256":"3539d58f89ede8dc089754fc94eb4fe53deb367d725325dc42dd83e81c36b2a7"},

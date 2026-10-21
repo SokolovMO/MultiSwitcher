@@ -51,6 +51,13 @@ final class TextConverter {
     private var spotlightUndo: SpotlightUndo?
     private var safariUndo: SpotlightUndo?
 
+    private struct VerifiedSelection {
+        let processID: pid_t
+        let element: AXUIElement
+        let range: CFRange
+        let text: String
+    }
+
     /// RTL-скаляры: иврит, арабский + презентационные формы (копипаста из PDF).
     nonisolated static func containsRTL(_ s: String) -> Bool {
         s.unicodeScalars.contains {
@@ -219,7 +226,8 @@ final class TextConverter {
         simKey(keyCode: KC.left, flags: [.maskShift, .maskCommand])
         usleep(60_000)
         if !focusedSelectionIsEmpty() {
-            let ok = convertViaClipboard(wordLength: 0, prevWordLength: 0, boundaryCount: 0)
+            let ok = convertViaClipboard(wordLength: 0, prevWordLength: 0, boundaryCount: 0,
+                                         allowUnrecognizedSingleWord: false)
             if !ok { simKey(keyCode: KC.right, flags: []) }   // снять выделение (оно есть — стрелка не двигает каретку лишнего)
             return ok
         }
@@ -231,7 +239,8 @@ final class TextConverter {
         simKey(keyCode: KC.right, flags: [.maskShift, .maskCommand])
         usleep(60_000)
         if !focusedSelectionIsEmpty() {
-            let ok = convertViaClipboard(wordLength: 0, prevWordLength: 0, boundaryCount: 0)
+            let ok = convertViaClipboard(wordLength: 0, prevWordLength: 0, boundaryCount: 0,
+                                         allowUnrecognizedSingleWord: false)
             if !ok { simKey(keyCode: KC.left, flags: []) }
             return ok
         }
@@ -258,11 +267,48 @@ final class TextConverter {
 
     /// One policy for every selected-text path, including Spotlight and the clipboard
     /// fallback. The forced last-word Option path remains a direct layout flip.
-    private func convertSelectionText(_ text: String) -> String {
+    private func convertSelectionText(_ text: String, allowUnrecognizedSingleWord: Bool = false) -> String {
         let settings = SettingsManager.shared
-        if settings.smartConversion { return SmartConvert.selection(text) }
+        if settings.smartConversion {
+            return SmartConvert.selection(text, allowUnrecognizedSingleWord: allowUnrecognizedSingleWord)
+        }
         if settings.convertByText { return DynamicKeyMapping.convertBidirectional(text) }
         return DynamicKeyMapping.convert(text)
+    }
+
+    /// Read only the selected text, never the full document or surrounding chat.
+    /// A copied current line is not evidence that a user selected it.
+    private func verifiedSelection() -> VerifiedSelection? {
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(axApp, 0.15)
+        var focused: AnyObject?
+        guard AXUIElementCopyAttributeValue(axApp, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
+        let element = focused as! AXUIElement
+        AXUIElementSetMessagingTimeout(element, 0.15)
+        var subrole: AnyObject?
+        AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
+        guard (subrole as? String) != kAXSecureTextFieldSubrole else { return nil }
+        var selected: AnyObject?
+        var rangeValue: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &selected) == .success,
+              let text = selected as? String, !text.isEmpty,
+              AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success,
+              let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() else { return nil }
+        let value = rangeValue as! AXValue
+        var range = CFRange()
+        guard AXValueGetType(value) == .cfRange, AXValueGetValue(value, .cfRange, &range),
+              range.location >= 0, range.location != kCFNotFound,
+              range.length > 0, range.length == text.utf16.count else { return nil }
+        return VerifiedSelection(processID: app.processIdentifier, element: element, range: range, text: text)
+    }
+
+    private func selectionIsCurrent(_ snapshot: VerifiedSelection) -> Bool {
+        guard let current = verifiedSelection() else { return false }
+        return current.processID == snapshot.processID && CFEqual(current.element, snapshot.element)
+            && current.range.location == snapshot.range.location && current.range.length == snapshot.range.length
+            && current.text == snapshot.text
     }
 
     /// issue #24 (терминал): конвертирует всю набранную строку по БУФЕРУ нажатий — backspace на
@@ -468,7 +514,7 @@ final class TextConverter {
             return false
         }
         let source = (field.value as NSString).substring(with: plan.range)
-        let convertedSource = field.selection.length > 0 ? convertSelectionText(source)
+        let convertedSource = field.selection.length > 0 ? convertSelectionText(source, allowUnrecognizedSingleWord: true)
                                                          : DynamicKeyMapping.convert(source)
         let converted = TextConverter.normalizedForInsert(convertedSource)
         guard !source.isEmpty, converted != source,
@@ -653,7 +699,7 @@ final class TextConverter {
             return false
         }
         let source = (field.value as NSString).substring(with: plan.range)
-        let convertedSource = field.selection.length > 0 ? convertSelectionText(source)
+        let convertedSource = field.selection.length > 0 ? convertSelectionText(source, allowUnrecognizedSingleWord: true)
                                                          : DynamicKeyMapping.convert(source)
         let converted = TextConverter.normalizedForInsert(convertedSource)
         guard !source.isEmpty, converted != source,
@@ -879,7 +925,8 @@ final class TextConverter {
 
     /// Конвертация через буфер обмена (фолбэк: выделенный мышью текст и т.п.).
     /// Сначала проверяет выделение, потом пробует слово по счётчику.
-    func convertViaClipboard(wordLength: Int, prevWordLength: Int, boundaryCount: Int) -> Bool {
+    func convertViaClipboard(wordLength: Int, prevWordLength: Int, boundaryCount: Int,
+                             allowUnrecognizedSingleWord: Bool = true) -> Bool {
         guard !isConverting else {
             rslog("convert: skipped — already converting")
             return false
@@ -907,14 +954,21 @@ final class TextConverter {
         }
 
         // --- Попытка 1: уже есть выделенный текст? ---
+        let selection = verifiedSelection()
         if let text = tryCopy(pasteboard) {
             rslog("convert: selection len=\(text.count)")
             // Selection, Spotlight, and line conversion share this policy.
-            let converted = TextConverter.normalizedForInsert(convertSelectionText(text))
+            let hasVerifiedSelection = allowUnrecognizedSingleWord && selection?.text == text
+            let converted = TextConverter.normalizedForInsert(convertSelectionText(
+                text, allowUnrecognizedSingleWord: hasVerifiedSelection))
             // Конверсия не изменила текст (пара не разрешилась / комбинирующие знаки —
             // см. bail'ы в DynamicKeyMapping) — не гоняем вставку впустую.
             if converted == text {
                 rslog("convert: no-op conversion — bail")
+                return false
+            }
+            if let selection, !selectionIsCurrent(selection) || selection.text != text {
+                rslog("convert: selected range changed — bail")
                 return false
             }
             pasteText(converted, pasteboard: pasteboard)

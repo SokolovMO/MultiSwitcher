@@ -4,7 +4,7 @@ Last verified: 2026-10-21. This document describes source preparation, not a pub
 
 ## Release state
 
-**Do not publish Public Alpha 1 yet.** The GitHub release list has no public app release. The project source is in draft PR #2 and is not a published installer. Current app metadata is 0.3.1 (9), and the local environment has no valid Developer ID identity. The current updater is a custom GitHub-release updater; migration to signed Sparkle appcasts is not complete. A public Pages site and release workflow are prepared in source, but Pages must be enabled in repository settings and no notarized update has been tested end to end.
+**Do not publish Public Alpha 1 yet.** The GitHub release list has no public app release. The project source is in draft PR #2 and is not a published installer. Current app metadata is 0.3.2 (10), and the local environment has no valid Developer ID identity. The current updater is a custom GitHub-release updater; migration to signed Sparkle appcasts is not complete. A public Pages site and release workflow are prepared in source, but Pages must be enabled in repository settings and no notarized update has been tested end to end.
 
 Required hands-on checks on **each macOS 15, 26, and 27** before alpha publication:
 
@@ -15,19 +15,19 @@ Required hands-on checks on **each macOS 15, 26, and 27** before alpha publicati
 - Verify Developer ID signature, notarization, Gatekeeper, fresh install, update from the prior signed build, and rollback.
 - Verify crash-report opt-in/revocation, exact sanitized payload, IP handling/retention, and dSYM symbolication before enabling reporting in a public build.
 
-CI compilation on macOS 15/26 and core checks do not substitute for live input on those systems. On the current macOS 27.0.1 Mac, all Swift sources parse, 195 core checks pass, and a debug arm64 app executable builds. The release-configured SwiftPM build reaches dSYM generation but fails there with `Operation not permitted`; full Xcode is unavailable. The current environment has no Developer ID identity or configured notarization credentials.
+CI compilation on macOS 15/26 and core checks do not substitute for live input on those systems. On the current macOS 27.0.1 Mac, 195 core checks and 51 actual-source selection-conversion assertions pass. A release arm64 app bundle builds and passes strict signature verification with the existing local stable signing identity outside the sandbox. Developer ID and notarization credentials remain unavailable; this local signature is not a public distribution signature. The selection checks use real bundled dictionaries and native RU/US keyboard maps, with in-memory settings; they do not prove Option event delivery or text replacement in Telegram.
 
 ## Public Alpha 1 scope
 
 - Keep the existing **beta/test channel**. Public Alpha 1 is a release label on that channel, not a third updater channel.
-- Use a prerelease tag such as `beta-v0.3.1-build9` after version/build metadata is incremented and reviewed code is merged to `main`.
+- Use a prerelease tag such as `beta-v0.3.2-build10` after version/build metadata is incremented and reviewed code is merged to `main`.
 - Keep the GitHub release as a draft while validating the signed DMG. Publish manually only after every alpha gate above passes.
 - Do not call the build `1.0`. Stable 1.0 is a separate release after alpha feedback and open text-integrity issues are resolved.
 - Do not claim compatibility with an OS version until hands-on testing is recorded.
 
 ## Current distribution mechanism and migration gate
 
-The current code checks GitHub Releases, validates a signed manifest, SHA-256, bundle identity, Developer ID team signature, and Gatekeeper before replacing the app. This code has **not** been tested end to end from one notarized public build to another, and its install/rollback path is not accepted as a production updater yet.
+The current code checks GitHub Releases, validates manifest structure, HTTPS asset locations, SHA-256, bundle identity, Developer ID team signature, and Gatekeeper before replacing the app. The current JSON manifest itself is not cryptographically signed. This code has **not** been tested end to end from one notarized public build to another, and its install/rollback path is not accepted as a production updater yet.
 
 The target is the latest reviewed production release of Sparkle 2.x with EdDSA-signed appcasts for stable and the existing beta channel. Pin the exact version when integration begins and verify it against the [official Sparkle documentation](https://sparkle-project.org/documentation/). Sparkle integration requires a persistent key pair: keep the private key only in the protected release environment, embed its matching public key, generate and validate appcasts in release automation, and test cross-channel behavior. Do not generate a new key for each release. Do not enable Sparkle or publish a feed until the key is provisioned and the signed update has passed a clean install/update/rollback test.
 
@@ -79,3 +79,11 @@ Debug logs are off by default. The support action redacts common paths, app IDs,
 ## Stable 1.0 gate
 
 In addition to the alpha checks, 1.0 requires a public support page and tested update/rollback channel, completed appcast migration or an explicitly reviewed updater decision, no open text/clipboard/learning corruption issues, documented compatibility, accessibility review, and measured resource targets. Public feedback should be triaged and fixes released through reviewed commits and signed builds. There is no response-time commitment.
+
+## Local selection fix: 0.3.2 (10)
+
+- Adds lowercase `openrouter` to the versioned brand vocabulary.
+- Smart selected-text conversion preserves already correct names and the case of mapped names.
+- Manual conversion can map one unknown alphabetic token only after a nonempty selection is verified; automatic and synthesized whole-line correction remain conservative.
+- Clipboard selection verification compares the process, AX element, UTF-16 selection range, copied text and live selection before paste. Unsupported AX selection verification does not enable the unknown-word override.
+- Run `bash scripts/check_selection_conversion.sh` for 51 deterministic actual-source assertions. This check runs in CI alongside the 195 core checks; live Telegram confirmation remains separate.

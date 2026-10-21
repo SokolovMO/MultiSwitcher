@@ -1,0 +1,106 @@
+import Foundation
+import Carbon
+import MultiSwitcherCore
+
+// Settings storage and rule lookup are in memory; the flag implementations are real.
+final class SettingsManager {
+    nonisolated(unsafe) static let shared = SettingsManager()
+    enum Keys {
+        static let smartConversion = "com.multiswitcher.smartConversion"
+        static let convertByText = "com.multiswitcher.convertByText"
+    }
+    var layout1ID = "com.apple.keylayout.Russian"
+    var layout2ID = "com.apple.keylayout.US"
+    var neverConvertWords: Set<String> = []
+    private var values: [String: Bool] = [:]
+    private func readBool(_ key: String, default fallback: Bool = false) -> Bool { values[key] ?? fallback }
+    private func write(_ value: Bool, forKey key: String) { values[key] = value }
+    func seedRaw(_ key: String, value: Bool) { values[key] = value }
+    enum RuleDecision { case neverConvert, alwaysConvert, replace(String), none }
+    func automaticRuleDecision(typed: String, converted: String) -> RuleDecision {
+        neverConvertWords.contains(typed.lowercased()) ? .neverConvert : .none
+    }
+    /* SETTINGS_PROPERTIES */
+}
+
+struct TextConverter {
+    static func containsRTL(_ text: String) -> Bool {
+        text.unicodeScalars.contains { (0x0590...0x08FF).contains($0.value) }
+    }
+    /* SELECTION_ROUTING */
+}
+
+enum LayoutDetector {
+    /* DETECTOR_HELPERS */
+}
+
+// Structural dependencies for unused DynamicKeyMapping entry points.
+struct TypedKey {
+    let keyCode: UInt16
+    let shift: Bool
+    let caps: Bool
+    let char: Character?
+    let sourceLayoutID: String?
+}
+func rslog(_ message: String) {}
+
+// Read-only OS boundary. Native UCKeyTranslate in DynamicKeyMapping builds the maps.
+// Pin RU -> US independently of the active layout, without enabling/selecting a source.
+enum LayoutSwitcher {
+    nonisolated(unsafe) private static let sources: [TISInputSource] = {
+        let conditions = [
+            kTISPropertyInputSourceCategory as String: kTISCategoryKeyboardInputSource as Any,
+            kTISPropertyInputSourceIsSelectCapable as String: true as Any,
+        ] as CFDictionary
+        return TISCreateInputSourceList(conditions, true)?.takeRetainedValue() as? [TISInputSource] ?? []
+    }()
+    static func installedLayouts() -> [TISInputSource] {
+        let ids = [SettingsManager.shared.layout1ID, SettingsManager.shared.layout2ID]
+        return sources.filter { ids.contains(sourceID($0)) }
+    }
+    static func currentLayoutID() -> String { SettingsManager.shared.layout1ID }
+    static func sourceID(_ source: TISInputSource) -> String {
+        guard let pointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else { return "" }
+        return Unmanaged<CFString>.fromOpaque(pointer).takeUnretainedValue() as String
+    }
+    static func languageCode(_ source: TISInputSource) -> String? {
+        guard let pointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages),
+              let languages = Unmanaged<CFArray>.fromOpaque(pointer).takeUnretainedValue() as? [String] else { return nil }
+        return languages.first
+    }
+    static func autoDetectID1(from layouts: [TISInputSource]) -> String { SettingsManager.shared.layout1ID }
+    static func autoDetectID2(from layouts: [TISInputSource]) -> String { SettingsManager.shared.layout2ID }
+    static func currentAndOppositeLanguage() -> (String, String)? {
+        let layouts = installedLayouts()
+        guard let first = layouts.first(where: { sourceID($0) == SettingsManager.shared.layout1ID }),
+              let second = layouts.first(where: { sourceID($0) == SettingsManager.shared.layout2ID }),
+              let firstLanguage = languageCode(first), let secondLanguage = languageCode(second) else { return nil }
+        return (firstLanguage, secondLanguage)
+    }
+}
+
+// Use real packaged dictionaries and WordLexicon, excluding AppleSpell/XPC and warmup.
+enum Dict {
+    @MainActor private static var base: [String: WordLexicon] = [:]
+    @MainActor private static var themes: [String: [WordLexicon]] = [:]
+    @MainActor static func load(baseDirectory: URL, themeDirectory: URL) throws {
+        for language in ["en", "ru"] {
+            let words = try String(contentsOf: baseDirectory.appendingPathComponent("\(language).words"), encoding: .utf8)
+            base[language] = WordLexicon(wordList: words)
+            themes[language] = try ["technology", "design", "brands", "slang"].map { theme in
+                let url = themeDirectory.appendingPathComponent("\(theme).\(language).words")
+                return WordLexicon(wordList: try String(contentsOf: url, encoding: .utf8))
+            }
+            print("Lexicon \(language): \(base[language]!.count) base words, \(themes[language]!.reduce(0) { $0 + $1.count }) thematic words")
+        }
+    }
+    @MainActor static func isAvailable(_ language: String) -> Bool { base[String(language.prefix(2))] != nil }
+    @MainActor static func isValidWordForAutomaticPath(_ word: String, lang: String) -> Bool {
+        isValidWord(word, lang: lang)
+    }
+    @MainActor static func isValidWord(_ word: String, lang: String) -> Bool {
+        let language = String(lang.prefix(2)).lowercased()
+        return base[language]?.contains(word) == true
+            || themes[language]?.contains(where: { $0.contains(word) }) == true
+    }
+}
