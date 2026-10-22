@@ -4,7 +4,7 @@ Last verified locally: 2026-10-22. This document describes source preparation, n
 
 ## Release state
 
-**Do not publish Public Alpha 1 yet.** Review candidate 0.3.8 (45), arm64, builds and passes bundle-integrity checks with an ad-hoc signature. It is now installed at `/Applications/MultiSwitcher.app`; the installed executable matches the verified build 45 hash, and the existing profile was preserved. Older temporary build bundles were removed. On macOS 27, the General page was visually checked in its initial and zoomed sizes; cards and controls did not overlap. Manual edge-drag resizing, minimum window size, dark mode, and Reduce Motion still need checks. The optional permission guide was opened from settings and dismissed with **Later**, without opening System Settings. Live input is not verified: both Accessibility and Input Monitoring remain off, matching the user's choice to leave Input Monitoring off. The user's `ghbdtn ` test therefore correctly remained unchanged. The GitHub PR is open; macOS 15 and 26 CI pass. There is no hosted macOS 27 CI job. No valid Developer ID identity is available in the local build environment, so a trusted signature and notarization are still required.
+**Do not publish Public Alpha 1 yet.** Review candidate 0.3.8 (45), arm64, builds and passes bundle-integrity checks with an ad-hoc signature. It is now installed at `/Applications/MultiSwitcher.app`; the installed executable matches the verified build 45 hash, and the existing profile was preserved. Older temporary build bundles were removed. On macOS 27, the General page was visually checked in its initial and zoomed sizes; cards and controls did not overlap. Manual edge-drag resizing, minimum window size, dark mode, and Reduce Motion still need checks. The optional permission guide was opened from settings and dismissed with **Later**, without opening System Settings. Live input is not verified: both Accessibility and Input Monitoring remain off, matching the user's choice to leave Input Monitoring off. The user's `ghbdtn ` test therefore correctly remained unchanged. The GitHub PR is open; macOS 15 and 26 CI pass. A macOS 27 `xcode-27` CI job has been added using GitHub's public-preview runner and must finish successfully; the preview runner does not replace hands-on validation on the target Mac. No valid Developer ID identity is available in the local build environment, so a trusted signature and notarization are still required.
 
 Required hands-on checks on **each macOS 15, 26, and 27** before alpha publication:
 
@@ -63,7 +63,7 @@ Never place signing certificates, private keys, passwords, API tokens, user prof
 
 ## Release procedure
 
-1. Merge reviewed code to `main`; require passing macOS 15 and 26 CI jobs.
+1. Merge reviewed code to `main`; require passing macOS 15 and 26 CI jobs, and review the macOS 27 `xcode-27` preview job.
 2. Confirm the matching hands-on test logs for macOS 15, 26, and 27 and review known limitations.
 3. Increment `CFBundleVersion`; keep the first public release below 1.0.
 4. Create `beta-v<version>-build<build>` pointing to the reviewed `main` commit. The workflow verifies the tag and creates a draft prerelease with the signed DMG and manifest.
@@ -86,6 +86,7 @@ In addition to the alpha checks, 1.0 requires a public support page and tested u
 - Build 45 adds adaptive remeasurement of constraint-based settings cards when the window or sidebar changes size, updates the document height and preserves the scroll position. The installed General page was visually checked at its initial and zoomed sizes; manual resize and minimum-width/minimum-height checks remain required.
 - Build 45 removes the launch-time permission dialog. The status stays visible in General settings, and the menu offers a permission check only when access is missing. The guide appears after an explicit click, explains that both automatic and Option conversion need keyboard access, and defaults to **Later**. UI verification confirmed that choosing **Later** closes the guide without opening System Settings. No TCC permission was changed.
 - Build 45 is installed at `/Applications/MultiSwitcher.app` as an arm64 local build with an ad-hoc signature. Its executable hash matches the verified candidate, the profile was preserved, and duplicate temporary bundles were removed. Automatic and Option input were not validated because the current Accessibility and Input Monitoring states are both off by the user's choice.
+- The CI matrix now also targets the `xcode-27` public-preview runner for macOS 27. The official runner image is preview software; its CI result is supplemental and does not certify release support or replace hands-on testing.
 
 - Build 44 corrected the settings document's initial height and scroll position and added the current macOS 27 “Device Control & Data Access” label with legacy paths for macOS 15–26. Build 45 extends its behavior for resize-driven wrapping and uses a user-opened permission guide.
 
