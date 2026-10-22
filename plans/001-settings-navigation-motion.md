@@ -63,5 +63,5 @@ Implemented in source build 41: the page fade constants are 70 ms and 90 ms; bot
 ## Verification
 
 - **Mechanical**: XCTest passes in source; Build 41 bundle verification is recorded in `RELEASE.md` after the build completes.
-- **Feel check pending**: unlock and launch the trusted installed build, switch pages repeatedly, expand/restore Rules and Learning, and repeat with Reduce Motion enabled. This environment has no trusted signing identity and the Mac is currently locked, so visual responsiveness is not yet verified.
+- **Feel check pending**: Build 47 is installed locally, but page-switch and expand/restore motion have not been evaluated with repeated live interaction or Reduce Motion. The app is ad-hoc signed; there is no trusted signing identity, so this is not a public-release visual sign-off.
 - **Done when**: navigation takes no more than 160 ms in the normal setting, stays responsive when interrupted, and the Reduce Motion path has no animated movement. Code is updated; only the live feel check remains.
