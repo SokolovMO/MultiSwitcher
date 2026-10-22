@@ -4,7 +4,7 @@ Last verified locally: 2026-10-23. This document describes source preparation, n
 
 ## Release state
 
-**Do not publish Public Alpha 1 yet.** `/Applications/MultiSwitcher.app` is freshly launched from Finder as **0.3.11 (52), arm64, ad-hoc signed**. Its executable SHA-256 is `a4da1644cc51d1b4f4d34ade1d2cc023c800fe8696945294f8f6da26e18b7a53`; the app's About page reports `v0.3.11`. The Learning and Rules pages were visually checked in the current large full-screen layout: the Learning card top edge is no longer clipped, and the help text/table fit inside the card; the Rules table remains inside its card. Minimum-size, manual-resize, light/dark mode, and Reduce Motion checks remain open. Accessibility and Input Monitoring remain off by the user's choice; keyboard conversion is therefore paused and has not been input-tested on this build. The optional permission guide explains each permission and that **Later** leaves keyboard features paused; MultiSwitcher does not change macOS privacy settings. Build 52 source checks and hosted CI status are recorded below; CI for the new commit is pending until it is pushed.
+**Do not publish Public Alpha 1 yet.** `/Applications/MultiSwitcher.app` is freshly launched from Finder as **0.3.11 (52), arm64, ad-hoc signed**. Its executable SHA-256 is `a4da1644cc51d1b4f4d34ade1d2cc023c800fe8696945294f8f6da26e18b7a53`; the app's About page reports `v0.3.11`. The Learning and Rules pages were visually checked in the current large full-screen layout: the Learning card top edge is no longer clipped, and the help text/table fit inside the card; the Rules table remains inside its card. Minimum-size, manual-resize, light/dark mode, and Reduce Motion checks remain open. Accessibility and Input Monitoring remain off by the user's choice; keyboard conversion is therefore paused and has not been input-tested on this build. The optional permission guide explains each permission and that **Later** leaves keyboard features paused; MultiSwitcher does not change macOS privacy settings. GitHub Actions run [39850867325](https://github.com/SokolovMO/MultiSwitcher/actions/runs/39850867325) passed on macOS 15, macOS 26, and the Xcode 27 runner; this CI coverage does not replace hands-on validation.
 
 Release infrastructure was checked on 2026-10-22: the local keychain has **zero valid code-signing identities**, the repository has **no `multiswitcher-release` GitHub environment**, and the GitHub Pages API returns 404, so the public site is not enabled. The signed-release workflow therefore cannot produce a public build yet. No signing, notarization, Sparkle, or Sentry secret values were inspected or exposed. Trusted Developer ID signing and notarization, a protected release environment, Sparkle keys, and Pages setup remain prerequisites.
 
@@ -83,11 +83,11 @@ Debug logs are off by default. The support action redacts common paths, app IDs,
 
 In addition to the alpha checks, 1.0 requires a public support page and tested update/rollback channel, completed appcast migration or an explicitly reviewed updater decision, no open text/clipboard/learning corruption issues, documented compatibility, accessibility review, and measured resource targets. Public feedback should be triaged and fixes released through reviewed commits and signed builds. There is no response-time commitment.
 
-## Current source revision: 0.3.11 (52), installed for local validation; hosted CI pending
+## Current source revision: 0.3.11 (52), installed for local validation; hosted CI passes
 
 - Build 52 fixes the Learning page card clipping by explicitly measuring top-aligned content and fitting its table/help region within the card. Rules retains a measured 12 pt vertical inset. Six layout-policy regressions raise the Core suite to 306 passing checks.
 - The fresh Finder launch confirms the installed bundle is Build 52; the About page reports 0.3.11. Learning and Rules were inspected at the current large full-screen size. Minimum-size, manual resize, light/dark appearance, and Reduce Motion remain unverified.
-- Build 52 was compiled ad-hoc and installed at `/Applications/MultiSwitcher.app`. CI for the current source commit must run after pushing.
+- Build 52 was compiled ad-hoc and installed at `/Applications/MultiSwitcher.app`. Hosted CI run 39850867325 passed on macOS 15, macOS 26, and Xcode 27, including the Sparkle updater branch.
 
 ## Historical Build 47 validation
 
