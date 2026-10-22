@@ -20,6 +20,26 @@ public struct SettingsCardFrame: Equatable, Sendable {
 /// Computes the smallest downward movement that gives a settings card a consistent
 /// vertical gutter from every existing card sharing its horizontal span.
 public enum SettingsCardLayoutPolicy {
+    /// Returns the lower-left y origin that keeps fixed-height content attached
+    /// to the top edge of a taller AppKit container.
+    public static func topAlignedOriginY(containerHeight: Double, contentHeight: Double) -> Double {
+        max(0, max(0, containerHeight) - max(0, contentHeight))
+    }
+
+    /// Returns an inset fill frame for a page that should retain equal breathing
+    /// room above and below its content, even when the available window is short.
+    public static func insetFillFrame(containerHeight: Double, inset: Double) -> (originY: Double, height: Double) {
+        let height = max(0, containerHeight)
+        let resolvedInset = min(max(0, inset), height / 2)
+        return (resolvedInset, max(0, height - 2 * resolvedInset))
+    }
+
+    /// Returns how far a legacy, bottom-origin card must move down to stay inside
+    /// its page when localized text or fixed controls extend beyond the top edge.
+    public static func downwardShiftToFitTop(containerHeight: Double, contentMaxY: Double) -> Double {
+        max(0, max(0, contentMaxY) - max(0, containerHeight))
+    }
+
     /// Keeps the scroll document large enough for both its viewport and every
     /// measured settings page. Dynamic status rows can make one page taller after
     /// the window has already been created.

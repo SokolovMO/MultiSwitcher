@@ -94,6 +94,72 @@ private final class SettingsCardBackground: NSView {
     }
 }
 
+/// Pins each tab's content to a shared top edge even when NSTabView stretches
+/// its item view to the full scroll-document height. Autoresizing masks alone
+/// produced different top gaps across the settings pages on macOS 27.
+@MainActor
+private final class SettingsTopAlignedContainer: NSView {
+    private let contentView: NSView
+    private let fillsHeight: Bool
+    private let horizontalInset: CGFloat
+    private let verticalInset: CGFloat
+
+    init(content: NSView, containerWidth: CGFloat, fillsHeight: Bool, verticalInset: CGFloat) {
+        self.contentView = content
+        self.fillsHeight = fillsHeight
+        self.horizontalInset = max(0, (containerWidth - content.frame.width) / 2)
+        self.verticalInset = max(0, verticalInset)
+        super.init(frame: NSRect(x: 0, y: 0, width: containerWidth,
+                                 height: content.frame.height))
+        autoresizingMask = [.width, .height]
+        autoresizesSubviews = false
+        contentView.autoresizingMask = []
+        contentView.frame.origin.x = horizontalInset
+        addSubview(contentView)
+        needsLayout = true
+        layoutContent()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("SettingsTopAlignedContainer does not support NSCoder")
+    }
+
+    override func resizeSubviews(withOldSize oldSize: NSSize) {
+        super.resizeSubviews(withOldSize: oldSize)
+        layoutContent()
+    }
+
+    override func layout() {
+        super.layout()
+        layoutContent()
+    }
+
+    private func layoutContent() {
+        var frame = contentView.frame
+        frame.origin.x = bounds.minX + horizontalInset
+        frame.size.width = max(1, bounds.width - 2 * horizontalInset)
+
+        if fillsHeight {
+            let insetFrame = SettingsCardLayoutPolicy.insetFillFrame(
+                containerHeight: Double(bounds.height),
+                inset: Double(verticalInset)
+            )
+            frame.origin.y = bounds.minY + CGFloat(insetFrame.originY)
+            frame.size.height = CGFloat(insetFrame.height)
+        } else {
+            let originY = SettingsCardLayoutPolicy.topAlignedOriginY(
+                containerHeight: Double(bounds.height),
+                contentHeight: Double(frame.height)
+            )
+            frame.origin.y = bounds.minY + CGFloat(originY)
+        }
+
+        if frame != contentView.frame {
+            contentView.frame = frame
+        }
+    }
+}
+
 private enum SettingsCardMetrics {
     static let horizontalPadding: CGFloat = 16
     static let verticalPadding: CGFloat = 12
@@ -862,6 +928,14 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             return result.insetBy(dx: -horizontalPadding, dy: -verticalPadding)
         }
         frame = expandedFrame()
+        let topOverflow = CGFloat(SettingsCardLayoutPolicy.downwardShiftToFitTop(
+            containerHeight: Double(container.bounds.height),
+            contentMaxY: Double(frame.maxY)
+        ))
+        if topOverflow > 0 {
+            for view in visible { view.frame.origin.y -= topOverflow }
+            frame = expandedFrame()
+        }
         let existingCards = container.subviews.compactMap { $0 as? SettingsCardBackground }
         let groupIDs = Set(visible.map(ObjectIdentifier.init))
         let followingControls = container.subviews.filter { subview in
@@ -918,19 +992,12 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         }
     }
 
-    /// Прижимает контент вкладки к ВЕРХУ. NSTabView растягивает вид вкладки на всю высоту окна,
-    /// а под-вью с абсолютными координатами (y от низа) иначе провисают к низу/центру короткой
-    /// вкладки. Оборачиваем фиксированный контент в растягивающийся контейнер и пиним контент к
-    /// верхнему краю (гибкий нижний отступ — .minYMargin).
-    private func topAligned(_ content: NSView, fillsHeight: Bool = false) -> NSView {
+    /// Gives every tab the same top anchor. The explicit wrapper layout is needed
+    /// because NSTabView's item resizing differs between fixed and adaptive pages.
+    private func topAligned(_ content: NSView,
+                            fillsHeight: Bool = false,
+                            verticalInset: CGFloat = 0) -> NSView {
         let paneWidth: CGFloat = 580
-        content.frame.origin.x = max(0, (paneWidth - content.frame.width) / 2)
-        let outer = NSView(frame: NSRect(x: 0, y: 0, width: paneWidth, height: content.frame.height))
-        outer.autoresizingMask = [.width, .height]
-        outer.autoresizesSubviews = true
-        // Page view follows the scroll view's document width. Stretch controls
-        // already aligned to the content edge; keep labels and compact buttons fixed.
-        content.autoresizingMask = fillsHeight ? [.width, .height] : [.width, .minYMargin]
         for child in content.subviews {
             if child is SettingsCardBackground { continue }
             var mask: NSView.AutoresizingMask = child.frame.maxX >= content.frame.width - 46 ? [.width] : []
@@ -945,8 +1012,8 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             }
             child.autoresizingMask = mask
         }
-        outer.addSubview(content)
-        return outer
+        return SettingsTopAlignedContainer(content: content, containerWidth: paneWidth,
+                                           fillsHeight: fillsHeight, verticalInset: verticalInset)
     }
 
     /// Constraint-based form primitives for preference pages that need to reflow
@@ -1388,7 +1455,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         addSettingsCard(to: view, around: [container], horizontalPadding: 12, verticalPadding: 12,
                         stretchesVertically: true)
 
-        item.view = topAligned(view, fillsHeight: true)
+        item.view = topAligned(view, fillsHeight: true, verticalInset: 12)
         return item
     }
 
@@ -1398,13 +1465,16 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
         let view = NSView(frame: NSRect(x: 0, y: 0, width: 460, height: 520))
         let hint = NSTextField(wrappingLabelWithString: L10n.learningListHint)
-        hint.frame = NSRect(x: 20, y: 476, width: 420, height: 38)
+        // Leave room for both the card's 12 pt inner padding and its 16 pt page
+        // gutter. The old hint extended six points past the page and clipped the
+        // rounded top edge when the tab filled a tall window.
+        hint.frame = NSRect(x: 20, y: 454, width: 420, height: 38)
         hint.font = SystemTypography.font(.footnote)
         hint.textColor = .secondaryLabelColor
         view.addSubview(hint)
 
         let editor = LearningListEditor()
-        let container = editor.makeContainer(frame: NSRect(x: 20, y: 18, width: 420, height: 440))
+        let container = editor.makeContainer(frame: NSRect(x: 20, y: 28, width: 420, height: 418))
         view.addSubview(container)
         editor.reloadFromStore()
         learningListEditor = editor

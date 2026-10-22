@@ -214,6 +214,20 @@ private func testAppendedInputPolicy() {
 }
 
 private func testSettingsCardLayoutPolicy() {
+    expect(SettingsCardLayoutPolicy.topAlignedOriginY(containerHeight: 760, contentHeight: 520) == 240,
+           "a settings page stays attached to the same top edge when its container grows")
+    expect(SettingsCardLayoutPolicy.topAlignedOriginY(containerHeight: 520, contentHeight: 760) == 0,
+           "a taller settings page starts at the container's top without a negative offset")
+    let insetFill = SettingsCardLayoutPolicy.insetFillFrame(containerHeight: 700, inset: 12)
+    expect(insetFill.originY == 12 && insetFill.height == 676,
+           "full-height settings pages keep an equal 12-point top and bottom inset")
+    let compactInsetFill = SettingsCardLayoutPolicy.insetFillFrame(containerHeight: 18, inset: 12)
+    expect(compactInsetFill.originY == 9 && compactInsetFill.height == 0,
+           "inset settings pages clamp their margins when the available area is short")
+    expect(SettingsCardLayoutPolicy.downwardShiftToFitTop(containerHeight: 520, contentMaxY: 526) == 6,
+           "a card whose controls overflow the top edge is moved back inside its page")
+    expect(SettingsCardLayoutPolicy.downwardShiftToFitTop(containerHeight: 520, contentMaxY: 514) == 0,
+           "a card that fits the page keeps its current position")
     expect(SettingsCardLayoutPolicy.documentHeight(
         viewportHeight: 700, baselineHeight: 620, pageHeights: [560, 680]
     ) == 700, "the settings document always covers its visible viewport")

@@ -4,7 +4,7 @@ A native macOS menu-bar utility for correcting text typed in the wrong keyboard 
 
 ## Status
 
-MultiSwitcher is preparing its first public alpha. Build 0.3.8 (47) is installed locally and fixes the reported overlap in the currently checked large-window layout. The app is ad-hoc signed and is not a trusted public-release build. Minimum-size/manual-resize checks, live input, hands-on compatibility on macOS 15/26/27, Developer ID signing, notarization, and update recovery remain release gates. See [Release readiness](RELEASE.md).
+MultiSwitcher is preparing its first public alpha. Build 0.3.11 (52) is freshly installed locally and confirmed from Finder and the app’s About page. The latest Learning and Rules pages were visually checked in the current large full-screen layout; this does not yet cover minimum-size or manual resizing, dark mode, or Reduce Motion. The app is ad-hoc signed and is not a trusted public-release build. Accessibility and Input Monitoring remain off by the user's choice, so automatic and Option conversion are paused and were not input-tested on this build. Hands-on compatibility on macOS 15/26/27, Developer ID signing, notarization, and update recovery remain release gates. See [Release readiness](RELEASE.md).
 
 ## Requirements
 

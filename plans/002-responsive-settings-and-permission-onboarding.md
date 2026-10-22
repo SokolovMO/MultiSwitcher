@@ -28,6 +28,8 @@
 - Follow-up source adds width-first layout measurement and schedules a fresh fit after the permission status or automatic-example result changes. The core suite now has two document-sizing regression assertions; Xcode 27.1 reports 300 core checks, 99 selected-text assertions, and 13 XCTest reliability tests passing.
 - Build 47 is installed at `/Applications/MultiSwitcher.app` as 0.3.8 (47), arm64, ad-hoc signed. Its installed executable matches the verified candidate hash. The Build 46 rollback copy and temporary staging bundle were removed after launch verification.
 - On installed Build 47, the latest General-page screenshot state was visually checked at the current large window size: the first card clears the title area, permission text stays inside the card, and the following group remains separated. This closes that screenshot's overlap at this size only.
+- Build 52 (0.3.11) was freshly opened from Finder and its About page confirmed the installed version. The Learning card's top edge and its help/table spacing, plus the Rules card and table, were visually checked at the current large full-screen size; the former clipped top edge is no longer present. This is a targeted large-layout check, not minimum-size or manual-resize coverage.
+- Build 52 adds top-aligned content measurement for the Learning page and an explicit fit adjustment where the measured content previously exceeded the card by 6 pt. Rules keeps its deliberate 12 pt vertical inset. Six new layout-policy assertions are included in the 306-check Core suite.
 - Hosted CI for commit `7ece214` passes on macOS 15, macOS 26, and the Xcode 27 preview runner. This is compile/test coverage, not manual UI or input coverage.
 - The installed About page explains that crash-report collection is not configured in this build and reports are not sent automatically. The main page clearly indicates that keyboard actions are paused while the two required permissions are off. The user asked to keep Input Monitoring off; no macOS permission was changed.
 
@@ -37,6 +39,6 @@
 - Verify at the minimum allowed window size and after manual edge-drag resize; the current large-window screenshot passes, but the UI automation did not successfully change the maximized window's size.
 - Check the first General-page card, long permission copy, scroll reachability, and card spacing in dark mode and at the minimum window size.
 - Verify the permission menu row appears only while either required permission is missing.
-- With permissions left off, confirm the app and settings stay available and the pause status is clear. This is verified in installed Build 47; do not treat the lack of automatic conversion as a successful input test.
+- With permissions left off, confirm the app and settings stay available and the pause status is clear. This is verified in installed Build 52; do not treat the lack of automatic conversion as a successful input test.
 - After the user elects to enable the required permissions, repeat automatic conversion, Option conversion/undo, fast typing, and the reported mixed-language cases in TextEdit, Spotlight, Codex, Cursor, and Safari.
 - Run the documented per-OS public-alpha install, update, rollback, and privacy checks; this plan does not waive any Public Alpha 1 release gate.
