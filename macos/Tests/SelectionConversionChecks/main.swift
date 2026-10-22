@@ -34,6 +34,8 @@ struct SelectionConversionChecks {
         check("smart mode flags", "\(settings.smartConversion)/\(settings.convertByText)", "true/false")
         check("native keyboard map", DynamicKeyMapping.convertBidirectional("щзуткщгеук"), "openrouter")
         check("openrouter is packaged vocabulary", String(Dict.isValidWord("openrouter", lang: "en")), "true")
+        check("language is available to automatic detection",
+              String(Dict.isValidWordForAutomaticPath("language", lang: "en")), "true")
 
         for (name, typed, converted, current, other, expected) in [
             ("automatic Russian typo", "руддщ", "hello", "ru", "en", LayoutVerdict.switchToConverted),
@@ -41,6 +43,7 @@ struct SelectionConversionChecks {
             ("correct English stays", "hello", "руддщ", "en", "ru", LayoutVerdict.keep),
             ("technical product typo", "шзрщту", "iphone", "ru", "en", LayoutVerdict.switchToConverted),
             ("technical product casing", "шЗрщту", "iPhone", "ru", "en", LayoutVerdict.switchToConverted),
+            ("automatic language typo", "дфтпгфпу", "language", "ru", "en", LayoutVerdict.switchToConverted),
             ("correct iPhone stays", "iPhone", "шЗщрту", "en", "ru", LayoutVerdict.keep),
             ("bad typo candidate waits", "шзщту", "ipone", "ru", "en", LayoutVerdict.keep),
             ("app abbreviation converts", "фзз", "app", "ru", "en", LayoutVerdict.switchToConverted),
@@ -51,6 +54,71 @@ struct SelectionConversionChecks {
                                                      currentLang: current, otherLang: other,
                                                      capsLock: false), expected)
         }
+
+        AutoSwitchPolicy.alwaysConvertLookups = 0
+        checkVerdict("prechecked automatic rules still convert an obvious layout error",
+                     LayoutDetector.decide(typed: "руддщ", converted: "hello",
+                                           currentLang: "ru", otherLang: "en", capsLock: false,
+                                           rulesAlreadyEvaluated: true),
+                     .switchToConverted)
+        check("prechecked automatic rules are not evaluated a second time",
+              String(AutoSwitchPolicy.alwaysConvertLookups), "0")
+
+        let extraKeyLanguageCandidate = DynamicKeyMapping.convertBidirectional("дфтпгфгпу")
+        check("extra-key language candidate is not silently accepted",
+              String(Dict.isValidWordForAutomaticPath(extraKeyLanguageCandidate, lang: "en")), "false")
+        checkVerdict("extra-key language typo stays unchanged",
+                     LayoutDetector.decide(typed: "дфтпгфгпу", converted: extraKeyLanguageCandidate,
+                                           currentLang: "ru", otherLang: "en", capsLock: false),
+                     .keep)
+
+        let shouldPreserveRussianAfterSingleEnglishWord = LayoutCorrectionEngine
+            .shouldPreserveInputLanguageForContextualWord(
+                corrected: "hello",
+                prefix: "привет ",
+                currentLanguage: "ru",
+                targetLanguage: "en",
+                targetIsConfirmedWord: true,
+                isKnownTargetWord: { word, language in
+                    Dict.isValidWordForAutomaticPath(word, lang: language)
+                }
+            )
+        check("one English correction inside Russian sentence keeps Russian input source",
+              String(shouldPreserveRussianAfterSingleEnglishWord), "true")
+
+        let shouldSwitchAfterTwoEnglishWords = !LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+            corrected: "language",
+            prefix: "я всего лишь want ",
+            currentLanguage: "ru",
+            targetLanguage: "en",
+            targetIsConfirmedWord: true,
+            isKnownTargetWord: { word, language in
+                Dict.isValidWordForAutomaticPath(word, lang: language)
+            }
+        )
+        check("two consecutive confirmed English words switch the input source",
+              String(shouldSwitchAfterTwoEnglishWords), "true")
+
+        let preservesEnglishAfterOneRussianCorrection = LayoutCorrectionEngine
+            .shouldPreserveInputLanguageForContextualWord(
+                corrected: "вот", prefix: "want ", currentLanguage: "en", targetLanguage: "ru",
+                targetIsConfirmedWord: true,
+                isKnownTargetWord: { word, language in
+                    language == "ru" && Dict.isValidWordForAutomaticPath(word, lang: language)
+                }
+            )
+        check("one Russian word after correct `want` keeps English input active",
+              String(preservesEnglishAfterOneRussianCorrection), "true")
+        let switchesAfterTwoRussianCorrections = !LayoutCorrectionEngine
+            .shouldPreserveInputLanguageForContextualWord(
+                corrected: "сейчас", prefix: "want вот ", currentLanguage: "en", targetLanguage: "ru",
+                targetIsConfirmedWord: true,
+                isKnownTargetWord: { word, language in
+                    language == "ru" && Dict.isValidWordForAutomaticPath(word, lang: language)
+                }
+            )
+        check("two consecutive Russian words after `want` switch input to Russian",
+              String(switchesAfterTwoRussianCorrections), "true")
 
         let mixedInput = "ghbkj;ение"
         let mixedRussian = DynamicKeyMapping.convertMixedScript(mixedInput, towardLang: "ru") ?? ""
@@ -88,6 +156,8 @@ struct SelectionConversionChecks {
             ("привет купи iphone", "привет купи iphone"),
             ("ghbdtn купи iphone", "привет купи iphone"),
             ("привет купи шзрщту", "привет купи iphone"),
+            ("want djn ctqxfc", "want вот сейчас"),
+            ("привет руддщ привет дфтпгфпу", "привет hello привет language"),
             ("руддщ", "hello"),
             ("фзздуыскшзе", "applescript"),
             ("шзрщту", "iphone"),

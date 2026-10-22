@@ -57,12 +57,27 @@ new_backup() {
     : > "$backup/backups-present"
   fi
   if [[ -d "$DESTINATION" ]]; then
-    /usr/bin/ditto "$DESTINATION" "$backup/MultiSwitcher.app"
+    # Keep rollback bundles recoverable without exposing every saved build as
+    # a separate launchable app in Spotlight.
+    /usr/bin/ditto "$DESTINATION" "$backup/MultiSwitcher.rollback"
     : > "$backup/app-present"
   else
     : > "$backup/app-absent"
   fi
   echo "$backup"
+}
+
+backup_app_path() {
+  local backup="$1"
+  if [[ -d "$backup/MultiSwitcher.rollback" ]]; then
+    echo "$backup/MultiSwitcher.rollback"
+  elif [[ -d "$backup/MultiSwitcher.app" ]]; then
+    # Backward compatibility with backups created before rollback bundles
+    # stopped using the .app extension.
+    echo "$backup/MultiSwitcher.app"
+  else
+    return 1
+  fi
 }
 
 install_app() {
@@ -124,9 +139,10 @@ restore_backup() {
     backup="$INSTALL_BACKUPS/$requested"
   fi
   [[ -d "$backup" ]] || { echo "Backup not found: $requested" >&2; return 1; }
+  local saved_app=""
   if [[ -f "$backup/app-present" ]]; then
-    [[ -d "$backup/MultiSwitcher.app" ]] || { echo "Backup is incomplete: app bundle is missing." >&2; return 1; }
-    verify_app "$backup/MultiSwitcher.app"
+    saved_app=$(backup_app_path "$backup") || { echo "Backup is incomplete: app bundle is missing." >&2; return 1; }
+    verify_app "$saved_app"
   elif [[ ! -f "$backup/app-absent" ]]; then
     echo "This backup does not record the previous app state." >&2
     return 1
@@ -144,7 +160,7 @@ restore_backup() {
   staging="$APP_PARENT/.MultiSwitcher-restore-$stamp.app"
   old="$APP_PARENT/.MultiSwitcher-current-$stamp.app"
   if [[ -f "$backup/app-present" ]]; then
-    /usr/bin/ditto "$backup/MultiSwitcher.app" "$staging"
+    /usr/bin/ditto "$saved_app" "$staging"
     verify_app "$staging"
   fi
 

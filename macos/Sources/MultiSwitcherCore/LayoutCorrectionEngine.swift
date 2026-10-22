@@ -3,6 +3,36 @@ import Foundation
 /// Shared, deterministic decisions used by automatic and selection correction.
 /// Dictionary access stays injected so tests never depend on AppleSpell availability.
 public enum LayoutCorrectionEngine {
+    public enum DictionaryDecision: Equatable, Sendable {
+        case convert
+        case keepBecauseTargetIsNotAWord
+        case keepBecauseSourceIsAWord
+        case undecidedBecauseTargetDictionaryIsUnavailable
+    }
+
+    /// Shared conservative dictionary decision for automatic correction. Keeping the
+    /// result distinct from dictionary availability prevents a missing/unready
+    /// dictionary from being mistaken for proof that a candidate is misspelled.
+    public static func dictionaryDecision(
+        typed: String,
+        converted: String,
+        currentLanguage: String,
+        targetLanguage: String,
+        isLanguageAvailable: (String) -> Bool,
+        isValidWord: (String, String) -> Bool
+    ) -> DictionaryDecision {
+        guard isLanguageAvailable(targetLanguage) else {
+            return .undecidedBecauseTargetDictionaryIsUnavailable
+        }
+        guard isValidWord(converted, targetLanguage) else {
+            return .keepBecauseTargetIsNotAWord
+        }
+        if isLanguageAvailable(currentLanguage), isValidWord(typed, currentLanguage) {
+            return .keepBecauseSourceIsAWord
+        }
+        return .convert
+    }
+
     /// Curated technical and product names that spell-check dictionaries often reject.
     /// Exact canonical forms are used for output so layout correction does not produce
     /// variants such as `iphone` or `GitHub` with damaged capitalization.
@@ -114,5 +144,74 @@ public enum LayoutCorrectionEngine {
             word.contains { (0x0041...0x007A).contains($0.unicodeScalars.first?.value ?? 0) }
         }
         return russianWords.count >= 2 && latinWords.isEmpty
+    }
+
+    /// A single dictionary-confirmed foreign word inside an otherwise single-script
+    /// RU/EN phrase should repair the token without changing the user's input source.
+    /// The user can switch layouts explicitly; mixed or unsupported context stays neutral.
+    public static func shouldPreserveInputLanguageForContextualWord(
+        corrected: String,
+        prefix: String,
+        currentLanguage: String,
+        targetLanguage: String,
+        targetIsConfirmedWord: Bool,
+        requiredConsecutiveTargetWords: Int = 2,
+        isKnownTargetWord: (String, String) -> Bool = { _, _ in false }
+    ) -> Bool {
+        guard targetIsConfirmedWord, !corrected.isEmpty else { return false }
+        let current = String(currentLanguage.prefix(2)).lowercased()
+        let target = String(targetLanguage.prefix(2)).lowercased()
+        guard (current == "ru" && target == "en") || (current == "en" && target == "ru") else {
+            return false
+        }
+
+        // Only recent context can describe the language the user is writing now.
+        // Bounding this scan also keeps the keyboard path independent of a long field.
+        let recentContext = String(prefix.precomposedStringWithCanonicalMapping.suffix(256))
+        let words = Array(recentContext.split { !$0.isLetter }.suffix(5))
+        guard !words.isEmpty else { return false }
+
+        func isConfirmedTargetWord(_ word: String) -> Bool {
+            let scalars = Array(word.unicodeScalars)
+            return !scalars.isEmpty
+                && scalars.allSatisfy { isWordScalar($0, language: target) }
+                && isKnownTargetWord(word, target)
+        }
+
+        // Include the word currently being corrected when looking for a language
+        // transition. The threshold is configurable, but bounded to one or two
+        // words so this stays predictable and cheap on the keyboard path.
+        let trailingConfirmedTargetWords = words.reversed().prefix {
+            isConfirmedTargetWord(String($0))
+        }.count
+        let currentWordConfirmsTargetLanguage = targetIsConfirmedWord
+            && isConfirmedTargetWord(corrected)
+        let requiredRun = min(2, max(1, requiredConsecutiveTargetWords))
+        if trailingConfirmedTargetWords + (currentWordConfirmsTargetLanguage ? 1 : 0) >= requiredRun {
+            return false
+        }
+
+        // A language transition is confirmed only by a contiguous run at the end of
+        // the context. Two target-language words elsewhere in the sentence are not a
+        // signal: e.g. "привет hello привет there language" must keep Russian active.
+        let hasCurrentLanguageContext = words.contains { word in
+            let scalars = Array(word.unicodeScalars)
+            return !scalars.isEmpty && scalars.allSatisfy { isWordScalar($0, language: current) }
+        }
+        return hasCurrentLanguageContext
+    }
+
+    private static func isWordScalar(_ scalar: Unicode.Scalar, language: String) -> Bool {
+        switch language {
+        case "ru":
+            return (0x0400...0x052F).contains(scalar.value)
+                || (0x2DE0...0x2DFF).contains(scalar.value)
+                || (0xA640...0xA69F).contains(scalar.value)
+        case "en":
+            return (0x0041...0x024F).contains(scalar.value)
+                || (0x1E00...0x1EFF).contains(scalar.value)
+        default:
+            return false
+        }
     }
 }

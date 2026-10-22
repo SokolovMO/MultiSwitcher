@@ -17,6 +17,43 @@ enum Dict {
     @MainActor private static var thematicLexicons: [String: WordLexicon] = [:]
     @MainActor private static var enabledThemes: Set<String> = ["technology", "design", "brands", "slang"]
     @MainActor private static var lexiconLoadStarted = false
+    @MainActor private static var lexiconLoadFinished = false
+    @MainActor private static var lexiconLoadWaiters: [@MainActor @Sendable () -> Void] = []
+
+    @MainActor static var automaticLexiconsReady: Bool { lexiconLoadFinished }
+
+    /// Load packaged word lists away from the keyboard path. Monitoring waits for this
+    /// completion so an uncached valid word is never mistaken for an invalid candidate
+    /// during the first seconds after launch.
+    @MainActor static func prepareAutomaticLexicons(completion: @escaping @MainActor @Sendable () -> Void) {
+        if lexiconLoadFinished {
+            completion()
+            return
+        }
+        lexiconLoadWaiters.append(completion)
+        preloadBundledLexiconsIfNeeded()
+    }
+
+    @MainActor static func preloadBundledLexiconsIfNeeded() {
+        guard !lexiconLoadStarted else { return }
+        lexiconLoadStarted = true
+        Task.detached(priority: .utility) {
+            let loaded = loadBundledLexicons()
+            let themed = loadBundledThematicLexicons()
+            await MainActor.run {
+                bundledLexicons = loaded
+                thematicLexicons = themed
+                enabledThemes = SettingsManager.shared.enabledDictionaryThemes
+                wordCache.removeAll(keepingCapacity: true)
+                cacheFlushedAt = Date.timeIntervalSinceReferenceDate
+                lexiconLoadFinished = true
+                rslog("dictionary: bundled packs loaded en=\(loaded["en"]?.count ?? 0) ru=\(loaded["ru"]?.count ?? 0) thematic=\(themed.count)")
+                let waiters = lexiconLoadWaiters
+                lexiconLoadWaiters.removeAll(keepingCapacity: true)
+                waiters.forEach { $0() }
+            }
+        }
+    }
 
     @MainActor static func isAvailable(_ lang: String) -> Bool {
         let two = String(lang.prefix(2))
@@ -48,21 +85,7 @@ enum Dict {
     /// (сотни мс на main) — без прогрева этот фриз пришёлся бы на первый пробел
     /// пользователя после запуска. Вызывается отложенно из applicationDidFinishLaunching.
     @MainActor static func warmUp() {
-        if !lexiconLoadStarted {
-            lexiconLoadStarted = true
-            Task.detached(priority: .utility) {
-                let loaded = loadBundledLexicons()
-                let themed = loadBundledThematicLexicons()
-                await MainActor.run {
-                    bundledLexicons = loaded
-                    thematicLexicons = themed
-                    enabledThemes = SettingsManager.shared.enabledDictionaryThemes
-                    wordCache.removeAll(keepingCapacity: true)
-                    cacheFlushedAt = Date.timeIntervalSinceReferenceDate
-                    rslog("dictionary: bundled packs loaded en=\(loaded["en"]?.count ?? 0) ru=\(loaded["ru"]?.count ?? 0) thematic=\(themed.count)")
-                }
-            }
-        }
+        preloadBundledLexiconsIfNeeded()
         _ = languages()
         _ = isValidWord("тест", lang: "ru")
         _ = isValidWord("test", lang: "en")

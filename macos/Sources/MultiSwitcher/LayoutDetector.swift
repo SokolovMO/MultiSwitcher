@@ -7,11 +7,16 @@ enum LayoutVerdict: Equatable { case switchToConverted, keep, undecided }
 /// при любой неуверенности → .undecided (ничего не делаем). Ручной триггер остаётся.
 enum LayoutDetector {
     @MainActor
-    static func decide(typed: String, converted: String, currentLang: String, otherLang: String, capsLock: Bool) -> LayoutVerdict {
+    static func decide(typed: String, converted: String, currentLang: String, otherLang: String,
+                       capsLock: Bool, operationID: String? = nil,
+                       rulesAlreadyEvaluated: Bool = false,
+                       logDiagnostics: Bool = true) -> LayoutVerdict {
         // always-convert — ЯВНЫЙ override: матчим по СКОНВЕРТИРОВАННОЙ (целевой) форме.
         // В список кладётся целевое слово (напр. «жоппа»); так правильно набранное слово
         // не даёт пинг-понг. Жёсткие гейты (secure/denied-app/never) проверены ДО decide.
-        if AutoSwitchPolicy.isAlwaysConvert(converted) { return .switchToConverted }
+        if !rulesAlreadyEvaluated, AutoSwitchPolicy.isAlwaysConvert(converted) {
+            return .switchToConverted
+        }
 
         if !capsLock {
             if isAllCaps(typed) { return .undecided }
@@ -29,7 +34,11 @@ enum LayoutDetector {
         // 1 буква — не трогаем никогда (неоднозначность запредельная). 2 буквы —
         // отдельная ветка ниже через частотный список (ShortWords), т.к. на такой длине
         // системный словарь ненадёжен; 3+ — обычный путь через NSSpellChecker.
-        guard typed.count >= 2 else { return .undecided }
+        guard typed.count >= 2 else {
+            logDecision("undecided", reason: "token-too-short", operationID: operationID,
+                        enabled: logDiagnostics)
+            return .undecided
+        }
         // Internal hyphens join a compound token (for example `rfr-nj` → `как-то`).
         // Check each segment separately with the same conservative dictionary policy;
         // leading, trailing, repeated hyphens and digits remain untouched.
@@ -55,6 +64,8 @@ enum LayoutDetector {
         // сюда доходит только начальная/срединная пунктуация («`krf»→ёлка, «rf;tncz»→
         // кажется) — там трактовки-как-знак-препинания нет, а «дел.»/«думаю» отсеяны выше.
         guard typed.allSatisfy({ $0.isLetter }) || converted.allSatisfy({ $0.isLetter }) else {
+            logDecision("undecided", reason: "non-word-character", operationID: operationID,
+                        enabled: logDiagnostics)
             return .undecided // цифры/URL/код/почта/эмодзи
         }
         // Под Caps Lock весь текст в ВЕРХНЕМ регистре — это НЕ акроним и НЕ camelCase,
@@ -125,16 +136,37 @@ enum LayoutDetector {
         }
 
         // Словарь — без учёта регистра (Caps Lock не должен мешать определению слова).
-        guard Dict.isAvailable(oth) else { return .undecided }
-        guard Dict.isValidWordForAutomaticPath(converted.lowercased(), lang: oth) else {
-            rslog("auto: keep target-dictionary")
+        switch LayoutCorrectionEngine.dictionaryDecision(
+            typed: typed.lowercased(),
+            converted: converted.lowercased(),
+            currentLanguage: cur,
+            targetLanguage: oth,
+            isLanguageAvailable: Dict.isAvailable,
+            isValidWord: { word, language in
+                Dict.isValidWordForAutomaticPath(word, lang: language)
+            }
+        ) {
+        case .undecidedBecauseTargetDictionaryIsUnavailable:
+            logDecision("undecided", reason: "target-dictionary-unavailable", operationID: operationID,
+                        enabled: logDiagnostics)
+            return .undecided
+        case .keepBecauseTargetIsNotAWord:
+            logDecision("keep", reason: "converted-candidate-not-in-target-dictionary", operationID: operationID,
+                        enabled: logDiagnostics)
             return .keep
-        }
-        if Dict.isAvailable(cur), Dict.isValidWordForAutomaticPath(typed.lowercased(), lang: cur) {
-            rslog("auto: keep source-dictionary")
+        case .keepBecauseSourceIsAWord:
+            logDecision("keep", reason: "typed-word-valid-in-source-dictionary", operationID: operationID,
+                        enabled: logDiagnostics)
             return .keep
+        case .convert:
+            return .switchToConverted
         }
-        return .switchToConverted
+    }
+
+    private static func logDecision(_ result: String, reason: String, operationID: String?, enabled: Bool) {
+        guard enabled else { return }
+        let operation = operationID.map { " op=\($0)" } ?? ""
+        rslog("auto:\(operation) \(result) reason=\(reason)")
     }
 
     /// issue #15: отщепляет прилипшую к концу слова пунктуацию ("ghbdtn," → ядро 6 + ",").

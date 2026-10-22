@@ -1,4 +1,5 @@
 import Foundation
+import MultiSwitcherCore
 
 /// Локализация интерфейса на 16 языков (вкомпилированные строки)
 enum L10n {
@@ -25,10 +26,23 @@ enum L10n {
     static var menuQuit: String { s("menu.quit") }
 
     // MARK: - Визард разрешений
-    static var wizardPermissionsResetTitle: String { s("wizard.permissionsReset.title") }
-    static var wizardPermissionsResetText: String { s("wizard.permissionsReset.text") }
-    static var permissionsRequiredTitle: String { s("wizard.permissionsRequired.title") }
-    static var permissionsRequiredText: String { s("wizard.permissionsRequired.text") }
+    static var permissionsGuideTitle: String { s("wizard.permissionsGuide.title") }
+    static var permissionsGuideText: String { s("wizard.permissionsGuide.text") }
+    private static var usesDeviceControlPrivacyLabel: Bool {
+        ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 27
+    }
+    static var permissionAccessibilityName: String {
+        s(usesDeviceControlPrivacyLabel
+          ? "wizard.permission.deviceControl.name"
+          : "wizard.permission.accessibility.name")
+    }
+    static var permissionAccessibilityHelp: String {
+        s(usesDeviceControlPrivacyLabel
+          ? "wizard.permission.deviceControl.help"
+          : "wizard.permission.accessibility.help")
+    }
+    static var permissionInputMonitoringName: String { s("wizard.permission.inputMonitoring.name") }
+    static var permissionInputMonitoringHelp: String { s("wizard.permission.inputMonitoring.help") }
     static var wizardOpenSettings: String { s("wizard.openSettings") }
     static var wizardLater: String { s("wizard.later") }
     static var permissionsOkTitle: String { s("wizard.permissionsOk.title") }
@@ -49,17 +63,61 @@ enum L10n {
     static var settingsComfortableMode: String { s("settings.comfortableMode") }
     static var settingsResizeSidebar: String { s("settings.resizeSidebar") }
     static var settingsAutoSwitch: String { s("settings.autoSwitch") }
+    static var settingsPermissionsStatus: String { s("settings.permissions.status") }
+    static var settingsPermissionsReady: String { s("settings.permissions.ready") }
+    static func settingsPermissionsMissing(_ names: String) -> String {
+        String(format: s("settings.permissions.missing"), names)
+    }
+    static var settingsPermissionsReview: String { s("settings.permissions.review") }
     static var settingsLaunchAtLogin: String { s("settings.launchAtLogin") }
     static var settingsSmartConversion: String { s("settings.smartConversion") }
     static var settingsSmartConversionHint: String { s("settings.smartConversion.hint") }
     static var settingsConvertByText: String { s("settings.convertByText") }
     static var settingsConvertByTextHint: String { s("settings.convertByText.hint") }
+    static var settingsConversionMode: String { s("settings.conversionMode") }
+    static var settingsLanguageSwitchThreshold: String { s("settings.languageSwitchThreshold") }
+    static var settingsLanguageSwitchAfterOne: String { s("settings.languageSwitchAfterOne") }
+    static var settingsLanguageSwitchAfterTwo: String { s("settings.languageSwitchAfterTwo") }
+    static var settingsLanguageSwitchThresholdHint: String { s("settings.languageSwitchThreshold.hint") }
+    static var settingsExampleTitle: String { s("settings.example.title") }
+    static var settingsExampleHint: String { s("settings.example.hint") }
+    static var settingsExampleContext: String { s("settings.example.context") }
+    static var settingsExampleWord: String { s("settings.example.word") }
+    static var settingsExampleLayout: String { s("settings.example.layout") }
+    static var settingsExampleCheck: String { s("settings.example.check") }
+    static func settingsExampleCorrected(_ word: String) -> String {
+        String(format: s("settings.example.corrected"), word)
+    }
+    static func settingsExampleNextLayout(_ layout: String) -> String {
+        String(format: s("settings.example.nextLayout"), layout)
+    }
+    static func settingsExampleReason(_ reason: String) -> String {
+        String(format: s("settings.example.reason"), reason)
+    }
+    static var settingsExampleNoPair: String { s("settings.example.noPair") }
+    static var settingsExampleOneWordOnly: String { s("settings.example.oneWordOnly") }
+    static var settingsExampleRuntimeCaveat: String { s("settings.example.runtimeCaveat") }
+    static var settingsExampleEnterWord: String { s("settings.example.enterWord") }
+    static var settingsExampleReasonConverted: String { s("settings.example.reason.converted") }
+    static var settingsExampleReasonValidSource: String { s("settings.example.reason.validSource") }
+    static var settingsExampleReasonUncertain: String { s("settings.example.reason.uncertain") }
+    static var settingsExampleReasonException: String { s("settings.example.reason.exception") }
+    static var settingsExampleReasonForced: String { s("settings.example.reason.forced") }
+    static var settingsExampleReasonReplacement: String { s("settings.example.reason.replacement") }
+    static var settingsExampleReasonCandidateRejected: String { s("settings.example.reason.candidateRejected") }
+    static var settingsExampleReasonDictionaryUnavailable: String { s("settings.example.reason.dictionaryUnavailable") }
+    static var settingsExampleReasonContext: String { s("settings.example.reason.context") }
+    static var settingsExampleReasonDisabled: String { s("settings.example.reason.disabled") }
+    static var settingsExampleReasonAmbiguousPunctuation: String { s("settings.example.reason.ambiguousPunctuation") }
+    static var settingsOneWayConversion: String { s("settings.oneWayConversion") }
+    static var settingsOneWayConversionHint: String { s("settings.oneWayConversion.hint") }
     static var settingsConvertWholeLine: String { s("settings.convertWholeLine") }
     static var settingsConvertWholeLineHint: String { s("settings.convertWholeLine.hint") }
     static var settingsLayout1: String { s("settings.layout1") }
     static var settingsLayout2: String { s("settings.layout2") }
     static var settingsAutoDetect: String { s("settings.autoDetect") }
     static var settingsDebugLog: String { s("settings.debugLog") }
+    static var settingsDebugLogHint: String { s("settings.debugLog.hint") }
     static var settingsSecureNotice: String { s("settings.secureNotice") }
     static var settingsHideIcon: String { s("settings.hideIcon") }
     static var settingsHideIconHint: String { s("settings.hideIcon.hint") }
@@ -122,7 +180,6 @@ enum L10n {
     static var menuKeySound: String { s("menu.keySound") }
     static var menuRemoteDesktop: String { s("menu.remoteDesktop") }
     static var menuCaretFlag: String { s("menu.caretFlag") }
-    static var menuMonoIcon: String { s("menu.monoIcon") }
     static var settingsSwitchHotkey: String { s("settings.switchHotkey") }
     static var settingsCaseHotkey: String { s("settings.caseHotkey") }
     static var settingsSwitchHotkeyOff: String { s("settings.switchHotkey.off") }
@@ -144,6 +201,19 @@ enum L10n {
     static var learningColumnWord: String { s("learning.column.word") }
     static var learningColumnCount: String { s("learning.column.count") }
     static var learningColumnState: String { s("learning.column.state") }
+    static var learningFilterCandidates: String { s("learning.filter.candidates") }
+    static var learningFilterActive: String { s("learning.filter.active") }
+    static var learningFilterImported: String { s("learning.filter.imported") }
+    static var learningFilterAll: String { s("learning.filter.all") }
+    static var learningCandidatesEmpty: String { s("learning.empty.candidates") }
+    static var learningActiveEmpty: String { s("learning.empty.active") }
+    static var learningImportedEmpty: String { s("learning.empty.imported") }
+    static var learningAllEmpty: String { s("learning.empty.all") }
+    static var learningNoSearchResults: String { s("learning.empty.search") }
+    static var learningImportedCountTooltip: String { s("learning.importedCount.tooltip") }
+    static func learningAutoCancellationCount(_ count: Int) -> String {
+        String(format: s("learning.autoCancellation.count"), count, LearningEngine.requiredCancellations)
+    }
     static var learningStateExcluded: String { s("learning.state.excluded") }
     static var learningStatePending: String { s("learning.state.pending") }
     static var learningStateImportedHistory: String { s("learning.state.imported") }
@@ -151,7 +221,11 @@ enum L10n {
     static var learningListHint: String { s("learning.list.hint") }
     static var settingsRemoteDesktopHint: String { s("settings.remoteDesktop.hint") }
     static var settingsExceptionsApps: String { s("settings.exceptions.apps") }
+    static var settingsExceptionsAppsHint: String { s("settings.exceptions.apps.hint") }
     static var settingsExceptionsAllActions: String { s("settings.exceptions.allActions") }
+    static var settingsExceptionsAllActionsHint: String { s("settings.exceptions.allActions.hint") }
+    static var exceptionsEmptyApps: String { s("settings.exceptions.empty.apps") }
+    static var exceptionsEmptyWords: String { s("settings.exceptions.empty.words") }
     static var settingsExceptionsNever: String { s("settings.exceptions.never") }
     static var settingsExceptionsAlways: String { s("settings.exceptions.always") }
     static var settingsAddWordPrompt: String { s("settings.exceptions.addWordPrompt") }
@@ -221,10 +295,7 @@ enum L10n {
     static var userRulesExportSuccess: String { s("rules.export.success") }
     static var userRulesExportFailure: String { s("rules.export.failure") }
     static var commonOkay: String { s("common.ok") }
-    static var settingsImportPunto: String { s("settings.importPunto") }
-    static var settingsImportPuntoChooseFile: String { s("settings.importPunto.chooseFile") }
     static var settingsImportPuntoSuccess: String { s("settings.importPunto.success") }
-    static var settingsImportPuntoFailure: String { s("settings.importPunto.failure") }
     static func settingsImportPuntoAppliedDetails(_ rows: Int, _ unverified: Int, _ learned: Int, _ removed: Int, _ snapshot: String) -> String {
         String(format: s("settings.importPunto.appliedDetails"), rows, unverified, learned, removed, snapshot)
     }
@@ -246,9 +317,6 @@ enum L10n {
     static var settingsCrashReports: String { s("settings.crashReports") }
     static var settingsCrashReportsHint: String { s("settings.crashReports.hint") }
     static var settingsCrashReportsUnavailable: String { s("settings.crashReports.unavailable") }
-    static func settingsImportPuntoDetails(_ rows: Int, _ supported: Int, _ added: Int, _ existing: Int, _ learned: Int, _ unsupported: Int) -> String {
-        String(format: s("settings.importPunto.details"), rows, supported, added, existing, learned, unsupported)
-    }
     static var commonAdd: String { s("common.add") }
     static var commonCancel: String { s("common.cancel") }
     static func learnQuestion(_ word: String) -> String { String(format: s("learn.question"), word) }
@@ -339,17 +407,16 @@ enum L10n {
             "menu.settings": "Settings…",
             "menu.closeWindow": "Close Window",
             "menu.quit": "Quit",
-
-            "wizard.permissionsReset.title": "Permissions Reset After Update",
-            "wizard.permissionsReset.text": "macOS has reset permissions because the app was updated.\n\nMultiSwitcher will remove old entries and request permissions again.\nYou just need to flip the toggles.",
-            "wizard.permissionsRequired.title": "MultiSwitcher needs permission",
-            "wizard.permissionsRequired.text": "macOS no longer allows MultiSwitcher to monitor or edit text. Open System Settings and enable the permissions you want to use. MultiSwitcher will not change permission settings on its own.",
+            "wizard.permissionsGuide.title": "Automatic switching is paused",
+            "wizard.permissionsGuide.text": "To convert text while you type, MultiSwitcher needs the macOS permissions listed below. You can leave them off; MultiSwitcher will stay open, but keyboard conversion and its shortcut will remain unavailable. Choose Open Settings only if you want to review the access. If you enable both permissions, MultiSwitcher will restart once to apply keyboard monitoring.",
+            "wizard.permission.accessibility.name": "Accessibility",
+            "wizard.permission.accessibility.help": "This macOS permission lets an app interact with your Mac and supported text fields; MultiSwitcher uses it to replace text. Path: System Settings → Privacy & Security → Accessibility → MultiSwitcher.",
+            "wizard.permission.deviceControl.name": "Device Control & Data Access",
+            "wizard.permission.deviceControl.help": "This macOS permission lets MultiSwitcher work with text in supported fields. Path: System Settings → Privacy & Security → Device Control & Data Access → MultiSwitcher.",
+            "wizard.permission.inputMonitoring.name": "Input Monitoring",
+            "wizard.permission.inputMonitoring.help": "This permission lets an app receive keyboard events, including typed characters, so MultiSwitcher can detect the layout and shortcut. Path: System Settings → Privacy & Security → Input Monitoring → MultiSwitcher.",
             "wizard.permissionsOk.title": "All Permissions Granted",
-            "wizard.permissionsOk.text": "Accessibility and Input Monitoring are enabled. MultiSwitcher is working.",
-            "wizard.accessibility.title": "Step 1 of 2: Accessibility",
-            "wizard.accessibility.text": "MultiSwitcher needs Accessibility permission.\n\nSettings will open — add MultiSwitcher.\nThe app will detect it automatically.",
-            "wizard.inputMonitoring.title": "Step 2 of 2: Input Monitoring",
-            "wizard.inputMonitoring.text": "Now Input Monitoring permission is needed.\n\n⚠️ macOS will require an app restart after adding.\nMultiSwitcher will restart automatically.",
+            "wizard.permissionsOk.text": "The macOS permissions needed for keyboard conversion are enabled. MultiSwitcher can run.",
             "wizard.openSettings": "Open Settings",
             "wizard.later": "Later",
             "wizard.launchAtLogin.title": "Launch at Login",
@@ -362,6 +429,10 @@ enum L10n {
             "settings.tab.about": "About",
             "settings.tab.advanced": "Advanced",
             "settings.autoSwitch": "Enable MultiSwitcher",
+            "settings.permissions.status": "Permission status",
+            "settings.permissions.ready": "macOS permissions are ready for keyboard conversion.",
+            "settings.permissions.missing": "Keyboard conversion is paused. Not enabled: %@.",
+            "settings.permissions.review": "Review…",
             "settings.trigger": "Trigger:",
             "settings.triggerRightOnly": "Right key only",
             "settings.triggerDoubleTap": "Double tap",
@@ -369,7 +440,6 @@ enum L10n {
             "menu.autoConvert": "Automatic conversion",
             "menu.keySound": "Layout sound",
             "menu.caretFlag": "Layout indicator at cursor",
-            "menu.monoIcon": "Monochrome icon",
             "settings.switchHotkey": "Layout switch hotkey",
             "settings.caseHotkey": "Change-case hotkey",
             "settings.switchHotkey.off": "Off",
@@ -379,6 +449,34 @@ enum L10n {
             "menu.remoteDesktop": "Remote Desktop mode",
             "settings.autoConvert": "Automatic conversion",
             "settings.autoConvert.hint": "After a word boundary, MultiSwitcher checks the last word and fixes a likely wrong layout. Rules are explicit exceptions and replacements. Single letters are left alone; use Option to convert one.",
+            "settings.languageSwitchThreshold": "Switch input language after",
+            "settings.languageSwitchAfterOne": "One confirmed word",
+            "settings.languageSwitchAfterTwo": "Two consecutive confirmed words (recommended)",
+            "settings.languageSwitchThreshold.hint": "Fixing one foreign word does not necessarily switch the keyboard. Two consecutive confirmed words help avoid layout jumps in mixed-language sentences.",
+            "settings.example.title": "Check an automatic-conversion example",
+            "settings.example.hint": "Enter the text before the last word and that word as typed. The example is kept only in this window and is never logged or saved.",
+            "settings.example.context": "Text before the word",
+            "settings.example.word": "Last word",
+            "settings.example.layout": "Typed using",
+            "settings.example.check": "Check example",
+            "settings.example.corrected": "Predicted text: %@",
+            "settings.example.nextLayout": "Next input layout: %@",
+            "settings.example.reason": "Why: %@",
+            "settings.example.noPair": "Choose and enable two keyboard layouts in General settings first.",
+            "settings.example.oneWordOnly": "Enter one word only; put the preceding phrase in the context field.",
+            "settings.example.runtimeCaveat": "This checks the word detector and context rule. The active app, secure fields, permissions, and text-field support can still prevent a live replacement.",
+            "settings.example.enterWord": "Enter one word to check.",
+            "settings.example.reason.converted": "The converted candidate is confirmed in the target dictionary.",
+            "settings.example.reason.validSource": "The word is valid in the selected input language, so it stays unchanged.",
+            "settings.example.reason.uncertain": "The detector cannot confirm a safe correction, so it leaves the word unchanged.",
+            "settings.example.reason.exception": "A never-convert rule blocks this word.",
+            "settings.example.reason.forced": "An explicit always-convert rule matched.",
+            "settings.example.reason.replacement": "An explicit replacement rule matched; the input layout stays the same.",
+            "settings.example.reason.candidateRejected": "The converted candidate is not confirmed as a word.",
+            "settings.example.reason.dictionaryUnavailable": "The target dictionary is unavailable; the word is left unchanged.",
+            "settings.example.reason.context": "The word is corrected, but the current context is not enough to switch the input layout.",
+            "settings.example.reason.disabled": "Automatic conversion is disabled, so this prediction will not be applied while typing.",
+            "settings.example.reason.ambiguousPunctuation": "The punctuation could also complete another valid word, so automatic conversion leaves it unchanged.",
             "onboard.autoConvert.title": "Automatic layout conversion",
             "onboard.autoConvert.text": "MultiSwitcher can fix the keyboard layout automatically as you type. It's off by default. The manual trigger (Option) always works and undoes a fix. Enable automatic conversion now?",
             "settings.tab.exceptions": "Autocorrection",
@@ -498,6 +596,17 @@ enum L10n {
             "learning.column.word": "Word",
             "learning.column.count": "Count",
             "learning.column.state": "State",
+            "learning.filter.candidates": "Candidates",
+            "learning.filter.active": "Active",
+            "learning.filter.imported": "Punto history",
+            "learning.filter.all": "All entries",
+            "learning.empty.candidates": "Candidates appear here after you undo the same automatic correction twice or switch the same word back and forth with Option twice. Imported Punto history is shown separately.",
+            "learning.empty.active": "No confirmed learning exceptions yet.",
+            "learning.empty.imported": "No Punto learning history was imported.",
+            "learning.empty.all": "There are no learning entries yet.",
+            "learning.empty.search": "No learning entries match this search.",
+            "learning.importedCount.tooltip": "Historical Punto count. It does not activate an exception.",
+            "learning.autoCancellation.count": "Confirmed automatic undo cycles: %d/%d",
             "learning.state.excluded": "Excluded",
             "learning.state.pending": "Pending",
             "learning.state.imported": "Punto history",
@@ -505,16 +614,16 @@ enum L10n {
             "learning.list.hint": "After two complete Option round trips, a word appears at the top as a candidate. Select it and confirm it to create an exception. Imported Punto history never activates rules by itself.",
             "settings.remoteDesktop.hint": "For Apple Screen Sharing: run MultiSwitcher on the remote Mac too and enable this on both.",
             "settings.exceptions.apps": "Don’t auto-convert in these apps",
+            "settings.exceptions.apps.hint": "Automatic conversion is skipped here. Manual Option conversion still works.",
             "settings.exceptions.allActions": "Disable all MultiSwitcher actions in these apps",
+            "settings.exceptions.allActions.hint": "All MultiSwitcher actions are disabled in these apps, including manual conversion.",
+            "settings.exceptions.empty.apps": "No apps in this list. Add an app with +.",
+            "settings.exceptions.empty.words": "No words in this list. Add a word with +.",
             "settings.exceptions.never": "Never convert these words",
             "settings.exceptions.always": "Always convert these words",
             "settings.exceptions.addWordPrompt": "Enter a word:",
-            "settings.importPunto": "Import Punto Switcher rules…",
-            "settings.importPunto.chooseFile": "Choose a saved Punto Switcher preferences file.",
             "settings.importPunto.success": "Punto rules imported",
-            "settings.importPunto.failure": "Could not import Punto Switcher data",
             "settings.importPunto.appliedDetails": "%d rule rows were copied (%d retain unverified matching details). %d learning entries were imported; %d source entries were omitted. Backup: %@.",
-            "settings.importPunto.details": "%d rule rows scanned; %d unique supported words (%d added, %d already present). %d learned-history entries were kept separate. %d unsupported rows were skipped.",
             "settings.about.localNotice": "Text conversion and dictionaries stay on this Mac. Update checks contact GitHub. Crash reports remain off unless you enable them above; see the Privacy Policy for details.",
             "profile.recovery.notice": "The saved profile could not be read, so profile changes cannot be saved. The damaged file is preserved. You can try restoring the previous saved copy below.",
             "profile.recovery.restore": "Restore previous profile…",
@@ -534,6 +643,9 @@ enum L10n {
             "settings.launchAtLogin": "Launch at login",
             "settings.convertByText": "Flip the entire selection",
             "settings.convertByText.hint": "Converts every character between layouts, including correct words and names. Enabling this turns smart selection off.",
+            "settings.conversionMode": "Manual conversion",
+            "settings.oneWayConversion": "One-way conversion",
+            "settings.oneWayConversion.hint": "Converts the selection one way according to the active layout, without recognizing correct words in the other language.",
             "settings.convertWholeLine": "Trigger converts the whole line (not just the last word)",
             "settings.convertWholeLine.hint": "The trigger selects the current line up to the cursor and converts it (fixing only the mis-typed words). Handy in terminals and when several words are typed in the wrong layout. Off: only the last word is converted.",
             "settings.smartConversion": "Smart selection conversion",
@@ -542,6 +654,7 @@ enum L10n {
             "settings.layout2": "Layout 2:",
             "settings.autoDetect": "Auto-detect",
             "settings.debugLog": "Debug logging",
+            "settings.debugLog.hint": "Detailed logs are off by default. Enable them only while reproducing a problem, then turn them off. Typed text is not recorded.",
             "settings.secureNotice": "Show the Secure Input notice",
             "settings.hideIcon": "Hide the menu bar icon",
             "settings.hideIcon.hint": "To open Settings or bring the icon back, just launch MultiSwitcher again (Applications or Spotlight).",
@@ -583,17 +696,16 @@ enum L10n {
             "menu.settings": "Настройки…",
             "menu.closeWindow": "Закрыть окно",
             "menu.quit": "Выход",
-
-            "wizard.permissionsReset.title": "Разрешения сброшены после обновления",
-            "wizard.permissionsReset.text": "macOS сбросил разрешения из-за обновления программы.\n\nMultiSwitcher удалит старые записи и запросит разрешения заново.\nВам нужно только включить переключатели.",
-            "wizard.permissionsRequired.title": "MultiSwitcher нужны разрешения",
-            "wizard.permissionsRequired.text": "macOS больше не разрешает MultiSwitcher отслеживать нажатия или изменять текст. Откройте Системные настройки и включите нужные разрешения. MultiSwitcher не будет менять их самостоятельно.",
+            "wizard.permissionsGuide.title": "Автопереключение приостановлено",
+            "wizard.permissionsGuide.text": "Чтобы переводить текст при наборе, MultiSwitcher нужны перечисленные ниже разрешения macOS. Их можно оставить выключенными: приложение продолжит работать, но автоперевод и его сочетание клавиш останутся недоступны. Откройте системные настройки, только если хотите проверить доступ. Если включить оба разрешения, MultiSwitcher один раз перезапустится, чтобы применить мониторинг клавиатуры.",
+            "wizard.permission.accessibility.name": "Универсальный доступ",
+            "wizard.permission.accessibility.help": "Это разрешение macOS позволяет приложению взаимодействовать с Mac и поддерживаемыми текстовыми полями; MultiSwitcher использует его для замены текста. Путь: Системные настройки → Конфиденциальность и безопасность → Универсальный доступ → MultiSwitcher.",
+            "wizard.permission.deviceControl.name": "Управление устройством и доступом к данным",
+            "wizard.permission.deviceControl.help": "Это разрешение macOS позволяет MultiSwitcher работать с текстом в поддерживаемых полях. Путь: Системные настройки → Конфиденциальность и безопасность → Управление устройством и доступом к данным → MultiSwitcher.",
+            "wizard.permission.inputMonitoring.name": "Мониторинг ввода",
+            "wizard.permission.inputMonitoring.help": "Это разрешение позволяет приложению получать события клавиатуры, включая вводимые символы, чтобы MultiSwitcher определял раскладку и сочетание клавиш. Путь: Системные настройки → Конфиденциальность и безопасность → Мониторинг ввода → MultiSwitcher.",
             "wizard.permissionsOk.title": "Все разрешения на месте",
-            "wizard.permissionsOk.text": "«Универсальный доступ» и «Мониторинг ввода» включены. MultiSwitcher работает.",
-            "wizard.accessibility.title": "Шаг 1 из 2: Универсальный доступ",
-            "wizard.accessibility.text": "MultiSwitcher нужно разрешение «Универсальный доступ».\n\nОткроются настройки — добавьте MultiSwitcher.\nПрограмма определит автоматически.",
-            "wizard.inputMonitoring.title": "Шаг 2 из 2: Мониторинг ввода",
-            "wizard.inputMonitoring.text": "Теперь нужно разрешение «Мониторинг ввода».\n\n⚠️ macOS потребует перезапуск приложения.\nMultiSwitcher перезапустится автоматически.",
+            "wizard.permissionsOk.text": "Разрешения macOS, необходимые для автопереключения, включены. MultiSwitcher может работать.",
             "wizard.openSettings": "Открыть настройки",
             "wizard.later": "Позже",
             "wizard.launchAtLogin.title": "Автозагрузка",
@@ -606,6 +718,10 @@ enum L10n {
             "settings.tab.about": "О программе",
             "settings.tab.advanced": "Расширенные",
             "settings.autoSwitch": "Включить MultiSwitcher",
+            "settings.permissions.status": "Разрешения macOS",
+            "settings.permissions.ready": "Разрешения macOS готовы для автопереключения.",
+            "settings.permissions.missing": "Автопереключение приостановлено. Не включено: %@.",
+            "settings.permissions.review": "Проверить…",
             "settings.trigger": "Триггер:",
             "settings.triggerRightOnly": "Только правая клавиша",
             "settings.triggerDoubleTap": "Двойной тап",
@@ -613,7 +729,6 @@ enum L10n {
             "menu.autoConvert": "Автоматическая конверсия",
             "menu.keySound": "Звук раскладки",
             "menu.caretFlag": "Индикатор у курсора",
-            "menu.monoIcon": "Монохромная иконка",
             "settings.switchHotkey": "Хоткей смены раскладки",
             "settings.caseHotkey": "Хоткей смены регистра",
             "settings.switchHotkey.off": "Выключен",
@@ -623,6 +738,34 @@ enum L10n {
             "menu.remoteDesktop": "Режим удалённого рабочего стола",
             "settings.autoConvert": "Автоматическая конверсия",
             "settings.autoConvert.hint": "После пробела MultiSwitcher проверяет последнее слово и исправляет неверную раскладку. Правила — явные исключения и замены. Одиночные буквы автоматически не меняются; используй Option.",
+            "settings.languageSwitchThreshold": "Менять раскладку после",
+            "settings.languageSwitchAfterOne": "Одного подтверждённого слова",
+            "settings.languageSwitchAfterTwo": "Двух подряд подтверждённых слов (рекомендуется)",
+            "settings.languageSwitchThreshold.hint": "Исправление одного иностранного слова не всегда меняет раскладку. Два слова подряд помогают избежать скачков в смешанной фразе.",
+            "settings.example.title": "Проверить пример автоконверсии",
+            "settings.example.hint": "Введи текст перед последним словом и само слово так, как набралось. Пример останется только в этом окне: он не записывается и не сохраняется.",
+            "settings.example.context": "Текст перед словом",
+            "settings.example.word": "Последнее слово",
+            "settings.example.layout": "Набрано в раскладке",
+            "settings.example.check": "Проверить пример",
+            "settings.example.corrected": "Предполагаемый текст: %@",
+            "settings.example.nextLayout": "Следующая раскладка: %@",
+            "settings.example.reason": "Причина: %@",
+            "settings.example.noPair": "Сначала выбери и включи две раскладки в разделе «Основные».",
+            "settings.example.oneWordOnly": "Введи только одно слово; предыдущую фразу укажи в поле контекста.",
+            "settings.example.runtimeCaveat": "Проверяются детектор слова и правило контекста. Реальную замену могут остановить активное приложение, защищённое поле, разрешения или ограничения текстового поля.",
+            "settings.example.enterWord": "Введи одно слово для проверки.",
+            "settings.example.reason.converted": "Словарь подтверждает вариант после конверсии.",
+            "settings.example.reason.validSource": "Слово есть в словаре выбранного языка, поэтому оно не меняется.",
+            "settings.example.reason.uncertain": "Детектор не уверен в безопасной замене и оставляет слово как есть.",
+            "settings.example.reason.exception": "Это слово блокирует правило «Не менять».",
+            "settings.example.reason.forced": "Сработало явное правило «Всегда исправлять».",
+            "settings.example.reason.replacement": "Сработало правило замены; раскладка ввода остаётся прежней.",
+            "settings.example.reason.candidateRejected": "Сконвертированный вариант не подтверждён как слово.",
+            "settings.example.reason.dictionaryUnavailable": "Словарь целевого языка недоступен; слово оставлено без изменений.",
+            "settings.example.reason.context": "Слово исправлено, но текущего контекста недостаточно, чтобы менять раскладку.",
+            "settings.example.reason.disabled": "Автоконверсия выключена: этот прогноз не будет применён во время набора.",
+            "settings.example.reason.ambiguousPunctuation": "Знак препинания может продолжать другое слово, поэтому автоматическая конверсия ничего не меняет.",
             "onboard.autoConvert.title": "Автоматическая конверсия раскладки",
             "onboard.autoConvert.text": "MultiSwitcher может исправлять раскладку автоматически по ходу набора. По умолчанию выключено. Ручной триггер (Option) всегда работает — им же отменяется замена. Включить автоматическую конверсию сейчас?",
             "settings.tab.exceptions": "Автокоррекция",
@@ -739,8 +882,19 @@ enum L10n {
             "settings.dictionaryPacks.slang": "Разговорная речь",
             "learning.search": "Поиск слов",
             "learning.column.word": "Слово",
-            "learning.column.count": "Счётчик",
+            "learning.column.count": "Циклы",
             "learning.column.state": "Состояние",
+            "learning.filter.candidates": "Кандидаты",
+            "learning.filter.active": "Активные",
+            "learning.filter.imported": "История Punto",
+            "learning.filter.all": "Все записи",
+            "learning.empty.candidates": "Кандидаты появятся здесь после двух отмен одного и того же автоисправления или двух полных переключений одного слова через Option. История Punto находится отдельно.",
+            "learning.empty.active": "Подтверждённых выученных исключений пока нет.",
+            "learning.empty.imported": "История обучения Punto не импортирована.",
+            "learning.empty.all": "Записей обучения пока нет.",
+            "learning.empty.search": "По этому запросу записей обучения нет.",
+            "learning.importedCount.tooltip": "Исторический счётчик Punto. Он сам по себе не включает исключение.",
+            "learning.autoCancellation.count": "Подтверждённые отмены автоконверсии: %d/%d",
             "learning.state.excluded": "Исключено",
             "learning.state.pending": "Ожидает",
             "learning.state.imported": "История Punto",
@@ -748,16 +902,16 @@ enum L10n {
             "learning.list.hint": "После двух полных циклов Option слово появится сверху как кандидат. Выберите его и подтвердите, чтобы создать исключение. История Punto сама по себе правила не включает.",
             "settings.remoteDesktop.hint": "Для Apple Screen Sharing: запустите MultiSwitcher и на удалённом Mac, включив этот режим на обоих.",
             "settings.exceptions.apps": "Не конвертировать в этих приложениях",
+            "settings.exceptions.apps.hint": "Автоконверсия пропускается. Ручное исправление через Option работает.",
             "settings.exceptions.allActions": "Отключить MultiSwitcher в этих приложениях",
+            "settings.exceptions.allActions.hint": "Здесь отключены все действия MultiSwitcher, включая ручное исправление.",
+            "settings.exceptions.empty.apps": "Список пуст. Добавьте приложение кнопкой +.",
+            "settings.exceptions.empty.words": "Список пуст. Добавьте слово кнопкой +.",
             "settings.exceptions.never": "Никогда не конвертировать эти слова",
             "settings.exceptions.always": "Всегда конвертировать эти слова",
             "settings.exceptions.addWordPrompt": "Введите слово:",
-            "settings.importPunto": "Импортировать правила Punto Switcher…",
-            "settings.importPunto.chooseFile": "Выберите сохранённый файл настроек Punto Switcher.",
             "settings.importPunto.success": "Правила Punto импортированы",
-            "settings.importPunto.failure": "Не удалось импортировать данные Punto Switcher",
             "settings.importPunto.appliedDetails": "Скопировано строк правил: %d (для %d способ сопоставления пока не подтверждён). Записей истории обучения: %d; пропущено записей источника: %d. Резервная копия: %@.",
-            "settings.importPunto.details": "Проверено строк правил: %d; уникальных поддерживаемых слов: %d (добавлено %d, уже было %d). Записей обученной истории: %d, они сохранены отдельно. Пропущено неподдерживаемых строк: %d.",
             "settings.about.localNotice": "Текст и словари обрабатываются на этом Mac. Проверка обновлений обращается к GitHub. Отчёты о сбоях выключены, пока вы не включите их выше. Подробности — в политике конфиденциальности.",
             "profile.recovery.notice": "Не удалось прочитать сохранённый профиль, поэтому новые настройки не сохраняются. Повреждённый файл сохранён. Ниже можно попробовать восстановить предыдущую копию.",
             "profile.recovery.restore": "Восстановить предыдущий профиль…",
@@ -777,6 +931,9 @@ enum L10n {
             "settings.launchAtLogin": "Запускать при входе",
             "settings.convertByText": "Переворачивать всё выделение",
             "settings.convertByText.hint": "Меняет раскладку у каждого символа, включая правильные слова и названия. При включении умная конверсия выключается.",
+            "settings.conversionMode": "Режим ручной конверсии",
+            "settings.oneWayConversion": "Односторонняя конверсия",
+            "settings.oneWayConversion.hint": "Преобразует выделение в одну сторону по активной раскладке, не распознавая правильные слова на другом языке.",
             "settings.convertWholeLine": "Триггер конвертирует всю строку (не только последнее слово)",
             "settings.convertWholeLine.hint": "Триггер сам выделяет строку до курсора и конвертирует её (чинит только слова не в той раскладке). Удобно в терминале и когда несколько слов набрано не в той раскладке. Выключено: конвертируется только последнее слово.",
             "settings.smartConversion": "Умная конверсия выделения",
@@ -785,6 +942,7 @@ enum L10n {
             "settings.layout2": "Раскладка 2:",
             "settings.autoDetect": "Автоопределение",
             "settings.debugLog": "Режим отладки",
+            "settings.debugLog.hint": "Подробный журнал по умолчанию выключен. Включайте его только на время воспроизведения ошибки и выключайте после проверки. Набранный текст не записывается.",
             "settings.secureNotice": "Показывать подсказку о защищённом вводе",
             "settings.hideIcon": "Скрывать иконку в меню-баре",
             "settings.hideIcon.hint": "Чтобы открыть настройки или вернуть иконку, просто запустите MultiSwitcher ещё раз («Программы» или Spotlight).",
@@ -815,10 +973,6 @@ enum L10n {
             "menu.settings": "Einstellungen…",
             "menu.closeWindow": "Fenster schließen",
             "menu.quit": "Beenden",
-            "wizard.accessibility.title": "Schritt 1 von 2: Bedienungshilfen",
-            "wizard.accessibility.text": "MultiSwitcher benötigt die Berechtigung für Bedienungshilfen.\n\nDie Einstellungen werden geöffnet — fügen Sie MultiSwitcher hinzu.\nDie App erkennt es automatisch.",
-            "wizard.inputMonitoring.title": "Schritt 2 von 2: Eingabeüberwachung",
-            "wizard.inputMonitoring.text": "Jetzt wird die Berechtigung für Eingabeüberwachung benötigt.\n\n⚠️ macOS erfordert nach dem Hinzufügen einen Neustart der App.\nMultiSwitcher startet automatisch neu.",
             "wizard.openSettings": "Einstellungen öffnen",
             "wizard.later": "Später",
             "wizard.launchAtLogin.title": "Beim Anmelden starten",
@@ -837,7 +991,6 @@ enum L10n {
             "menu.autoConvert": "Automatische Konvertierung",
             "menu.keySound": "Layout-Ton",
             "menu.caretFlag": "Flagge am Cursor",
-            "menu.monoIcon": "Monochromes Symbol",
             "settings.switchHotkey": "Hotkey für Layoutwechsel",
             "settings.caseHotkey": "Hotkey für Groß-/Kleinschreibung",
             "settings.secureNotice": "Hinweis zur sicheren Eingabe anzeigen",
@@ -874,6 +1027,9 @@ enum L10n {
             "settings.launchAtLogin": "Beim Anmelden starten",
             "settings.convertByText": "Auswahl nach Text konvertieren (beide Schriften umdrehen)",
             "settings.convertByText.hint": "Wenn aktiv, dreht der Trigger die gesamte Auswahl zwischen den Schriften um (Latein ↔ Kyrillisch), unabhängig vom aktiven Layout. Aus: jedes Wort wird klug korrigiert, korrekter Text bleibt erhalten.",
+            "settings.conversionMode": "Manuelle Konvertierung",
+            "settings.oneWayConversion": "Einseitige Konvertierung",
+            "settings.oneWayConversion.hint": "Konvertiert die Auswahl gemäß dem aktiven Layout in eine Richtung, ohne richtige Wörter in der anderen Sprache zu erkennen.",
             "settings.convertWholeLine": "Trigger konvertiert die ganze Zeile (nicht nur das letzte Wort)",
             "settings.convertWholeLine.hint": "Der Trigger markiert die Zeile bis zum Cursor und konvertiert sie (korrigiert nur die falsch getippten Wörter). Praktisch im Terminal und wenn mehrere Wörter im falschen Layout getippt wurden. Aus: Nur das letzte Wort wird konvertiert.",
             "settings.smartConversion": "Intelligente Auswahl-Konvertierung",
@@ -888,13 +1044,11 @@ enum L10n {
             "settings.language": "Sprache der Oberfläche:",
             "settings.languageAuto": "Systemstandard",
             "settings.perAppLayout": "Layout pro Anwendung merken",
-            "wizard.permissionsReset.title": "Berechtigungen nach Update zurückgesetzt",
-            "wizard.permissionsReset.text": "macOS hat die Berechtigungen nach dem App-Update zurückgesetzt.\n\nMultiSwitcher entfernt alte Einträge und fordert Berechtigungen erneut an.\nSie müssen nur die Schalter umlegen.",
             "secure.paused.title": "MultiSwitcher pausiert",
             "secure.paused.body": "Sichere Eingabe ist aktiv — sie wird von %@ gehalten. MultiSwitcher rührt deine Tastenanschläge nicht an (und liest dort nie mit). Wechsle aus dieser App heraus oder deaktiviere ihre „sichere Tastatureingabe“, um fortzufahren.",
             "secure.paused.unknownapp": "einer anderen App",
             "wizard.permissionsOk.title": "Alle Berechtigungen erteilt",
-            "wizard.permissionsOk.text": "Bedienungshilfen und Eingabeüberwachung sind aktiviert. MultiSwitcher funktioniert.",
+            "wizard.permissionsOk.text": "Die macOS-Berechtigungen für die Tastaturumstellung sind aktiviert. MultiSwitcher kann arbeiten.",
         ],
 
         // ========== FRANÇAIS ==========
@@ -909,10 +1063,6 @@ enum L10n {
             "menu.settings": "Préférences…",
             "menu.closeWindow": "Fermer la fenêtre",
             "menu.quit": "Quitter",
-            "wizard.accessibility.title": "Étape 1 sur 2 : Accessibilité",
-            "wizard.accessibility.text": "MultiSwitcher a besoin de l'autorisation Accessibilité.\n\nLes réglages vont s'ouvrir — ajoutez MultiSwitcher.",
-            "wizard.inputMonitoring.title": "Étape 2 sur 2 : Surveillance de l'entrée",
-            "wizard.inputMonitoring.text": "L'autorisation de surveillance de l'entrée est maintenant nécessaire.\n\n⚠️ macOS demandera un redémarrage de l'app.",
             "wizard.openSettings": "Ouvrir les réglages",
             "wizard.later": "Plus tard",
             "wizard.launchAtLogin.title": "Lancer au démarrage",
@@ -931,7 +1081,6 @@ enum L10n {
             "menu.autoConvert": "Conversion automatique",
             "menu.keySound": "Son de disposition",
             "menu.caretFlag": "Drapeau au curseur",
-            "menu.monoIcon": "Icône monochrome",
             "settings.switchHotkey": "Raccourci de disposition",
             "settings.caseHotkey": "Raccourci de casse",
             "settings.secureNotice": "Afficher l’avis de saisie sécurisée",
@@ -968,6 +1117,9 @@ enum L10n {
             "settings.launchAtLogin": "Lancer au démarrage",
             "settings.convertByText": "Convertir la sélection selon le texte (inverser les deux écritures)",
             "settings.convertByText.hint": "Activé, le déclencheur inverse toute la sélection entre les écritures (latin ↔ cyrillique), quelle que soit la disposition active. Désactivé : chaque mot est corrigé intelligemment et le texte correct est conservé.",
+            "settings.conversionMode": "Conversion manuelle",
+            "settings.oneWayConversion": "Conversion à sens unique",
+            "settings.oneWayConversion.hint": "Convertit la sélection dans un seul sens selon la disposition active, sans reconnaître les mots corrects dans l’autre langue.",
             "settings.convertWholeLine": "Le déclencheur convertit toute la ligne (pas seulement le dernier mot)",
             "settings.convertWholeLine.hint": "Le déclencheur sélectionne la ligne jusqu’au curseur et la convertit (en corrigeant seulement les mots mal tapés). Pratique dans les terminaux et quand plusieurs mots sont tapés dans la mauvaise disposition. Désactivé : seul le dernier mot est converti.",
             "settings.smartConversion": "Conversion intelligente de la sélection",
@@ -982,13 +1134,11 @@ enum L10n {
             "settings.language": "Langue de l'interface :",
             "settings.languageAuto": "Système par défaut",
             "settings.perAppLayout": "Mémoriser la disposition par application",
-            "wizard.permissionsReset.title": "Autorisations réinitialisées après mise à jour",
-            "wizard.permissionsReset.text": "macOS a réinitialisé les autorisations suite à la mise à jour.\n\nMultiSwitcher supprimera les anciennes entrées et redemandera les autorisations.\nVous n'avez qu'à activer les boutons.",
             "secure.paused.title": "MultiSwitcher est en pause",
             "secure.paused.body": "La saisie sécurisée est active — elle est utilisée par %@. MultiSwitcher ne touche pas vos frappes (et ne lit jamais ce que vous y tapez). Quittez cette app ou désactivez sa « saisie clavier sécurisée » pour reprendre.",
             "secure.paused.unknownapp": "une autre app",
             "wizard.permissionsOk.title": "Toutes les autorisations sont accordées",
-            "wizard.permissionsOk.text": "L’Accessibilité et la Surveillance de la saisie sont activées. MultiSwitcher fonctionne.",
+            "wizard.permissionsOk.text": "Les autorisations macOS nécessaires au changement de disposition sont activées. MultiSwitcher peut fonctionner.",
         ],
 
         // ========== ESPAÑOL ==========
@@ -1003,10 +1153,6 @@ enum L10n {
             "menu.settings": "Ajustes…",
             "menu.closeWindow": "Cerrar ventana",
             "menu.quit": "Salir",
-            "wizard.accessibility.title": "Paso 1 de 2: Accesibilidad",
-            "wizard.accessibility.text": "MultiSwitcher necesita permiso de Accesibilidad.\n\nSe abrirán los ajustes — añada MultiSwitcher.",
-            "wizard.inputMonitoring.title": "Paso 2 de 2: Monitoreo de entrada",
-            "wizard.inputMonitoring.text": "Ahora se necesita el permiso de monitoreo de entrada.\n\n⚠️ macOS requerirá reiniciar la app.",
             "wizard.openSettings": "Abrir ajustes",
             "wizard.later": "Más tarde",
             "wizard.launchAtLogin.title": "Iniciar al arrancar",
@@ -1025,7 +1171,6 @@ enum L10n {
             "menu.autoConvert": "Conversión automática",
             "menu.keySound": "Sonido de distribución",
             "menu.caretFlag": "Bandera en el cursor",
-            "menu.monoIcon": "Icono monocromo",
             "settings.switchHotkey": "Atajo de distribución",
             "settings.caseHotkey": "Atajo de mayúsculas y minúsculas",
             "settings.secureNotice": "Mostrar el aviso de entrada segura",
@@ -1062,6 +1207,9 @@ enum L10n {
             "settings.launchAtLogin": "Iniciar al arrancar",
             "settings.convertByText": "Convertir la selección por texto (voltear ambos alfabetos)",
             "settings.convertByText.hint": "Activado, el disparador voltea toda la selección entre alfabetos (latino ↔ cirílico), sin importar la distribución activa. Desactivado: cada palabra se corrige de forma inteligente y el texto correcto se conserva.",
+            "settings.conversionMode": "Conversión manual",
+            "settings.oneWayConversion": "Conversión unidireccional",
+            "settings.oneWayConversion.hint": "Convierte la selección en una sola dirección según la distribución activa, sin reconocer las palabras correctas del otro idioma.",
             "settings.convertWholeLine": "El disparador convierte toda la línea (no solo la última palabra)",
             "settings.convertWholeLine.hint": "El disparador selecciona la línea hasta el cursor y la convierte (corrigiendo solo las palabras mal tecleadas). Útil en terminales y cuando varias palabras se escriben en la distribución equivocada. Desactivado: solo se convierte la última palabra.",
             "settings.smartConversion": "Conversión inteligente de la selección",
@@ -1076,13 +1224,11 @@ enum L10n {
             "settings.language": "Idioma de la interfaz:",
             "settings.languageAuto": "Predeterminado del sistema",
             "settings.perAppLayout": "Recordar disposición por aplicación",
-            "wizard.permissionsReset.title": "Permisos restablecidos tras actualización",
-            "wizard.permissionsReset.text": "macOS ha restablecido los permisos tras la actualización.\n\nMultiSwitcher eliminará las entradas antiguas y solicitará permisos de nuevo.\nSolo necesita activar los interruptores.",
             "secure.paused.title": "MultiSwitcher está en pausa",
             "secure.paused.body": "La entrada segura está activa — la mantiene %@. MultiSwitcher no toca tus pulsaciones (y nunca lee lo que escribes ahí). Cambia de esa app o desactiva su «entrada segura de teclado» para continuar.",
             "secure.paused.unknownapp": "otra app",
             "wizard.permissionsOk.title": "Todos los permisos concedidos",
-            "wizard.permissionsOk.text": "Accesibilidad y Monitorización de entrada están activados. MultiSwitcher funciona.",
+            "wizard.permissionsOk.text": "Los permisos de macOS necesarios para cambiar la distribución del teclado están activados. MultiSwitcher puede funcionar.",
         ],
 
         // ========== PORTUGUÊS ==========
@@ -1111,7 +1257,6 @@ enum L10n {
             "menu.autoConvert": "Conversão automática",
             "menu.keySound": "Som de layout",
             "menu.caretFlag": "Bandeira no cursor",
-            "menu.monoIcon": "Ícone monocromático",
             "settings.switchHotkey": "Atalho de troca de layout",
             "settings.caseHotkey": "Atalho de maiúsculas e minúsculas",
             "settings.secureNotice": "Mostrar o aviso de entrada segura",
@@ -1148,6 +1293,9 @@ enum L10n {
             "settings.launchAtLogin": "Iniciar no login",
             "settings.convertByText": "Converter a seleção pelo texto (inverter os dois alfabetos)",
             "settings.convertByText.hint": "Ativado, o gatilho inverte toda a seleção entre alfabetos (latino ↔ cirílico), independentemente do layout ativo. Desativado: cada palavra é corrigida de forma inteligente e o texto correto é mantido.",
+            "settings.conversionMode": "Conversão manual",
+            "settings.oneWayConversion": "Conversão unidirecional",
+            "settings.oneWayConversion.hint": "Converte a seleção em uma direção conforme o layout ativo, sem reconhecer palavras corretas no outro idioma.",
             "settings.convertWholeLine": "O gatilho converte a linha inteira (não só a última palavra)",
             "settings.convertWholeLine.hint": "O gatilho seleciona a linha até o cursor e a converte (corrigindo apenas as palavras digitadas na disposição errada). Útil em terminais e quando várias palavras são digitadas na disposição errada. Desativado: só a última palavra é convertida.",
             "settings.smartConversion": "Conversão inteligente da seleção",
@@ -1156,14 +1304,8 @@ enum L10n {
             "settings.language": "Idioma da interface:",
             "settings.languageAuto": "Padrão do sistema",
             "settings.perAppLayout": "Lembrar layout por aplicativo",
-            "wizard.permissionsReset.title": "Permissões redefinidas após atualização",
-            "wizard.permissionsReset.text": "O macOS redefiniu as permissões porque o app foi atualizado.\n\nO MultiSwitcher removerá as entradas antigas e solicitará as permissões novamente.\nVocê só precisa ativar os botões.",
             "wizard.permissionsOk.title": "Todas as permissões concedidas",
-            "wizard.permissionsOk.text": "Acessibilidade e Monitoramento de entrada estão ativados. O MultiSwitcher está funcionando.",
-            "wizard.accessibility.title": "Passo 1 de 2: Acessibilidade",
-            "wizard.accessibility.text": "O MultiSwitcher precisa da permissão de Acessibilidade.\n\nOs Ajustes serão abertos — adicione o MultiSwitcher.\nO app detectará automaticamente.",
-            "wizard.inputMonitoring.title": "Passo 2 de 2: Monitoramento de entrada",
-            "wizard.inputMonitoring.text": "Agora é necessária a permissão de Monitoramento de entrada.\n\n⚠️ O macOS exigirá reiniciar o app após adicionar.\nO MultiSwitcher reiniciará automaticamente.",
+            "wizard.permissionsOk.text": "As permissões do macOS necessárias para alternar o layout do teclado estão ativadas. O MultiSwitcher pode funcionar.",
             "wizard.launchAtLogin.title": "Abrir ao iniciar sessão",
             "wizard.launchAtLogin.text": "Deseja que o MultiSwitcher inicie automaticamente quando você fizer login?\n\nVocê pode alterar isso depois nos Ajustes.",
             "wizard.yes": "Sim",
@@ -1205,7 +1347,6 @@ enum L10n {
             "menu.autoConvert": "自动转换",
             "menu.keySound": "布局提示音",
             "menu.caretFlag": "光标处显示旗标",
-            "menu.monoIcon": "单色图标",
             "settings.switchHotkey": "切换布局快捷键",
             "settings.caseHotkey": "切换大小写快捷键",
             "settings.secureNotice": "显示安全输入提示",
@@ -1242,6 +1383,9 @@ enum L10n {
             "settings.launchAtLogin": "登录时启动",
             "settings.convertByText": "按文本转换所选内容（翻转两种文字）",
             "settings.convertByText.hint": "开启后，触发键会将整个所选内容在两种文字之间翻转（拉丁 ↔ 西里尔），与当前布局无关。关闭：逐词智能修正，并保留已正确的文本。",
+            "settings.conversionMode": "手动转换",
+            "settings.oneWayConversion": "单向转换",
+            "settings.oneWayConversion.hint": "按当前布局单向转换所选内容，不识别另一种语言中已经正确的词。",
             "settings.convertWholeLine": "触发键转换整行（而不仅是最后一个词）",
             "settings.convertWholeLine.hint": "触发键会选中光标之前的当前行并转换它（只修正输入布局错误的词）。在终端中以及连续输入多个词后发现布局错误时很方便。关闭：只转换最后一个词。",
             "settings.smartConversion": "智能选区转换",
@@ -1250,14 +1394,8 @@ enum L10n {
             "settings.language": "界面语言：",
             "settings.languageAuto": "跟随系统",
             "settings.perAppLayout": "按应用记住布局",
-            "wizard.permissionsReset.title": "更新后权限已重置",
-            "wizard.permissionsReset.text": "由于 App 已更新，macOS 重置了权限。\n\nMultiSwitcher 将移除旧条目并重新请求权限。\n你只需重新打开开关即可。",
             "wizard.permissionsOk.title": "已授予所有权限",
-            "wizard.permissionsOk.text": "辅助功能和输入监控已启用。MultiSwitcher 正常运行。",
-            "wizard.accessibility.title": "第 1 步（共 2 步）：辅助功能",
-            "wizard.accessibility.text": "MultiSwitcher 需要辅助功能权限。\n\n系统设置将打开 — 请添加 MultiSwitcher。\nApp 会自动检测。",
-            "wizard.inputMonitoring.title": "第 2 步（共 2 步）：输入监控",
-            "wizard.inputMonitoring.text": "现在需要输入监控权限。\n\n⚠️ 添加后 macOS 需要重新启动 App。\nMultiSwitcher 将自动重启。",
+            "wizard.permissionsOk.text": "键盘布局转换所需的 macOS 权限已启用。MultiSwitcher 可以运行。",
             "wizard.launchAtLogin.title": "登录时启动",
             "wizard.launchAtLogin.text": "是否让 MultiSwitcher 在你登录时自动启动？\n\n你可以稍后在设置中更改。",
             "wizard.yes": "是",
@@ -1299,7 +1437,6 @@ enum L10n {
             "menu.autoConvert": "自動変換",
             "menu.keySound": "レイアウト音",
             "menu.caretFlag": "カーソルに旗",
-            "menu.monoIcon": "モノクロアイコン",
             "settings.switchHotkey": "レイアウト切替キー",
             "settings.caseHotkey": "大文字・小文字切替キー",
             "settings.secureNotice": "セキュア入力の通知を表示",
@@ -1336,6 +1473,9 @@ enum L10n {
             "settings.launchAtLogin": "ログイン時に起動",
             "settings.convertByText": "選択範囲をテキストに従って変換（両方の文字を反転）",
             "settings.convertByText.hint": "オンにすると、トリガーはアクティブなレイアウトに関係なく選択範囲全体を文字体系間で反転します（ラテン ↔ キリル）。オフ：各単語を賢く修正し、正しいテキストはそのまま残します。",
+            "settings.conversionMode": "手動変換",
+            "settings.oneWayConversion": "一方向変換",
+            "settings.oneWayConversion.hint": "現在の入力レイアウトに従って選択範囲を一方向に変換します。もう一方の言語の正しい単語も判定しません。",
             "settings.convertWholeLine": "トリガーが行全体を変換（最後の単語だけでなく）",
             "settings.convertWholeLine.hint": "トリガーがカーソルまでの行を選択して変換します（入力レイアウトを間違えた単語だけを修正）。ターミナルや、複数の単語を誤ったレイアウトで入力したときに便利です。オフ：最後の単語だけを変換します。",
             "settings.smartConversion": "スマート選択変換",
@@ -1344,14 +1484,8 @@ enum L10n {
             "settings.language": "インターフェース言語：",
             "settings.languageAuto": "システムデフォルト",
             "settings.perAppLayout": "アプリごとにレイアウトを記憶",
-            "wizard.permissionsReset.title": "アップデート後に権限がリセットされました",
-            "wizard.permissionsReset.text": "Appがアップデートされたため、macOSが権限をリセットしました。\n\nMultiSwitcherは古いエントリを削除し、権限を再度リクエストします。\nスイッチを入れ直すだけです。",
             "wizard.permissionsOk.title": "すべての権限が許可されています",
-            "wizard.permissionsOk.text": "アクセシビリティと入力監視が有効です。MultiSwitcherは動作しています。",
-            "wizard.accessibility.title": "ステップ 1/2：アクセシビリティ",
-            "wizard.accessibility.text": "MultiSwitcherにはアクセシビリティ権限が必要です。\n\n設定が開きます — MultiSwitcherを追加してください。\nAppが自動的に検出します。",
-            "wizard.inputMonitoring.title": "ステップ 2/2：入力監視",
-            "wizard.inputMonitoring.text": "次に入力監視の権限が必要です。\n\n⚠️ 追加後、macOSはAppの再起動を求めます。\nMultiSwitcherは自動的に再起動します。",
+            "wizard.permissionsOk.text": "キーボードレイアウト切り替えに必要なmacOS権限が有効です。MultiSwitcherを利用できます。",
             "wizard.launchAtLogin.title": "ログイン時に起動",
             "wizard.launchAtLogin.text": "ログイン時にMultiSwitcherを自動的に起動しますか？\n\n後で設定で変更できます。",
             "wizard.yes": "はい",
@@ -1393,7 +1527,6 @@ enum L10n {
             "menu.autoConvert": "자동 변환",
             "menu.keySound": "레이아웃 소리",
             "menu.caretFlag": "커서에 깃발",
-            "menu.monoIcon": "단색 아이콘",
             "settings.switchHotkey": "레이아웃 전환 단축키",
             "settings.caseHotkey": "대소문자 전환 단축키",
             "settings.secureNotice": "보안 입력 알림 표시",
@@ -1430,6 +1563,9 @@ enum L10n {
             "settings.launchAtLogin": "로그인 시 실행",
             "settings.convertByText": "선택 영역을 텍스트 기준으로 변환(두 문자 모두 뒤집기)",
             "settings.convertByText.hint": "켜면 활성 레이아웃과 상관없이 트리거가 선택 영역 전체를 문자 체계 간에 뒤집습니다(라틴 ↔ 키릴). 끄면 각 단어를 지능적으로 고치고 이미 올바른 텍스트는 유지합니다.",
+            "settings.conversionMode": "수동 변환",
+            "settings.oneWayConversion": "단방향 변환",
+            "settings.oneWayConversion.hint": "현재 레이아웃에 따라 선택 영역을 한 방향으로 변환하며, 다른 언어의 올바른 단어를 인식하지 않습니다.",
             "settings.convertWholeLine": "트리거가 줄 전체를 변환(마지막 단어만이 아니라)",
             "settings.convertWholeLine.hint": "트리거가 커서까지의 현재 줄을 선택해 변환합니다(레이아웃을 잘못 입력한 단어만 수정). 터미널이나 여러 단어를 잘못된 레이아웃으로 입력했을 때 편리합니다. 끄면 마지막 단어만 변환합니다.",
             "settings.smartConversion": "스마트 선택 변환",
@@ -1438,14 +1574,8 @@ enum L10n {
             "settings.language": "인터페이스 언어:",
             "settings.languageAuto": "시스템 기본값",
             "settings.perAppLayout": "앱별 레이아웃 기억",
-            "wizard.permissionsReset.title": "업데이트 후 권한이 재설정됨",
-            "wizard.permissionsReset.text": "앱이 업데이트되어 macOS가 권한을 재설정했습니다.\n\nMultiSwitcher가 이전 항목을 제거하고 권한을 다시 요청합니다.\n스위치만 다시 켜면 됩니다.",
             "wizard.permissionsOk.title": "모든 권한이 허용됨",
-            "wizard.permissionsOk.text": "손쉬운 사용과 입력 모니터링이 활성화되었습니다. MultiSwitcher가 작동 중입니다.",
-            "wizard.accessibility.title": "2단계 중 1단계: 손쉬운 사용",
-            "wizard.accessibility.text": "MultiSwitcher에는 손쉬운 사용 권한이 필요합니다.\n\n설정이 열립니다 — MultiSwitcher를 추가하세요.\n앱이 자동으로 감지합니다.",
-            "wizard.inputMonitoring.title": "2단계 중 2단계: 입력 모니터링",
-            "wizard.inputMonitoring.text": "이제 입력 모니터링 권한이 필요합니다.\n\n⚠️ 추가 후 macOS가 앱 재시작을 요구합니다.\nMultiSwitcher가 자동으로 재시작됩니다.",
+            "wizard.permissionsOk.text": "키보드 레이아웃 전환에 필요한 macOS 권한이 활성화되었습니다. MultiSwitcher를 사용할 수 있습니다.",
             "wizard.launchAtLogin.title": "로그인 시 실행",
             "wizard.launchAtLogin.text": "로그인할 때 MultiSwitcher를 자동으로 실행할까요?\n\n나중에 설정에서 변경할 수 있습니다.",
             "wizard.yes": "예",
@@ -1473,13 +1603,6 @@ enum L10n {
             "menu.settings": "Налаштування…",
             "menu.closeWindow": "Закрити вікно",
             "menu.quit": "Вихід",
-
-            "wizard.permissionsReset.title": "Дозволи скинуті після оновлення",
-            "wizard.permissionsReset.text": "macOS скинув дозволи через оновлення програми.\n\nMultiSwitcher видалить старі записи і запросить дозволи знову.\nВам потрібно лише увімкнути перемикачі.",
-            "wizard.accessibility.title": "Крок 1 з 2: Доступність",
-            "wizard.accessibility.text": "MultiSwitcher потребує дозволу «Доступність».\n\nВідкриються налаштування — додайте MultiSwitcher.\nПрограма визначить автоматично.",
-            "wizard.inputMonitoring.title": "Крок 2 з 2: Моніторинг введення",
-            "wizard.inputMonitoring.text": "Тепер потрібен дозвіл «Моніторинг введення».\n\n⚠️ macOS вимагатиме перезапуску програми.\nMultiSwitcher перезапуститься автоматично.",
             "wizard.openSettings": "Відкрити налаштування",
             "wizard.later": "Пізніше",
             "wizard.launchAtLogin.title": "Автозавантаження",
@@ -1499,7 +1622,6 @@ enum L10n {
             "menu.autoConvert": "Автоматична конверсія",
             "menu.keySound": "Звук розкладки",
             "menu.caretFlag": "Прапор біля курсора",
-            "menu.monoIcon": "Монохромна іконка",
             "settings.switchHotkey": "Хоткей зміни розкладки",
             "settings.caseHotkey": "Хоткей зміни регістру",
             "settings.secureNotice": "Показувати підказку про захищений ввід",
@@ -1536,6 +1658,9 @@ enum L10n {
             "settings.launchAtLogin": "Запускати при вході",
             "settings.convertByText": "Конвертувати виділення за текстом (фліп обох абеток)",
             "settings.convertByText.hint": "Коли увімкнено, тригер перевертає все виділення між абетками (латиниця ↔ кирилиця) незалежно від активної розкладки. Вимкнено: кожне слово виправляється розумно, а правильний текст зберігається.",
+            "settings.conversionMode": "Ручна конверсія",
+            "settings.oneWayConversion": "Одностороння конверсія",
+            "settings.oneWayConversion.hint": "Перетворює виділення в одному напрямку за активною розкладкою, не розпізнаючи правильні слова іншою мовою.",
             "settings.convertWholeLine": "Тригер конвертує весь рядок (не лише останнє слово)",
             "settings.convertWholeLine.hint": "Тригер сам виділяє рядок до курсора і конвертує його (виправляє лише слова не в тій розкладці). Зручно в терміналі та коли кілька слів набрано не в тій розкладці. Вимкнено: конвертується лише останнє слово.",
             "settings.smartConversion": "Розумна конверсія виділення",
@@ -1555,7 +1680,7 @@ enum L10n {
             "secure.paused.body": "Захищений ввід активний — його утримує %@. MultiSwitcher не чіпає ваші клавіші (і ніколи не читає, що ви там вводите). Перейдіть з цього застосунку або вимкніть у ньому «захищений ввід», щоб продовжити.",
             "secure.paused.unknownapp": "інший застосунок",
             "wizard.permissionsOk.title": "Усі дозволи надано",
-            "wizard.permissionsOk.text": "«Доступність» та «Моніторинг введення» увімкнено. MultiSwitcher працює.",
+            "wizard.permissionsOk.text": "Права macOS, потрібні для перемикання розкладки, увімкнено. MultiSwitcher може працювати.",
         ],
 
         // ========== БЕЛАРУСКАЯ ==========
@@ -1570,13 +1695,6 @@ enum L10n {
             "menu.settings": "Налады…",
             "menu.closeWindow": "Закрыць акно",
             "menu.quit": "Выхад",
-
-            "wizard.permissionsReset.title": "Дазволы скінуты пасля абнаўлення",
-            "wizard.permissionsReset.text": "macOS скінуў дазволы з-за абнаўлення праграмы.\n\nMultiSwitcher выдаліць старыя запісы і запытае дазволы нанова.\nВам трэба толькі ўключыць пераключальнікі.",
-            "wizard.accessibility.title": "Крок 1 з 2: Спецыяльныя магчымасці",
-            "wizard.accessibility.text": "MultiSwitcher патрабуе дазвол Accessibility.\n\nАдкрыюцца налады — дадайце MultiSwitcher.\nПраграма вызначыць аўтаматычна.",
-            "wizard.inputMonitoring.title": "Крок 2 з 2: Маніторынг уводу",
-            "wizard.inputMonitoring.text": "Цяпер патрэбен дазвол Input Monitoring.\n\n⚠️ macOS запатрабуе перазапуск праграмы.\nMultiSwitcher перазапусціцца аўтаматычна.",
             "wizard.openSettings": "Адкрыць налады",
             "wizard.later": "Пазней",
             "wizard.launchAtLogin.title": "Аўтазагрузка",
@@ -1596,7 +1714,6 @@ enum L10n {
             "menu.autoConvert": "Аўтаматычная канверсія",
             "menu.keySound": "Гук раскладкі",
             "menu.caretFlag": "Сцяг ля курсора",
-            "menu.monoIcon": "Манахромная іконка",
             "settings.switchHotkey": "Хоткей змены раскладкі",
             "settings.caseHotkey": "Хоткей змены рэгістра",
             "settings.secureNotice": "Паказваць падказку пра абаронены ўвод",
@@ -1633,6 +1750,9 @@ enum L10n {
             "settings.launchAtLogin": "Запускаць пры ўваходзе",
             "settings.convertByText": "Канвертаваць вылучэнне па тэксце (фліп абедзвюх раскладак)",
             "settings.convertByText.hint": "Калі ўключана, трыгер пераварочвае ўсё вылучэнне паміж пісьменнасцямі (лацініца ↔ кірыліца) незалежна ад актыўнай раскладкі. Выключана: кожнае слова выпраўляецца разумна, а правільны тэкст захоўваецца.",
+            "settings.conversionMode": "Ручная канверсія",
+            "settings.oneWayConversion": "Аднабаковая канверсія",
+            "settings.oneWayConversion.hint": "Пераўтварае вылучэнне ў адзін бок паводле актыўнай раскладкі, не распазнаючы правільныя словы іншай мовы.",
             "settings.convertWholeLine": "Трыгер канвертуе ўвесь радок (не толькі апошняе слова)",
             "settings.convertWholeLine.hint": "Трыгер сам вылучае радок да курсора і канвертуе яго (выпраўляе толькі словы не ў той раскладцы). Зручна ў тэрмінале і калі некалькі слоў набрана не ў той раскладцы. Выключана: канвертуецца толькі апошняе слова.",
             "settings.smartConversion": "Разумная канверсія вылучэння",
@@ -1652,7 +1772,7 @@ enum L10n {
             "secure.paused.body": "Абаронены ўвод актыўны — яго ўтрымлівае %@. MultiSwitcher не чапае вашы клавішы (і ніколі не чытае, што вы там набіраеце). Пераключыцеся з гэтай праграмы або адключыце ў ёй «абаронены ўвод», каб працягнуць.",
             "secure.paused.unknownapp": "іншая праграма",
             "wizard.permissionsOk.title": "Усе дазволы дадзены",
-            "wizard.permissionsOk.text": "«Спецыяльныя магчымасці» і «Маніторынг уводу» ўключаны. MultiSwitcher працуе.",
+            "wizard.permissionsOk.text": "Дазволы macOS, патрэбныя для пераключэння раскладкі, уключаны. MultiSwitcher можа працаваць.",
         ],
 
         // ========== POLSKI ==========
@@ -1681,7 +1801,6 @@ enum L10n {
             "menu.autoConvert": "Konwersja automatyczna",
             "menu.keySound": "Dźwięk układu",
             "menu.caretFlag": "Flaga przy kursorze",
-            "menu.monoIcon": "Ikona monochromatyczna",
             "settings.switchHotkey": "Skrót przełączania układu",
             "settings.caseHotkey": "Skrót zmiany wielkości liter",
             "settings.secureNotice": "Pokaż powiadomienie o bezpiecznym wpisywaniu",
@@ -1718,6 +1837,9 @@ enum L10n {
             "settings.launchAtLogin": "Uruchamiaj przy logowaniu",
             "settings.convertByText": "Konwertuj zaznaczenie według tekstu (odwróć oba alfabety)",
             "settings.convertByText.hint": "Gdy włączone, wyzwalacz odwraca całe zaznaczenie między alfabetami (łaciński ↔ cyrylica), niezależnie od aktywnego układu. Wyłączone: każde słowo jest poprawiane inteligentnie, a poprawny tekst zostaje zachowany.",
+            "settings.conversionMode": "Konwersja ręczna",
+            "settings.oneWayConversion": "Konwersja jednokierunkowa",
+            "settings.oneWayConversion.hint": "Konwertuje zaznaczenie w jednym kierunku zgodnie z aktywnym układem, nie rozpoznając poprawnych słów w drugim języku.",
             "settings.convertWholeLine": "Wyzwalacz konwertuje cały wiersz (nie tylko ostatnie słowo)",
             "settings.convertWholeLine.hint": "Wyzwalacz zaznacza wiersz do kursora i konwertuje go (poprawiając tylko słowa w złym układzie). Przydatne w terminalu i gdy kilka słów wpisano w złym układzie. Wyłączone: konwertowane jest tylko ostatnie słowo.",
             "settings.smartConversion": "Inteligentna konwersja zaznaczenia",
@@ -1726,14 +1848,8 @@ enum L10n {
             "settings.language": "Język interfejsu:",
             "settings.languageAuto": "Domyślny systemowy",
             "settings.perAppLayout": "Zapamiętaj układ dla każdej aplikacji",
-            "wizard.permissionsReset.title": "Uprawnienia zresetowane po aktualizacji",
-            "wizard.permissionsReset.text": "macOS zresetował uprawnienia, ponieważ aplikacja została zaktualizowana.\n\nMultiSwitcher usunie stare wpisy i ponownie poprosi o uprawnienia.\nWystarczy je włączyć.",
             "wizard.permissionsOk.title": "Wszystkie uprawnienia przyznane",
-            "wizard.permissionsOk.text": "Dostępność i Monitorowanie wejścia są włączone. MultiSwitcher działa.",
-            "wizard.accessibility.title": "Krok 1 z 2: Dostępność",
-            "wizard.accessibility.text": "MultiSwitcher potrzebuje uprawnienia Dostępności.\n\nOtworzą się Ustawienia — dodaj MultiSwitcher.\nAplikacja wykryje to automatycznie.",
-            "wizard.inputMonitoring.title": "Krok 2 z 2: Monitorowanie wejścia",
-            "wizard.inputMonitoring.text": "Teraz potrzebne jest uprawnienie Monitorowania wejścia.\n\n⚠️ Po dodaniu macOS będzie wymagać ponownego uruchomienia aplikacji.\nMultiSwitcher uruchomi się ponownie automatycznie.",
+            "wizard.permissionsOk.text": "Uprawnienia macOS potrzebne do przełączania układu klawiatury są włączone. MultiSwitcher może działać.",
             "wizard.launchAtLogin.title": "Uruchamiaj przy logowaniu",
             "wizard.launchAtLogin.text": "Czy chcesz, aby MultiSwitcher uruchamiał się automatycznie przy logowaniu?\n\nMożesz to zmienić później w Ustawieniach.",
             "wizard.yes": "Tak",
@@ -1759,14 +1875,8 @@ enum L10n {
             "menu.settings": "Ρυθμίσεις…",
             "menu.closeWindow": "Κλείσιμο παραθύρου",
             "menu.quit": "Έξοδος",
-            "wizard.permissionsReset.title": "Τα δικαιώματα επαναφέρθηκαν μετά την ενημέρωση",
-            "wizard.permissionsReset.text": "Το macOS επανέφερε τα δικαιώματα επειδή η εφαρμογή ενημερώθηκε.\n\nΤο MultiSwitcher θα αφαιρέσει τις παλιές καταχωρήσεις και θα ζητήσει ξανά δικαιώματα.\nΑρκεί να ενεργοποιήσετε τους διακόπτες.",
             "wizard.permissionsOk.title": "Όλα τα δικαιώματα χορηγήθηκαν",
-            "wizard.permissionsOk.text": "Η Προσβασιμότητα και η Παρακολούθηση εισόδου είναι ενεργές. Το MultiSwitcher λειτουργεί.",
-            "wizard.accessibility.title": "Βήμα 1 από 2: Προσβασιμότητα",
-            "wizard.accessibility.text": "Το MultiSwitcher χρειάζεται δικαίωμα Προσβασιμότητας.\n\nΘα ανοίξουν οι Ρυθμίσεις — προσθέστε το MultiSwitcher.\nΗ εφαρμογή θα το εντοπίσει αυτόματα.",
-            "wizard.inputMonitoring.title": "Βήμα 2 από 2: Παρακολούθηση εισόδου",
-            "wizard.inputMonitoring.text": "Τώρα χρειάζεται δικαίωμα Παρακολούθησης εισόδου.\n\n⚠️ Το macOS θα απαιτήσει επανεκκίνηση της εφαρμογής μετά την προσθήκη.\nΤο MultiSwitcher θα επανεκκινήσει αυτόματα.",
+            "wizard.permissionsOk.text": "Τα δικαιώματα macOS που απαιτούνται για την εναλλαγή διάταξης είναι ενεργά. Το MultiSwitcher μπορεί να λειτουργήσει.",
             "wizard.openSettings": "Άνοιγμα Ρυθμίσεων",
             "wizard.later": "Αργότερα",
             "wizard.launchAtLogin.title": "Εκκίνηση κατά τη σύνδεση",
@@ -1785,7 +1895,6 @@ enum L10n {
             "menu.autoConvert": "Αυτόματη μετατροπή",
             "menu.keySound": "Ήχος διάταξης",
             "menu.caretFlag": "Σημαία στον δρομέα",
-            "menu.monoIcon": "Μονόχρωμο εικονίδιο",
             "settings.switchHotkey": "Συντόμευση αλλαγής διάταξης",
             "settings.caseHotkey": "Συντόμευση αλλαγής πεζών-κεφαλαίων",
             "settings.secureNotice": "Εμφάνιση ειδοποίησης ασφαλούς εισαγωγής",
@@ -1822,6 +1931,9 @@ enum L10n {
             "settings.launchAtLogin": "Εκκίνηση κατά τη σύνδεση",
             "settings.convertByText": "Μετατροπή επιλογής βάσει κειμένου (αναστροφή και των δύο γραφών)",
             "settings.convertByText.hint": "Όταν είναι ενεργό, ο ενεργοποιητής αναστρέφει όλη την επιλογή μεταξύ γραφών (λατινικά ↔ κυριλλικά), ανεξάρτητα από την ενεργή διάταξη. Ανενεργό: κάθε λέξη διορθώνεται έξυπνα και το σωστό κείμενο διατηρείται.",
+            "settings.conversionMode": "Χειροκίνητη μετατροπή",
+            "settings.oneWayConversion": "Μονόδρομη μετατροπή",
+            "settings.oneWayConversion.hint": "Μετατρέπει την επιλογή προς μία κατεύθυνση σύμφωνα με τη διάταξη, χωρίς να αναγνωρίζει σωστές λέξεις στην άλλη γλώσσα.",
             "settings.convertWholeLine": "Ο ενεργοποιητής μετατρέπει όλη τη γραμμή (όχι μόνο την τελευταία λέξη)",
             "settings.convertWholeLine.hint": "Ο ενεργοποιητής επιλέγει τη γραμμή μέχρι τον δρομέα και τη μετατρέπει (διορθώνοντας μόνο τις λέξεις σε λάθος διάταξη). Χρήσιμο σε τερματικά και όταν πολλές λέξεις έχουν πληκτρολογηθεί σε λάθος διάταξη. Ανενεργό: μετατρέπεται μόνο η τελευταία λέξη.",
             "settings.smartConversion": "Έξυπνη μετατροπή επιλογής",
@@ -1851,14 +1963,8 @@ enum L10n {
             "menu.settings": "Настройки…",
             "menu.closeWindow": "Затвори прозореца",
             "menu.quit": "Изход",
-            "wizard.permissionsReset.title": "Разрешенията са нулирани след актуализация",
-            "wizard.permissionsReset.text": "macOS нулира разрешенията, защото приложението беше актуализирано.\n\nMultiSwitcher ще премахне старите записи и ще поиска разрешения отново.\nТрябва само да включите превключвателите.",
             "wizard.permissionsOk.title": "Всички разрешения са дадени",
-            "wizard.permissionsOk.text": "Достъпността и Наблюдението на въвеждането са включени. MultiSwitcher работи.",
-            "wizard.accessibility.title": "Стъпка 1 от 2: Достъпност",
-            "wizard.accessibility.text": "MultiSwitcher се нуждае от разрешение за Достъпност.\n\nЩе се отворят Настройките — добавете MultiSwitcher.\nПриложението ще го открие автоматично.",
-            "wizard.inputMonitoring.title": "Стъпка 2 от 2: Наблюдение на въвеждането",
-            "wizard.inputMonitoring.text": "Сега е необходимо разрешение за Наблюдение на въвеждането.\n\n⚠️ macOS ще изиска рестартиране на приложението след добавянето.\nMultiSwitcher ще се рестартира автоматично.",
+            "wizard.permissionsOk.text": "Разрешенията на macOS за превключване на клавиатурната подредба са включени. MultiSwitcher може да работи.",
             "wizard.openSettings": "Отваряне на настройките",
             "wizard.later": "По-късно",
             "wizard.launchAtLogin.title": "Стартиране при вход",
@@ -1877,7 +1983,6 @@ enum L10n {
             "menu.autoConvert": "Автоматична конверсия",
             "menu.keySound": "Звук на подредбата",
             "menu.caretFlag": "Флаг при курсора",
-            "menu.monoIcon": "Монохромна икона",
             "settings.switchHotkey": "Клавиш за смяна на подредбата",
             "settings.caseHotkey": "Клавиш за смяна на регистъра",
             "settings.secureNotice": "Показвай известие за защитено въвеждане",
@@ -1914,6 +2019,9 @@ enum L10n {
             "settings.launchAtLogin": "Стартиране при вход",
             "settings.convertByText": "Преобразуване на селекцията по текст (обръщане на двете азбуки)",
             "settings.convertByText.hint": "Когато е включено, тригерът обръща цялата селекция между азбуките (латиница ↔ кирилица) независимо от активната подредба. Изключено: всяка дума се коригира интелигентно, а правилният текст се запазва.",
+            "settings.conversionMode": "Ръчно преобразуване",
+            "settings.oneWayConversion": "Еднопосочно преобразуване",
+            "settings.oneWayConversion.hint": "Преобразува селекцията в една посока според активната подредба, без да разпознава правилните думи на другия език.",
             "settings.convertWholeLine": "Тригерът преобразува целия ред (не само последната дума)",
             "settings.convertWholeLine.hint": "Тригерът сам избира реда до курсора и го преобразува (поправя само думите в грешна подредба). Удобно в терминал и когато няколко думи са написани в грешна подредба. Изключено: преобразува се само последната дума.",
             "settings.smartConversion": "Интелигентно преобразуване на селекцията",
@@ -1943,14 +2051,8 @@ enum L10n {
             "menu.settings": "Կարգավորումներ…",
             "menu.closeWindow": "Փակել պատուհանը",
             "menu.quit": "Ելք",
-            "wizard.permissionsReset.title": "Թույլտվությունները զրոյացվել են թարմացումից հետո",
-            "wizard.permissionsReset.text": "macOS-ը զրոյացրել է թույլտվությունները, քանի որ ծրագիրը թարմացվել է.\n\nMultiSwitcher-ը կհեռացնի հին գրառումները և կրկին կպահանջի թույլտվություններ.\nՊարզապես միացրեք անջատիչները.",
             "wizard.permissionsOk.title": "Բոլոր թույլտվությունները տրված են",
-            "wizard.permissionsOk.text": "Մատչելիությունը և Ներմուծման հսկողությունը միացված են: MultiSwitcher-ն աշխատում է.",
-            "wizard.accessibility.title": "Քայլ 1/2. Մատչելիություն",
-            "wizard.accessibility.text": "MultiSwitcher-ին անհրաժեշտ է Մատչելիության թույլտվություն.\n\nԿբացվեն Կարգավորումները — ավելացրեք MultiSwitcher.\nԾրագիրն ինքնաշխատ կհայտնաբերի այն.",
-            "wizard.inputMonitoring.title": "Քայլ 2/2. Ներմուծման հսկողություն",
-            "wizard.inputMonitoring.text": "Այժմ անհրաժեշտ է Ներմուծման հսկողության թույլտվություն.\n\n⚠️ Ավելացնելուց հետո macOS-ը կպահանջի վերագործարկել ծրագիրը.\nMultiSwitcher-ն ինքնաշխատ կվերագործարկվի.",
+            "wizard.permissionsOk.text": "Ստեղնաշարի դասավորությունը փոխելու համար անհրաժեշտ macOS թույլտվությունները միացված են։ MultiSwitcher-ը կարող է աշխատել։",
             "wizard.openSettings": "Բացել Կարգավորումները",
             "wizard.later": "Ավելի ուշ",
             "wizard.launchAtLogin.title": "Գործարկել մուտքի ժամանակ",
@@ -1969,7 +2071,6 @@ enum L10n {
             "menu.autoConvert": "Ինքնաշխատ փոխակերպում",
             "menu.keySound": "Դասավորության ձայն",
             "menu.caretFlag": "Դրոշ կուրսորի մոտ",
-            "menu.monoIcon": "Միագույն պատկերակ",
             "settings.switchHotkey": "Դասավորության փոխարկման ստեղն",
             "settings.caseHotkey": "Մեծատառ-փոքրատառի փոխարկման ստեղն",
             "settings.secureNotice": "Ցուցադրել անվտանգ մուտքի ծանուցումը",
@@ -2006,6 +2107,9 @@ enum L10n {
             "settings.launchAtLogin": "Գործարկել մուտքի ժամանակ",
             "settings.convertByText": "Փոխարկել ընտրվածը ըստ տեքստի (շրջել երկու գրերն էլ)",
             "settings.convertByText.hint": "Միացված վիճակում գործարկիչը շրջում է ամբողջ ընտրվածը գրերի միջև (լատիներեն ↔ կիրիլիցա)՝ անկախ ակտիվ դասավորությունից։ Անջատված՝ յուրաքանչյուր բառ ուղղվում է խելացի, իսկ ճիշտ տեքստը պահպանվում է։",
+            "settings.conversionMode": "Ձեռքով փոխարկում",
+            "settings.oneWayConversion": "Միակողմանի փոխարկում",
+            "settings.oneWayConversion.hint": "Փոխարկում է ընտրվածը մեկ ուղղությամբ՝ ըստ ակտիվ դասավորության՝ առանց մյուս լեզվի ճիշտ բառերը ճանաչելու։",
             "settings.convertWholeLine": "Գործարկիչը փոխարկում է ամբողջ տողը (ոչ միայն վերջին բառը)",
             "settings.convertWholeLine.hint": "Գործարկիչն ինքը ընտրում է տողը մինչև կուրսորը և փոխարկում այն (ուղղում է միայն սխալ դասավորությամբ բառերը)։ Հարմար է տերմինալում և երբ մի քանի բառ մուտքագրվել է սխալ դասավորությամբ։ Անջատված՝ փոխարկվում է միայն վերջին բառը։",
             "settings.smartConversion": "Ընտրվածի խելացի փոխարկում",
@@ -2035,14 +2139,8 @@ enum L10n {
             "menu.settings": "პარამეტრები…",
             "menu.closeWindow": "ფანჯრის დახურვა",
             "menu.quit": "გასვლა",
-            "wizard.permissionsReset.title": "ნებართვები განულდა განახლების შემდეგ",
-            "wizard.permissionsReset.text": "macOS-მა განულა ნებართვები, რადგან აპი განახლდა.\n\nMultiSwitcher წაშლის ძველ ჩანაწერებს და თავიდან მოითხოვს ნებართვებს.\nუბრალოდ ჩართეთ გადამრთველები.",
             "wizard.permissionsOk.title": "ყველა ნებართვა მინიჭებულია",
-            "wizard.permissionsOk.text": "წვდომადობა და შეყვანის მონიტორინგი ჩართულია. MultiSwitcher მუშაობს.",
-            "wizard.accessibility.title": "ნაბიჯი 1/2: წვდომადობა",
-            "wizard.accessibility.text": "MultiSwitcher-ს სჭირდება წვდომადობის ნებართვა.\n\nგაიხსნება პარამეტრები — დაამატეთ MultiSwitcher.\nაპი ავტომატურად აღმოაჩენს მას.",
-            "wizard.inputMonitoring.title": "ნაბიჯი 2/2: შეყვანის მონიტორინგი",
-            "wizard.inputMonitoring.text": "ახლა საჭიროა შეყვანის მონიტორინგის ნებართვა.\n\n⚠️ დამატების შემდეგ macOS მოითხოვს აპის გადატვირთვას.\nMultiSwitcher ავტომატურად გადაიტვირთება.",
+            "wizard.permissionsOk.text": "კლავიატურის განლაგების შესაცვლელად საჭირო macOS-ის ნებართვები ჩართულია. MultiSwitcher-ს შეუძლია მუშაობა.",
             "wizard.openSettings": "პარამეტრების გახსნა",
             "wizard.later": "მოგვიანებით",
             "wizard.launchAtLogin.title": "გაშვება შესვლისას",
@@ -2061,7 +2159,6 @@ enum L10n {
             "menu.autoConvert": "ავტომატური კონვერტაცია",
             "menu.keySound": "განლაგების ხმა",
             "menu.caretFlag": "დროშა კურსორთან",
-            "menu.monoIcon": "მონოქრომული ხატულა",
             "settings.switchHotkey": "განლაგების გადართვის ღილაკი",
             "settings.caseHotkey": "რეგისტრის გადართვის ღილაკი",
             "settings.secureNotice": "უსაფრთხო შეყვანის შეტყობინების ჩვენება",
@@ -2098,6 +2195,9 @@ enum L10n {
             "settings.launchAtLogin": "გაშვება შესვლისას",
             "settings.convertByText": "მონიშნულის კონვერტაცია ტექსტის მიხედვით (ორივე დამწერლობის შებრუნება)",
             "settings.convertByText.hint": "ჩართვისას ტრიგერი შებრუნებს მთელ მონიშნულს დამწერლობებს შორის (ლათინური ↔ კირილიცა) აქტიური განლაგების მიუხედავად. გამორთულია: თითოეული სიტყვა სწორდება ჭკვიანურად და სწორი ტექსტი შენარჩუნდება.",
+            "settings.conversionMode": "ხელით კონვერტაცია",
+            "settings.oneWayConversion": "ცალმხრივი კონვერტაცია",
+            "settings.oneWayConversion.hint": "მონიშნულს ერთი მიმართულებით კონვერტავს აქტიური განლაგების მიხედვით და მეორე ენაზე სწორ სიტყვებს არ ამოიცნობს.",
             "settings.convertWholeLine": "ტრიგერი კონვერტავს მთელ ხაზს (არა მხოლოდ ბოლო სიტყვას)",
             "settings.convertWholeLine.hint": "ტრიგერი თავად მონიშნავს ხაზს კურსორამდე და კონვერტავს მას (ასწორებს მხოლოდ არასწორი განლაგებით სიტყვებს). მოსახერხებელია ტერმინალში და როცა რამდენიმე სიტყვა არასწორი განლაგებით აკრიფეთ. გამორთულია: კონვერტდება მხოლოდ ბოლო სიტყვა.",
             "settings.smartConversion": "მონიშნულის ჭკვიანი კონვერტაცია",

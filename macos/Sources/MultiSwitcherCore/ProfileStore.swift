@@ -35,6 +35,8 @@ public final class ProfileStore: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var cached: MultiSwitcherProfile
     private var loadFailure: Error?
+    private var generation: UInt64 = 0
+    private var ruleGeneration: UInt64 = 0
 
     public init(rootURL: URL? = nil) {
         let base = rootURL ?? FileManager.default
@@ -66,6 +68,49 @@ public final class ProfileStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return cached
+    }
+
+    /// Monotonic in-process revision for read-mostly consumers that cache derived data.
+    public var currentGeneration: UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return generation
+    }
+
+    /// Revision for data that affects compiled conversion rules. Changes to unrelated
+    /// preferences and learning evidence do not force a rebuild on the keyboard path.
+    public var currentRuleGeneration: UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return ruleGeneration
+    }
+
+    /// A coherent profile/revision pair for rebuilding derived snapshots after a write.
+    public func versionedSnapshot() -> (generation: UInt64, profile: MultiSwitcherProfile) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (generation, cached)
+    }
+
+    /// Coherent rule-specific revision/profile pair for derived rule snapshots.
+    public func versionedRuleSnapshot() -> (generation: UInt64, profile: MultiSwitcherProfile) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (ruleGeneration, cached)
+    }
+
+    private func ruleInputsChanged(from old: MultiSwitcherProfile, to new: MultiSwitcherProfile) -> Bool {
+        old.rules != new.rules
+            || old.settings[ProfileRuleMaintenance.deniedWordsSettingKey]
+                != new.settings[ProfileRuleMaintenance.deniedWordsSettingKey]
+            || old.settings[ProfileRuleMaintenance.alwaysConvertWordsSettingKey]
+                != new.settings[ProfileRuleMaintenance.alwaysConvertWordsSettingKey]
+    }
+
+    private func advanceRuleGenerationIfNeeded(from old: MultiSwitcherProfile, to new: MultiSwitcherProfile) {
+        if ruleInputsChanged(from: old, to: new) {
+            ruleGeneration &+= 1
+        }
     }
 
     /// The app stays read-only when the primary profile cannot be decoded. Expose that
@@ -121,8 +166,10 @@ public final class ProfileStore: @unchecked Sendable {
         let restoredData = try JSONEncoder.multiSwitcher.encode(decoded)
         try restoredData.write(to: profileURL, options: .atomic)
         try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: profileURL.path)
+        advanceRuleGenerationIfNeeded(from: cached, to: decoded)
         cached = decoded
         loadFailure = nil
+        generation &+= 1
         return decoded
     }
 
@@ -136,7 +183,9 @@ public final class ProfileStore: @unchecked Sendable {
         try change(&next)
         next.schemaVersion = MultiSwitcherProfile.currentSchemaVersion
         try writeAtomically(next)
+        advanceRuleGenerationIfNeeded(from: cached, to: next)
         cached = next
+        generation &+= 1
         return next
     }
 
@@ -144,8 +193,11 @@ public final class ProfileStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard FileManager.default.fileExists(atPath: profileURL.path) else {
-            cached = MultiSwitcherProfile()
+            let empty = MultiSwitcherProfile()
+            advanceRuleGenerationIfNeeded(from: cached, to: empty)
+            cached = empty
             loadFailure = nil
+            generation &+= 1
             return cached
         }
         do {
@@ -155,8 +207,10 @@ public final class ProfileStore: @unchecked Sendable {
                 throw ProfileStoreError.unsupportedSchema(decoded.schemaVersion)
             }
             decoded.migrateToCurrentSchema()
+            advanceRuleGenerationIfNeeded(from: cached, to: decoded)
             cached = decoded
             loadFailure = nil
+            generation &+= 1
             return decoded
         } catch {
             loadFailure = error

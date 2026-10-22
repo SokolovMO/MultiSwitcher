@@ -14,6 +14,24 @@ private enum CheckCounter {
     nonisolated(unsafe) static var total = 0
 }
 
+private func testAutomaticLayoutTransitionPolicy() {
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: "ru", currentLayoutID: "ru", targetLayoutID: "en"
+    ) == .select("en"), "the captured source selects its exact paired target")
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: "ru", currentLayoutID: "en", targetLayoutID: "en"
+    ) == .alreadyAtTarget, "a user-selected target is not toggled again")
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: "ru", currentLayoutID: "fr", targetLayoutID: "en"
+    ) == .preserveUserChoice, "a manual layout change while replacement waits is preserved")
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: nil, currentLayoutID: "ru", targetLayoutID: "en"
+    ) == .sourceUnavailable, "unknown captured layout never triggers a blind switch")
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: "ru", currentLayoutID: "ru", targetLayoutID: nil
+    ) == .keep, "no inferred target leaves the current layout unchanged")
+}
+
 private func testTrailingKeyboardPunctuation() {
     let caret = KeyboardPunctuationPolicy.splitTrailing(from: "utybq^")
     expect(caret.coreLength == 5 && caret.suffix == "^",
@@ -121,18 +139,103 @@ private func testUpdateChannelSelection() {
 }
 
 private func testAppendedInputPolicy() {
+    expect(AppendedInputPolicy.singleCharacter(in: "x") == "x",
+           "a one-grapheme keyboard event is tracked exactly")
+    expect(AppendedInputPolicy.singleCharacter(in: "ab") == nil,
+           "a multi-character keyboard event cannot be truncated to its first character")
+    expect(AppendedInputPolicy.singleCharacter(in: "🙂") == "🙂",
+           "a single emoji event is preserved as one grapheme and then rejected safely by policy")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: nil) == .keyCodeOnly,
+           "an event without Unicode text can use the physical key mapping")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "") == .keyCodeOnly,
+           "an empty Unicode event can use the physical key mapping")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "a") == .character("a"),
+           "a single safe Unicode scalar is tracked exactly")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "ab") == .invalidate,
+           "multi-character text invalidates the tracked word")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "e\u{301}") == .invalidate,
+           "composed text invalidates the tracked word")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "🙂") == .invalidate,
+           "unsupported multiscalar symbols invalidate the tracked word")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "a", wasTruncated: true) == .invalidate,
+           "a truncated event is never interpreted from its physical key")
     expect(AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 3, trackedKeyCount: 3, suffix: "abc"
     ), "boundary correction can retain ordinary letters typed after the space")
+    expect(AppendedInputPolicy.canPreserveTypedSuffix(
+        generationDelta: 0, trackedKeyCount: 0, suffix: ""
+    ), "a conversion can commit when no new text was typed after its boundary")
     expect(!AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 4, trackedKeyCount: 3, suffix: "abc"
     ), "an untracked key invalidates the captured replacement")
-    expect(!AppendedInputPolicy.canPreserveTypedSuffix(
+    expect(AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 2, trackedKeyCount: 2, suffix: "a "
-    ), "a second boundary is not treated as typed text")
+    ), "a later word boundary is preserved as literal text")
+    expect(AppendedInputPolicy.canPreserveTypedSuffix(
+        generationDelta: 3, trackedKeyCount: 3, suffix: "!? "
+    ), "punctuation and spaces are preserved exactly")
     expect(!AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 1, trackedKeyCount: 1, suffix: "🙂"
-    ), "emoji and multi-scalar suffixes are rejected safely")
+    ), "emoji suffixes are rejected safely")
+    expect(AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 3, recoveredKeyCount: 3, suffix: "abc", capturedPrefixMatches: true
+    ), "a complete matching key-buffer suffix can recover an incomplete keyboard event")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 3, recoveredKeyCount: 2, suffix: "ab", capturedPrefixMatches: true
+    ), "key-buffer recovery rejects an untracked key event")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 2, recoveredKeyCount: 2, suffix: "ab", capturedPrefixMatches: false
+    ), "key-buffer recovery rejects a changed captured prefix")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 2, recoveredKeyCount: 2, suffix: "e\u{301}", capturedPrefixMatches: true
+    ), "key-buffer recovery rejects composed text that cannot be safely deleted by key count")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 1, recoveredKeyCount: 1, suffix: "a", capturedPrefixMatches: true,
+        allKeyEventsAreRecoverable: false
+    ), "key-buffer recovery rejects a composed event that cannot be reconstructed from physical keys")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 65, recoveredKeyCount: 65, suffix: String(repeating: "a", count: 65),
+        capturedPrefixMatches: true
+    ), "key-buffer recovery remains bounded for fast or stale input")
+    if case .reject(.historyExpired) = AppendedInputPolicy.decide(
+        generationDelta: 1, trackedKeyCount: 1, suffix: "a", historyAvailable: false
+    ) {
+        expect(true, "an expired suffix history returns a distinct privacy-safe reason")
+    } else {
+        expect(false, "an expired suffix history returns a distinct privacy-safe reason")
+    }
+    if case .reject(.unsupportedCharacter) = AppendedInputPolicy.decide(
+        generationDelta: 1, trackedKeyCount: 1, suffix: "e\u{301}"
+    ) {
+        expect(true, "composed multi-scalar suffixes are rejected instead of truncated")
+    } else {
+        expect(false, "composed multi-scalar suffixes are rejected instead of truncated")
+    }
+}
+
+private func testSettingsCardLayoutPolicy() {
+    let newCard = SettingsCardFrame(x: 6, y: 197, width: 448, height: 82)
+    let previousCard = SettingsCardFrame(x: 6, y: 271, width: 448, height: 215)
+    let shift = SettingsCardLayoutPolicy.downwardShift(
+        for: newCard, existingFrames: [previousCard], gutter: 10
+    )
+    expect(shift == 18, "an 8 pt overlap is moved down to leave the shared 10 pt gutter")
+    let correctedMaxY = newCard.maxY - shift
+    expect(previousCard.y - correctedMaxY == 10,
+           "the corrected cards do not overlap and have the exact shared gutter")
+    expect(SettingsCardLayoutPolicy.downwardShift(
+        for: SettingsCardFrame(x: 500, y: 197, width: 100, height: 82),
+        existingFrames: [previousCard], gutter: 10
+    ) == 0, "cards in separate columns do not move each other")
+
+    let lowerNeighbor = SettingsCardFrame(x: 10, y: 150, width: 220, height: 80)
+    let upperNeighbor = SettingsCardFrame(x: 10, y: 320, width: 220, height: 80)
+    let tallCard = SettingsCardFrame(x: 10, y: 100, width: 220, height: 100)
+    let multiCardShift = SettingsCardLayoutPolicy.downwardShift(
+        for: tallCard, existingFrames: [upperNeighbor, lowerNeighbor], gutter: 12
+    )
+    expect(tallCard.maxY - multiCardShift == lowerNeighbor.y - 12,
+           "a resized settings card clears the lowest overlapping card and keeps the shared gutter")
 }
 
 private func testAutomaticShortWordPolicy() {
@@ -151,6 +254,50 @@ private func testAutomaticShortWordPolicy() {
     expect(ShortWordPolicy.decide(
         typed: "lf", converted: "да", currentLanguage: "fr", otherLanguage: "ru"
     ) == .undecided, "unsupported language pairs do not guess")
+}
+
+private func testAutomaticDictionaryDecision() {
+    let available: Set<String> = ["ru", "en"]
+    let valid: Set<String> = ["hello", "want", "привет", "вот"]
+    let decision = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "руддщ", converted: "hello", currentLanguage: "ru", targetLanguage: "en",
+        isLanguageAvailable: { available.contains($0) },
+        isValidWord: { word, _ in valid.contains(word.lowercased()) }
+    )
+    expect(decision == .convert,
+           "a target-dictionary-confirmed `hello` corrects the wrong-layout token `руддщ`")
+
+    let languageDecision = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "дфтпгфпу", converted: "language", currentLanguage: "ru", targetLanguage: "en",
+        isLanguageAvailable: { available.contains($0) },
+        isValidWord: { word, _ in valid.contains(word.lowercased()) || word.lowercased() == "language" }
+    )
+    expect(languageDecision == .convert,
+           "the target-dictionary-confirmed `language` corrects `дфтпгфпу` inside a Russian sentence")
+
+    let keepValidEnglish = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "want", converted: "цфте", currentLanguage: "en", targetLanguage: "ru",
+        isLanguageAvailable: { available.contains($0) },
+        isValidWord: { word, _ in valid.contains(word.lowercased()) }
+    )
+    expect(keepValidEnglish == .keepBecauseTargetIsNotAWord,
+           "a correct English token such as `want` is not flipped into a nonword")
+
+    let bothValid = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "gift", converted: "gift", currentLanguage: "en", targetLanguage: "ru",
+        isLanguageAvailable: { available.contains($0) },
+        isValidWord: { _ , _ in true }
+    )
+    expect(bothValid == .keepBecauseSourceIsAWord,
+           "a valid source-language word remains unchanged when both sides are valid")
+
+    let missingTargetDictionary = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "руддщ", converted: "hello", currentLanguage: "ru", targetLanguage: "en",
+        isLanguageAvailable: { $0 == "ru" },
+        isValidWord: { _, _ in true }
+    )
+    expect(missingTargetDictionary == .undecidedBecauseTargetDictionaryIsUnavailable,
+           "an unavailable target dictionary is reported as undecided, not as an invalid word")
 }
 
 private func testModifiedBackspaceInvalidatesTrackedText() {
@@ -196,6 +343,29 @@ private func testSerialReplacementQueueIsBoundedAndFIFO() {
            "an empty queue has no active operation")
 }
 
+private func testDefaultReplacementQueueHandlesRapidToggleBursts() {
+    var queue = SerialReplacementQueue<Int>()
+    let accepted = (0..<32).allSatisfy { queue.enqueue($0) }
+    expect(accepted && queue.pendingCount == 32,
+           "the default replacement queue retains a rapid ten-toggle burst with room to spare")
+    expect(!queue.enqueue(32) && queue.pendingCount == 32,
+           "the default replacement queue remains strictly bounded at 32 waiting operations")
+}
+
+private func testReplacementQueueReportsSafeDiagnosticState() {
+    var queue = SerialReplacementQueue<String>(capacity: 1)
+    expect(queue.enqueueReportingStatus("active") == .accepted(
+        waitingCount: 1, hasActiveOperation: false, capacity: 1
+    ), "queue diagnostics report an accepted request and its bounded depth")
+    expect(queue.beginNext() == "active", "the diagnostic test starts the accepted request")
+    expect(queue.enqueueReportingStatus("waiting") == .accepted(
+        waitingCount: 1, hasActiveOperation: true, capacity: 1
+    ), "queue diagnostics distinguish pending work from the active request")
+    expect(queue.enqueueReportingStatus("overflow") == .full(
+        waitingCount: 1, hasActiveOperation: true, capacity: 1
+    ), "queue saturation reports a precise, text-free refusal state")
+}
+
 private func testBufferReplacementLifecycleTracksExactUndoDirection() {
     var lifecycle = BufferReplacementLifecycle()
     expect(lifecycle.toggle() == nil,
@@ -215,10 +385,12 @@ private func testBufferReplacementLifecycleTracksExactUndoDirection() {
 }
 
 private func testBundledWordLexicon() {
-    let lexicon = WordLexicon(wordList: "# sample\nПривет\nAPP\n\nслово\nnot a token\n")
+    let lexicon = WordLexicon(wordList: "# sample\nПривет\nпривет\nAPP\n\nслово\nnot a token\n")
     expect(lexicon.count == 3, "word lists ignore comments, blanks, and non-token lines")
     expect(lexicon.contains("привет") && lexicon.contains("APP"),
            "word-list lookup is case-insensitive and keeps Unicode words")
+    expect(lexicon.contains("слово") && !lexicon.contains("zzzz"),
+           "sorted word-list lookup finds entries across the array and rejects missing words")
     expect(!lexicon.contains("приве"), "word-list lookup does not invent a near match")
 }
 
@@ -682,6 +854,11 @@ private func testTypedRuleMatchingAndProvenance() {
            "contains rules find an internal match")
     expect(ProfileRuleEngine.evaluate(typed: "WR300S", converted: "x", rules: rules) == .neverConvert,
            "user regular expressions match case-insensitively by default")
+    let compiledRules = ProfileRuleEngine.compile(rules)
+    expect(ProfileRuleEngine.evaluate(typed: "WR300S", converted: "x", rules: compiledRules) == .neverConvert,
+           "a cached compiled rule snapshot preserves regex behavior")
+    expect(ProfileRuleEngine.evaluate(typed: "stay-safe", converted: "x", rules: compiledRules) == .neverConvert,
+           "a cached compiled rule snapshot preserves exact rule precedence and contains matching")
     expect(!ProfileRuleEngine.matches(#"(a+)+$"#, in: String(repeating: "a", count: 64) + "!",
                                       mode: .regularExpression, caseSensitive: true),
            "nested quantified regex is refused instead of blocking the keyboard path")
@@ -702,6 +879,23 @@ private func testTypedRuleMatchingAndProvenance() {
                     semanticStatus: .unverifiedPuntoType),
         ProfileRule(pattern: "brand", action: .alwaysConvert, origin: .user),
     ]) == .alwaysConvert, "explicit user rules take precedence over imported Punto rows")
+}
+
+private func testProfileStoreGenerationTracksSnapshots() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Generation-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = ProfileStore(rootURL: root)
+    let initial = store.versionedSnapshot()
+    try store.update { profile in
+        profile.rules.append(ProfileRule(pattern: "fresh", origin: .user))
+    }
+    let updated = store.versionedSnapshot()
+    expect(updated.generation == initial.generation + 1,
+           "profile generation increments after an atomic profile update")
+    expect(updated.profile.rules.contains(where: { $0.pattern == "fresh" }),
+           "a versioned snapshot returns the profile from the same generation")
 }
 
 private func testApplicationExclusionPolicy() {
@@ -941,6 +1135,67 @@ private func testSharedLayoutCorrectionPolicy() {
     expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForTrustedName(
         corrected: "iphone", prefix: "привет, я купил ", currentLanguage: "en"
     ), "an explicit English input source remains authoritative")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true
+    ), "correcting one foreign word inside a Russian sentence keeps the Russian input source")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { word, language in language == "en" && word == "hello" }
+    ), "one corrected English word inside a Russian sentence does not switch the input source")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true, requiredConsecutiveTargetWords: 1,
+        isKnownTargetWord: { word, language in language == "en" && word == "hello" }
+    ), "the optional one-word threshold switches after one confirmed target word")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "language", prefix: "я всего лишь want ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { word, language in
+            language == "en" && ["want", "language"].contains(word.lowercased())
+        }
+    ), "the second confirmed English word in 'я всего лишь want language' switches the input source")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "language", prefix: "я всего лишь want и ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { word, language in
+            language == "en" && ["want", "language"].contains(word.lowercased())
+        }
+    ), "a Russian word between English terms breaks the consecutive-word transition signal")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет hello привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { word, language in language == "en" && word.lowercased() == "hello" }
+    ), "a corrected English word followed by Russian text keeps Russian as the active input layout")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "language", prefix: "привет hello мир there привет ",
+        currentLanguage: "ru", targetLanguage: "en", targetIsConfirmedWord: true,
+        isKnownTargetWord: { _, language in language == "en" }
+    ), "nonconsecutive English words elsewhere in Russian context do not switch the active layout")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет hello there ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { _, language in language == "en" }
+    ), "two consecutive valid English words confirm a language transition")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "hello there ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { _, _ in true }
+    ), "an all-English prefix is not mistaken for Russian sentence context")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет hello there ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { _, _ in true }
+    ), "multiple foreign words can signal a deliberate language transition")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: false
+    ) == false, "an unconfirmed foreign candidate does not alter input-source behavior")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "привет", prefix: "hello ", currentLanguage: "en", targetLanguage: "ru",
+        targetIsConfirmedWord: true
+    ), "the same context policy works from English into a Russian word")
 }
 
 private func testHyphenatedLayoutCorrectionPolicy() {
@@ -1333,14 +1588,19 @@ if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--cleanup-revi
 }
 
 testSpotlightTargetClassification()
+testAutomaticLayoutTransitionPolicy()
 testGlobalSpaceShortcutsPreserveOnlyLayoutSwitchWords()
 testPauseStateExpiry()
 testUpdateChannelSelection()
 testAppendedInputPolicy()
+testSettingsCardLayoutPolicy()
 testAutomaticShortWordPolicy()
+testAutomaticDictionaryDecision()
 testHyphenatedLayoutCorrectionPolicy()
 testModifiedBackspaceInvalidatesTrackedText()
 testSerialReplacementQueueIsBoundedAndFIFO()
+testDefaultReplacementQueueHandlesRapidToggleBursts()
+testReplacementQueueReportsSafeDiagnosticState()
 testBufferReplacementLifecycleTracksExactUndoDirection()
 testBundledWordLexicon()
 try testImportsRulesAndSeparatesLearnedHistory()
@@ -1372,6 +1632,7 @@ try testImportedRuleRemovalSurvivesReimportAndCanBeRestored()
 try testPerAppLayoutMemorySurvivesProfileSerialization()
 testApplicationExclusionPolicy()
 testTypedRuleMatchingAndProvenance()
+try testProfileStoreGenerationTracksSnapshots()
 try testUserRuleFileRoundTripSanitizesProvenance()
 try testGenericTextRuleImportsAreExplicitAndPreviewable()
 testTrailingKeyboardPunctuation()

@@ -106,15 +106,33 @@ mkdir -p "$BUILD_ROOT/module-cache"
 export CLANG_MODULE_CACHE_PATH="$BUILD_ROOT/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$BUILD_ROOT/module-cache"
 
+# Resolve the Swift package graph in an isolated staging copy. Package.resolved
+# may contain release-only Sparkle pins, while the local verification build has
+# those features disabled. Keeping that lock file out of the no-updates build
+# prevents SwiftPM from fetching release dependencies unnecessarily.
+PACKAGE_BUILD_DIR="$BUILD_ROOT/package"
+mkdir -p "$PACKAGE_BUILD_DIR"
+cp "$PROJECT_DIR/Package.swift" "$PACKAGE_BUILD_DIR/Package.swift"
+cp -R "$PROJECT_DIR/Sources" "$PACKAGE_BUILD_DIR/Sources"
+cp -R "$PROJECT_DIR/Tests" "$PACKAGE_BUILD_DIR/Tests"
+if [[ "$ENABLE_UPDATES" == "1" || "$ENABLE_CRASH_REPORTING" == "1" ]]; then
+    if [[ -f "$PROJECT_DIR/Package.resolved" ]]; then
+        cp "$PROJECT_DIR/Package.resolved" "$PACKAGE_BUILD_DIR/Package.resolved"
+    fi
+fi
+
 SWIFT_OPTIONS=(
-    --package-path "$PROJECT_DIR"
+    --package-path "$PACKAGE_BUILD_DIR"
     --scratch-path "$BUILD_ROOT/swiftpm"
     --cache-path "$BUILD_ROOT/cache"
     --config-path "$BUILD_ROOT/config"
     --security-path "$BUILD_ROOT/security"
     --disable-sandbox
     --disable-dependency-cache
-    --manifest-cache local
+    # Package.swift enables release-only dependencies from environment flags.
+    # Do not reuse a manifest compiled for a different flag set (for example,
+    # Sparkle-enabled release builds during a local no-updates verification).
+    --manifest-cache none
     -Xswiftc -module-cache-path
     -Xswiftc "$BUILD_ROOT/module-cache"
     -c release

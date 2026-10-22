@@ -15,6 +15,7 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
 
     private var items: [String] = []
     private let table = NSTableView()
+    private let emptyStateLabel = NSTextField(wrappingLabelWithString: "")
     private let removeButton = NSButton()
     /// Кэш имени/иконки по bundle id, чтобы не дёргать NSWorkspace на каждый vend ячейки.
     private var infoCache: [String: (text: String, icon: NSImage?)] = [:]
@@ -64,6 +65,20 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         scroll.documentView = table
         container.addSubview(scroll)
 
+        emptyStateLabel.stringValue = kind == .apps ? L10n.exceptionsEmptyApps : L10n.exceptionsEmptyWords
+        emptyStateLabel.alignment = .center
+        emptyStateLabel.textColor = .secondaryLabelColor
+        emptyStateLabel.maximumNumberOfLines = 2
+        emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(emptyStateLabel)
+        NSLayoutConstraint.activate([
+            emptyStateLabel.centerXAnchor.constraint(equalTo: scroll.centerXAnchor),
+            emptyStateLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
+            emptyStateLabel.leadingAnchor.constraint(greaterThanOrEqualTo: scroll.leadingAnchor, constant: 18),
+            emptyStateLabel.trailingAnchor.constraint(lessThanOrEqualTo: scroll.trailingAnchor, constant: -18),
+            emptyStateLabel.widthAnchor.constraint(lessThanOrEqualTo: scroll.widthAnchor, constant: -36)
+        ])
+
         let addBtn = NSButton(frame: NSRect(x: 0, y: 0, width: 28, height: 24))
         addBtn.autoresizingMask = [.maxYMargin]
         addBtn.title = "+"
@@ -80,6 +95,8 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         removeButton.action = #selector(removeTapped)
         removeButton.isEnabled = false
         container.addSubview(removeButton)
+
+        updateEmptyState()
 
         return container
     }
@@ -183,13 +200,19 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
     private func persist() {
         setList(items)
         table.reloadData()
+        updateEmptyState()
         updateRemoveButton()
     }
 
     func reloadFromStore() {
         items = getList()
         table.reloadData()
+        updateEmptyState()
         updateRemoveButton()
+    }
+
+    private func updateEmptyState() {
+        emptyStateLabel.isHidden = !items.isEmpty
     }
 
     // MARK: - Display helpers

@@ -54,17 +54,23 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
 
     func makeContainer(frame: NSRect) -> NSView {
         let root = NSView(frame: frame)
-        root.autoresizesSubviews = true
-        searchField.frame = NSRect(x: 0, y: frame.height - 28, width: frame.width, height: 24)
-        searchField.autoresizingMask = [.width, .minYMargin]
+        searchField.translatesAutoresizingMaskIntoConstraints = false
         searchField.placeholderString = L10n.userRulesSearch
         searchField.sendsSearchStringImmediately = true
         searchField.target = self
         searchField.action = #selector(searchChanged)
         root.addSubview(searchField)
 
-        let scroll = NSScrollView(frame: NSRect(x: 0, y: 76, width: frame.width, height: frame.height - 180))
-        scroll.autoresizingMask = [.width, .height]
+        let hint = NSTextField(wrappingLabelWithString: L10n.userRulesHint)
+        hint.translatesAutoresizingMaskIntoConstraints = false
+        hint.font = SystemTypography.font(.footnote)
+        hint.textColor = .secondaryLabelColor
+        hint.maximumNumberOfLines = 0
+        hint.cell?.lineBreakMode = .byWordWrapping
+        root.addSubview(hint)
+
+        let scroll = NSScrollView(frame: .zero)
+        scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.hasVerticalScroller = true
         scroll.hasHorizontalScroller = false
         scroll.autohidesScrollers = true
@@ -99,47 +105,77 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         scroll.documentView = table
         root.addSubview(scroll)
 
-        let hint = NSTextField(wrappingLabelWithString: L10n.userRulesHint)
-        hint.frame = NSRect(x: 0, y: frame.height - 68, width: frame.width, height: 34)
-        hint.autoresizingMask = [.width, .minYMargin]
-        hint.font = SystemTypography.font(.footnote)
-        hint.textColor = .secondaryLabelColor
-        root.addSubview(hint)
+        let addButton = makeActionButton(L10n.userRulesAdd, symbol: "plus", action: #selector(addTapped))
+        let edit = makeActionButton(L10n.userRulesEdit, symbol: "pencil", action: #selector(editTapped))
+        let delete = makeActionButton(L10n.userRulesDelete, symbol: "trash", action: #selector(deleteTapped))
+        let importButton = makeActionButton(L10n.userRulesImport, symbol: "square.and.arrow.down",
+                                            action: #selector(importTapped))
+        let exportButton = makeActionButton(L10n.userRulesExport, symbol: "square.and.arrow.up",
+                                            action: #selector(exportTapped))
+        let restore = makeActionButton(L10n.userRulesRestorePunto, symbol: "arrow.uturn.backward",
+                                       action: #selector(restorePuntoTapped))
+        editButton = edit
+        deleteButton = delete
+        restorePuntoButton = restore
 
-        let buttons: [(String, Selector, String?, CGFloat)] = [
-            (L10n.userRulesAdd, #selector(addTapped), "plus", 34),
-            (L10n.userRulesEdit, #selector(editTapped), "pencil", 34),
-            (L10n.userRulesDelete, #selector(deleteTapped), "trash", 34),
-            (L10n.userRulesImport, #selector(importTapped), "square.and.arrow.down", 2),
-            (L10n.userRulesExport, #selector(exportTapped), "square.and.arrow.up", 2),
-            (L10n.userRulesRestorePunto, #selector(restorePuntoTapped), "arrow.uturn.backward", 2),
-        ]
-        var rowX: [CGFloat] = [0, 0]
-        for (title, action, symbol, rowY) in buttons {
-            let button = NSButton(title: title, target: self, action: action)
-            let textWidth = ceil((title as NSString).size(withAttributes: [.font: SystemTypography.font(.body)]).width)
-            let width = textWidth + (symbol == nil ? 20 : 40)
-            let row = rowY == 34 ? 0 : 1
-            let x = rowX[row]
-            button.frame = NSRect(x: x, y: rowY, width: width, height: 30)
-            button.autoresizingMask = [.maxYMargin]
-            button.bezelStyle = .rounded
-            if let symbol, let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) {
-                button.image = image
-                button.imagePosition = .imageLeading
-            }
-            root.addSubview(button)
-            if action == #selector(editTapped) { editButton = button }
-            if action == #selector(deleteTapped) { deleteButton = button }
-            if action == #selector(restorePuntoTapped) { restorePuntoButton = button }
-            rowX[row] += width + 4
+        let primaryActions = horizontalActionRow([addButton, edit, delete])
+        let importActions = horizontalActionRow([importButton, exportButton])
+        let toolbar = NSStackView(views: [primaryActions, importActions, restore])
+        toolbar.orientation = .vertical
+        toolbar.alignment = .leading
+        toolbar.distribution = .fill
+        toolbar.spacing = 6
+        toolbar.translatesAutoresizingMaskIntoConstraints = false
+        [primaryActions, importActions, restore].forEach {
+            $0.widthAnchor.constraint(equalTo: toolbar.widthAnchor).isActive = true
         }
+        root.addSubview(toolbar)
+
         editButton?.isEnabled = false
         deleteButton?.isEnabled = false
         deleteButton?.toolTip = L10n.userRulesDeleteHint
         restorePuntoButton?.isEnabled = SettingsManager.shared.removedPuntoRuleCount > 0
+
+        NSLayoutConstraint.activate([
+            searchField.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            searchField.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            searchField.topAnchor.constraint(equalTo: root.topAnchor),
+            hint.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            hint.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            hint.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
+            toolbar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            toolbar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            toolbar.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            scroll.topAnchor.constraint(equalTo: hint.bottomAnchor, constant: 8),
+            scroll.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -8),
+        ])
+
         reloadFromStore()
         return root
+    }
+
+    private func makeActionButton(_ title: String, symbol: String, action: Selector) -> NSButton {
+        let button = NSButton(title: title, target: self, action: action)
+        button.bezelStyle = .rounded
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        button.imagePosition = .imageLeading
+        button.setAccessibilityLabel(title)
+        button.toolTip = title
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 30).isActive = true
+        return button
+    }
+
+    private func horizontalActionRow(_ buttons: [NSButton]) -> NSStackView {
+        let row = NSStackView(views: buttons)
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fillEqually
+        row.spacing = 6
+        row.translatesAutoresizingMaskIntoConstraints = false
+        return row
     }
 
     private func addColumn(_ title: String, identifier: NSUserInterfaceItemIdentifier, width: CGFloat) {
@@ -183,7 +219,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
             indicator.image = NSImage(systemSymbolName: rule.enabled ? "checkmark.circle.fill" : "pause.circle",
                                       accessibilityDescription: rule.enabled ? L10n.userRulesEnabled : L10n.userRulesDisabled)
             indicator.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
-            indicator.contentTintColor = rule.enabled ? .systemGreen : .tertiaryLabelColor
+            indicator.contentTintColor = rule.enabled ? .labelColor : .tertiaryLabelColor
             indicator.translatesAutoresizingMaskIntoConstraints = false
             cell.addSubview(indicator)
             let sourceLabel = NSTextField(labelWithString: sourceTitle(rule.origin))
@@ -309,13 +345,33 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         let panel = NSOpenPanel()
         panel.title = L10n.userRulesImport
         panel.allowedContentTypes = [.json, .plainText, .commaSeparatedText,
-                                     UTType(filenameExtension: "tsv") ?? .plainText]
+                                     UTType(filenameExtension: "tsv") ?? .plainText,
+                                     .propertyList]
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let fileExtension = url.pathExtension.lowercased()
+            if fileExtension == "plist" {
+                let report = try SettingsManager.shared.importPuntoProfile(from: url)
+                reloadFromStore()
+                onRulesChanged?()
+
+                let alert = NSAlert()
+                alert.alertStyle = .informational
+                alert.messageText = L10n.settingsImportPuntoSuccess
+                alert.informativeText = L10n.settingsImportPuntoAppliedDetails(
+                    report.rulesImported,
+                    report.unverifiedRules,
+                    report.learningImported,
+                    report.learningDiscardedByReview,
+                    report.snapshotName
+                )
+                alert.addButton(withTitle: L10n.commonOkay)
+                alert.runModal()
+                return
+            }
             let intent = fileExtension == "txt" ? chooseTextImportIntent() : nil
             if fileExtension == "txt", intent == nil { return }
             let preview = try UserRuleFileCodec.previewImport(

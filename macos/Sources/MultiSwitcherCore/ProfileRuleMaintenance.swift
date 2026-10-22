@@ -4,6 +4,7 @@ import Foundation
 /// same stable tombstones as a manual deletion, so a later import cannot revive them.
 public enum ProfileRuleMaintenance {
     public static let deniedWordsSettingKey = "com.multiswitcher.deniedWords"
+    public static let alwaysConvertWordsSettingKey = "com.multiswitcher.alwaysConvertWords"
 
     @discardableResult
     public static func removeExactExclusions(_ words: Set<String>, from profile: inout MultiSwitcherProfile) -> Int {

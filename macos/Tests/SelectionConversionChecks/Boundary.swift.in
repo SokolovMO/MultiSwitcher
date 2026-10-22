@@ -33,7 +33,11 @@ struct TextConverter {
 /* DETECTOR_STUBS */
 
 enum AutoSwitchPolicy {
-    static func isAlwaysConvert(_ converted: String) -> Bool { false }
+    nonisolated(unsafe) static var alwaysConvertLookups = 0
+    static func isAlwaysConvert(_ converted: String) -> Bool {
+        alwaysConvertLookups += 1
+        return false
+    }
 }
 
 // Structural dependencies for unused DynamicKeyMapping entry points.

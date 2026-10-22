@@ -4,25 +4,46 @@ import MultiSwitcherCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    private enum AutomaticInputLayoutResult {
+        case kept
+        case alreadyTarget
+        case switched
+        case preservedUserChoice
+        case unavailable
+
+        var changedLayout: Bool { if case .switched = self { return true }; return false }
+        var logValue: String {
+            switch self {
+            case .kept: return "kept"
+            case .alreadyTarget: return "already-target"
+            case .switched: return "switched"
+            case .preservedUserChoice: return "manual-choice-preserved"
+            case .unavailable: return "switch-failed"
+            }
+        }
+    }
+
     private var statusItem: NSStatusItem!
     private let keyboardMonitor = KeyboardMonitor()
     private let textConverter = TextConverter()
     private let settingsController = SettingsWindowController()
     private let perAppLayoutManager = PerAppLayoutManager()
     private var permissionCheckTimer: Timer?
+    private var permissionTimeoutTimer: Timer?
     private var iconRefreshTimer: Timer?
     #if !canImport(Sparkle)
     private var updateCheckTimer: Timer?
     #endif
     private var pauseExpiryWorkItem: DispatchWorkItem?
     private var monitoringActive = false
+    private var monitoringStartPending = false
     private var caretIndicator: CaretIndicator?   // issue #10: метка раскладки у каретки (бета, по умолчанию OFF)
     private let secureNotice = SecureInputNotice()  // issue #27: подсказка о защ. вводе без кражи фокуса
     private let learningNotice = LearningNotice()
     private var lastLearnedWord: String?
     private var lastBadgeShown: String?           // идентичность раскладки для детекта смены (не title!)
-    private var badgeCache: [String: NSImage] = [:]  // монохромные плашки, чтобы не перерисовывать 2с-опросом
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Dict.preloadBundledLexiconsIfNeeded()
         SettingsManager.shared.clearExpiredPause()
         CrashReporter.startIfConsented()
         UpdateChecker.checkOnLaunch()
@@ -69,6 +90,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func setupSettingsCallbacks() {
         settingsController.onQuitRequested = { [weak self] in self?.quit() }
+        settingsController.onPermissionsReviewRequested = { [weak self] in
+            self?.runPermissionWizard(interactive: true)
+        }
         settingsController.onAutoSwitchChanged = { [weak self] _ in
             // Не адресуем пункт по индексу: с 2.5.0 item(at: 0) — строка версии, а со списком
             // раскладок индексы вообще динамические. Пересборка — как у соседних колбэков.
@@ -224,7 +248,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard var evidence = manualOptionEvidence,
               snapshot.inputGeneration == evidence.inputGeneration,
               keyboardMonitor.isInputGenerationCurrent(evidence.inputGeneration),
-              keyboardMonitor.isTextContextCurrent(evidence.textContextGeneration),
               let restoredOriginal = evidence.completeToggle(
                 operationID: textConverter.lastConversionOperationID,
                 undoneOperationID: undoneOperationID,
@@ -299,8 +322,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Self-learning can use it only when the user undoes it in the same app and field.
     @discardableResult
     private func completeAutomaticConversion(word: String, snapshot: WordBoundarySnapshot,
-                                             changesLayout _: Bool,
+                                             changesLayout: Bool,
                                              preservingTypedSuffixKeyCount: Int = 0) -> UInt64 {
+        textConverter.reconcileLastConversionLayoutChange(changesLayout)
         let generation = keyboardMonitor.markConverted(
             boundaryInputGeneration: snapshot.inputGeneration,
             preservingTypedSuffixKeyCount: preservingTypedSuffixKeyCount
@@ -321,40 +345,153 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return generation
     }
 
+    /// Correlates one private, text-free diagnostic timeline from the detector decision
+    /// through the replacement outcome. The log deliberately contains no typed content.
+    private func logAutomaticReplacementOutcome(
+        operationID: String,
+        startedAt: UInt64,
+        result: String,
+        layout: String,
+        reason: String? = nil
+    ) {
+        let elapsedMilliseconds = (DispatchTime.now().uptimeNanoseconds &- startedAt) / 1_000_000
+        let reasonField = reason.map { " reason=\($0)" } ?? ""
+        rslog("auto: outcome op=\(operationID) result=\(result) layout=\(layout)" +
+              " elapsed-ms=\(elapsedMilliseconds)\(reasonField)")
+    }
+
+    /// A correction is decided for the input source that produced the captured keys.
+    /// Select that exact paired source after commit instead of flipping whatever layout
+    /// happens to be current when an asynchronous replacement finishes.
+    private func applyAutomaticInputLayout(
+        sourceLayoutID: String?,
+        targetLayoutID: String?,
+        operationID: String
+    ) -> AutomaticInputLayoutResult {
+        let currentLayoutID = LayoutSwitcher.currentLayoutID()
+        switch AutomaticLayoutTransitionPolicy.decide(
+            sourceLayoutID: sourceLayoutID,
+            currentLayoutID: currentLayoutID,
+            targetLayoutID: targetLayoutID
+        ) {
+        case .keep:
+            return .kept
+        case .alreadyAtTarget:
+            return .alreadyTarget
+        case .sourceUnavailable:
+            rslog("auto: input-layout op=\(operationID) result=source-unavailable")
+            return .unavailable
+        case .preserveUserChoice:
+            rslog("auto: input-layout op=\(operationID) result=manual-choice-preserved")
+            return .preservedUserChoice
+        case .select(let targetID):
+            let selected = LayoutSwitcher.switchTo(layoutID: targetID)
+            let result: AutomaticInputLayoutResult = selected ? .switched : .unavailable
+            rslog("auto: input-layout op=\(operationID) result=\(result.logValue)")
+            return result
+        }
+    }
+
+    /// Reconciles the private line context only after the target field confirmed its
+    /// replacement. This lets subsequent decisions reason about visible words without
+    /// retaining text in logs or touching a stale/changed field buffer.
+    private func reconcileAutomaticVisibleText(
+        snapshot: WordBoundarySnapshot,
+        keyCount: Int,
+        visibleWord: String? = nil,
+        visibleLine: String? = nil,
+        operationID: String
+    ) {
+        guard !snapshot.lineKeys.isEmpty else { return }
+        let range: Range<Int>
+        let text: String
+        if let visibleLine {
+            range = 0..<snapshot.lineKeys.count
+            text = visibleLine
+        } else if let visibleWord {
+            let start = snapshot.lineKeys.count - snapshot.keys.count - snapshot.boundaryCount
+            guard start >= 0, keyCount > 0 else { return }
+            range = start..<(start + keyCount)
+            text = visibleWord
+        } else {
+            return
+        }
+        if !keyboardMonitor.reconcileVisibleLine(snapshot: snapshot, range: range, with: text) {
+            rslog("auto: context reconcile skipped op=\(operationID) reason=stale-or-length-mismatch")
+        }
+    }
+
     /// Run an Accessibility edit in the same FIFO as injected-buffer replacements.
     /// The converter rechecks the captured process, text context, and AX target before
     /// applying the word/suffix plan. State changes happen only after readback succeeds.
     @discardableResult
     private func enqueueAutomaticAXReplacement(
+        operationID: String,
+        startedAt: UInt64,
         snapshot: WordBoundarySnapshot,
         word: String,
-        changesLayout: Bool,
+        visibleKeyCount: Int,
+        visibleWord: String?,
+        visibleLine: String?,
+        sourceLayoutID: String?,
+        targetLayoutID: String?,
         label: String,
         apply: @escaping @MainActor @Sendable () -> Bool
     ) -> Bool {
         let accepted = textConverter.enqueueSerializedReplacement(
+            operationID: operationID,
             processIdentifier: snapshot.processIdentifier,
-            isContextCurrent: {
-                self.keyboardMonitor.isTextContextCurrent(snapshot.textContextGeneration)
-                    && SettingsManager.shared.autoSwitchEnabled
-                    && SettingsManager.shared.autoConvert
-                    && !AutoSwitchPolicy.areAllActionsDisabled(snapshot.bundleIdentifier)
-                    && !AutoSwitchPolicy.isDeniedApp(snapshot.bundleIdentifier)
-                    && !AutoSwitchPolicy.secureInputActive
+            contextRejectionReason: {
+                guard self.keyboardMonitor.isTextContextCurrent(snapshot.textContextGeneration) else {
+                    return "text-context-changed"
+                }
+                let settings = SettingsManager.shared
+                guard settings.autoSwitchEnabled else { return "master-disabled" }
+                guard settings.autoConvert else { return "auto-conversion-disabled" }
+                if AutoSwitchPolicy.areAllActionsDisabled(snapshot.bundleIdentifier) { return "app-disabled" }
+                if AutoSwitchPolicy.isDeniedApp(snapshot.bundleIdentifier) { return "app-manual-only" }
+                if AutoSwitchPolicy.secureInputActive { return "secure-input" }
+                return nil
             },
             perform: { done in done(apply()) },
             completion: { completed in
                 guard completed else {
-                    rslog("auto: queued \(label) replacement cancelled or rejected")
+                    self.logAutomaticReplacementOutcome(
+                        operationID: operationID, startedAt: startedAt,
+                        result: "cancelled-\(label)", layout: "unchanged"
+                    )
                     return
                 }
-                _ = self.completeAutomaticConversion(word: word, snapshot: snapshot,
-                                                     changesLayout: changesLayout)
-                if changesLayout { LayoutSwitcher.switchToOpposite() }
+                self.reconcileAutomaticVisibleText(
+                    snapshot: snapshot,
+                    keyCount: visibleKeyCount,
+                    visibleWord: visibleWord,
+                    visibleLine: visibleLine,
+                    operationID: operationID
+                )
+                let layoutResult = self.applyAutomaticInputLayout(
+                    sourceLayoutID: sourceLayoutID,
+                    targetLayoutID: targetLayoutID,
+                    operationID: operationID
+                )
+                _ = self.completeAutomaticConversion(
+                    word: word,
+                    snapshot: snapshot,
+                    changesLayout: layoutResult.changedLayout
+                )
                 self.updateStatusIcon()
+                self.logAutomaticReplacementOutcome(
+                    operationID: operationID, startedAt: startedAt,
+                    result: "committed-\(label)", layout: layoutResult.logValue
+                )
             }
         )
-        if !accepted { rslog("auto: queued \(label) replacement refused (queue full)") }
+        if !accepted {
+            self.logAutomaticReplacementOutcome(
+                operationID: operationID, startedAt: startedAt,
+                result: "refused-\(label)", layout: "unchanged"
+            )
+        }
         return accepted
     }
 
@@ -369,22 +506,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         perform: @escaping @MainActor @Sendable (@escaping @MainActor @Sendable (Bool) -> Void) -> Void,
         completion: @escaping @MainActor @Sendable (Bool) -> Void
     ) -> Bool {
+        let operationID = UUID().uuidString
         let accepted = textConverter.enqueueSerializedReplacement(
+            operationID: operationID,
             processIdentifier: snapshot.processIdentifier,
-            isContextCurrent: {
+            contextRejectionReason: {
                 let inputIsCurrent = self.keyboardMonitor.isInputGenerationCurrent(snapshot.inputGeneration)
                 let contextIsCurrent = self.keyboardMonitor.isTextContextCurrent(snapshot.textContextGeneration)
                 let continuesManualToggle = allowsManualToggleContinuation
                     && self.hasQueuedManualOptionContinuation(snapshot)
-                return inputIsCurrent && (contextIsCurrent || continuesManualToggle)
-                    && SettingsManager.shared.autoSwitchEnabled
-                    && !AutoSwitchPolicy.areAllActionsDisabled(snapshot.bundleIdentifier)
-                    && !AutoSwitchPolicy.secureInputActive
+                guard inputIsCurrent else { return "input-generation-changed" }
+                guard contextIsCurrent || continuesManualToggle else { return "text-context-changed" }
+                guard SettingsManager.shared.autoSwitchEnabled else { return "master-disabled" }
+                if AutoSwitchPolicy.areAllActionsDisabled(snapshot.bundleIdentifier) { return "app-disabled" }
+                if AutoSwitchPolicy.secureInputActive { return "secure-input" }
+                return nil
             },
             perform: perform,
             completion: completion
         )
-        if !accepted { rslog("trigger: queued manual \(label) replacement refused (queue full)") }
+        if !accepted {
+            rslog("trigger: queued manual replacement refused op=\(operationID) " +
+                  "label=\(label) reason=queue-full")
+        }
         return accepted
     }
 
@@ -442,8 +586,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let acc = AXIsProcessTrusted()
         let inp = CGPreflightListenEventAccess()
         rslog("Permissions: accessibility=\(acc) inputMonitoring=\(inp)")
+        settingsController.updatePermissionStatus(accessibility: acc, inputMonitoring: inp)
 
         if acc && inp {
+            permissionCheckTimer?.invalidate()
+            permissionCheckTimer = nil
+            permissionTimeoutTimer?.invalidate()
+            permissionTimeoutTimer = nil
             // Запоминаем что разрешения были даны
             SettingsManager.shared.permissionsWereGranted = true
             if !monitoringActive && !SettingsManager.shared.isPaused { startMonitoring() }
@@ -452,21 +601,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
 
-        // Проверяем: разрешения были раньше, а теперь сброшены (обновление)
-        if SettingsManager.shared.permissionsWereGranted {
+        // A previous grant was lost (for example, after replacing an unsigned build).
+        // Explain the current state without resetting or requesting TCC permissions.
+        let hadPermissionsBefore = SettingsManager.shared.permissionsWereGranted
+        if hadPermissionsBefore {
             rslog("Permissions were previously granted — reset detected after update")
             SettingsManager.shared.permissionsWereGranted = false
-            showPermissionsResetAlert()
-            return
         }
 
-        // Первый запуск — обычный визард
-        if acc {
-            showStep_InputMonitoring()
+        // Show the guide once on first launch. Later checks happen only when the user
+        // chooses Check Permissions or Review in Settings.
+        guard interactive || hadPermissionsBefore || !SettingsManager.shared.permissionGuideShown else {
             return
         }
-
-        showStep_Accessibility()
+        if !interactive { SettingsManager.shared.permissionGuideShown = true }
+        showPermissionsGuide(accessibilityGranted: acc, inputMonitoringGranted: inp)
     }
 
     /// Подтверждение при ручной проверке, когда все разрешения уже выданы
@@ -479,86 +628,77 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.runModal()
     }
 
-    /// Уведомление о сбросе разрешений после обновления
-    private func showPermissionsResetAlert() {
+    /// Calm, explicit explanation shown before opening a macOS permission pane.
+    private func showPermissionsGuide(accessibilityGranted: Bool, inputMonitoringGranted: Bool) {
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = L10n.permissionsRequiredTitle
-        alert.informativeText = L10n.permissionsRequiredText
+        alert.messageText = L10n.permissionsGuideTitle
+        var steps: [String] = []
+        if !accessibilityGranted {
+            steps.append("• \(L10n.permissionAccessibilityName)\n\(L10n.permissionAccessibilityHelp)")
+        }
+        if !inputMonitoringGranted {
+            steps.append("• \(L10n.permissionInputMonitoringName)\n\(L10n.permissionInputMonitoringHelp)")
+        }
+        alert.informativeText = "\(L10n.permissionsGuideText)\n\n\(steps.joined(separator: "\n\n"))"
         alert.addButton(withTitle: L10n.wizardOpenSettings)
         alert.addButton(withTitle: L10n.wizardLater)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-        // TCC permissions are managed by the user. Never reset or re-request them
-        // automatically after an update; take the user to the relevant settings page.
-        let privacyPane = AXIsProcessTrusted() ? "Privacy_ListenEvent" : "Privacy_Accessibility"
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(privacyPane)") {
-            NSWorkspace.shared.open(url)
-        }
-        permissionCheckTimer?.invalidate()
-        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                guard AXIsProcessTrusted() && CGPreflightListenEventAccess() else { return }
-                self.permissionCheckTimer?.invalidate()
-                self.permissionCheckTimer = nil
-                SettingsManager.shared.permissionsWereGranted = true
-                if !self.monitoringActive && !SettingsManager.shared.isPaused {
-                    self.startMonitoring()
-                }
-            }
-        }
+        // TCC permissions are managed by the user. Do not request or toggle them here;
+        // the user explicitly chose to review the relevant macOS settings pane.
+        let privacyPane = accessibilityGranted ? "Privacy_ListenEvent" : "Privacy_Accessibility"
+        openPrivacySettings(pane: privacyPane)
+        monitorPermissionChangesAfterUserAction()
     }
 
-    private func showStep_Accessibility() {
-        // AXIsProcessTrustedWithOptions с prompt=true показывает системный диалог
-        // и добавляет программу в список Accessibility автоматически
-        let options = ["AXTrustedCheckOptionPrompt" as CFString: true as CFBoolean] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-
+    private func monitorPermissionChangesAfterUserAction() {
         permissionCheckTimer?.invalidate()
+        permissionTimeoutTimer?.invalidate()
         permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
-                if AXIsProcessTrusted() {
-                    rslog("Accessibility granted!")
+                let accessibilityGranted = AXIsProcessTrusted()
+                let inputMonitoringGranted = CGPreflightListenEventAccess()
+                self.settingsController.updatePermissionStatus(accessibility: accessibilityGranted,
+                                                               inputMonitoring: inputMonitoringGranted)
+                if accessibilityGranted && inputMonitoringGranted {
                     self.permissionCheckTimer?.invalidate()
                     self.permissionCheckTimer = nil
-                    self.showStep_InputMonitoring()
-                }
-            }
-        }
-    }
-
-    private func showStep_InputMonitoring() {
-        // CGRequestListenEventAccess() показывает системный диалог и добавляет
-        // программу в список Input Monitoring автоматически
-        let preflightOK = CGPreflightListenEventAccess()
-        rslog("Preflight check = \(preflightOK)")
-
-        if preflightOK {
-            // Уже есть — сразу запускаем
-            SettingsManager.shared.permissionsWereGranted = true
-            startMonitoring()
-            return
-        }
-
-        rslog("Requesting access...")
-        CGRequestListenEventAccess()
-
-        permissionCheckTimer?.invalidate()
-        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                if CGPreflightListenEventAccess() {
-                    rslog("Input Monitoring granted! Restarting...")
+                    self.permissionTimeoutTimer?.invalidate()
+                    self.permissionTimeoutTimer = nil
                     SettingsManager.shared.permissionsWereGranted = true
-                    self.permissionCheckTimer?.invalidate()
-                    self.permissionCheckTimer = nil
+                    rslog("Both permissions granted after user opened System Settings; restarting to apply Input Monitoring")
                     self.restartApp()
                 }
             }
         }
+        permissionTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 180, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.permissionCheckTimer?.invalidate()
+                self.permissionCheckTimer = nil
+                self.permissionTimeoutTimer = nil
+                rslog("Permission review timed out; user can recheck from the menu")
+            }
+        }
+    }
+
+    /// Open the specific Privacy & Security pane. If the deep link is unavailable on this
+    /// macOS release, open System Settings and keep the exact manual path in the alert.
+    private func openPrivacySettings(pane: String) {
+        // Newer System Settings uses the extension bundle identifier; older macOS
+        // releases still resolve the original preference-pane identifier.
+        let destinations = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?\(pane)",
+            "x-apple.systempreferences:com.apple.preferences.security?\(pane)",
+        ]
+        for destination in destinations {
+            guard let url = URL(string: destination) else { continue }
+            if NSWorkspace.shared.open(url) { return }
+        }
+        let settingsURL = URL(fileURLWithPath: "/System/Applications/System Settings.app")
+        _ = NSWorkspace.shared.open(settingsURL)
     }
 
     private func restartApp() {
@@ -570,8 +710,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func startMonitoring() {
         guard !SettingsManager.shared.isPaused else { return }
+        guard !monitoringActive else { return }
+        guard !monitoringStartPending else { return }
+        let accessibilityGranted = AXIsProcessTrusted()
+        let inputMonitoringGranted = CGPreflightListenEventAccess()
+        settingsController.updatePermissionStatus(accessibility: accessibilityGranted,
+                                                   inputMonitoring: inputMonitoringGranted)
+        guard accessibilityGranted && inputMonitoringGranted else {
+            rslog("Monitoring start skipped: macOS permissions are not both enabled")
+            return
+        }
+        guard Dict.automaticLexiconsReady else {
+            monitoringStartPending = true
+            Dict.prepareAutomaticLexicons { [weak self] in
+                guard let self else { return }
+                self.monitoringStartPending = false
+                self.startMonitoring()
+            }
+            return
+        }
+        let settings = SettingsManager.shared
+        guard settings.automaticRulesReady else {
+            monitoringStartPending = true
+            settings.prepareAutomaticRules { [weak self] count in
+                guard let self else { return }
+                rslog("rules: automatic snapshot ready count=\(count)")
+                self.monitoringStartPending = false
+                self.startMonitoring()
+            }
+            return
+        }
         permissionCheckTimer?.invalidate()
         permissionCheckTimer = nil
+        permissionTimeoutTimer?.invalidate()
+        permissionTimeoutTimer = nil
 
         if !keyboardMonitor.start(
             onAltTap: { [weak self] snapshot in
@@ -956,28 +1128,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Авто-конвертация на границе слова: детект неправильной раскладки → конверт + смена.
     /// Точность-first: при любой неуверенности ничего не делаем. Ручной триггер не трогаем.
     private func handleAutoConvert(_ snapshot: WordBoundarySnapshot) {
-        rslog("auto: fired")
-        guard SettingsManager.shared.autoSwitchEnabled else { rslog("auto: bail master-off"); return }
-        guard SettingsManager.shared.autoConvert else { rslog("auto: bail flag-off"); return }
-        guard !AutoSwitchPolicy.secureInputActive else { rslog("auto: bail secure-input"); return }
+        let replacementOperationID = UUID().uuidString
+        let replacementStartedAt = DispatchTime.now().uptimeNanoseconds
+        func bail(_ reason: String) {
+            logAutomaticReplacementOutcome(
+                operationID: replacementOperationID,
+                startedAt: replacementStartedAt,
+                result: "skipped",
+                layout: "unchanged",
+                reason: reason
+            )
+        }
+
+        rslog("auto: fired op=\(replacementOperationID)")
+        guard SettingsManager.shared.autoSwitchEnabled else { bail("master-off"); return }
+        guard SettingsManager.shared.autoConvert else { bail("auto-convert-off"); return }
+        guard !AutoSwitchPolicy.secureInputActive else { bail("secure-input"); return }
         let frontID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        guard !AutoSwitchPolicy.areAllActionsDisabled(frontID) else { rslog("auto: bail all-actions-app"); return }
+        guard !AutoSwitchPolicy.areAllActionsDisabled(frontID) else { bail("all-actions-app"); return }
         // Удалёнка: НЕ выходим сразу — прогоняем детектор по своему (чистому) буферу, и при
         // «не той раскладке» переключаем СВОЮ раскладку (конверсию делает инстанс на той стороне).
         let deferToRemote = SettingsManager.shared.remoteDesktopMode && AutoSwitchPolicy.isRemoteDesktopClient(frontID)
-        if AutoSwitchPolicy.isDeniedApp(frontID) { rslog("auto: bail denied-app \(frontID ?? "?")"); return }
+        if AutoSwitchPolicy.isDeniedApp(frontID) { bail("denied-app"); return }
         if let capturedPID = snapshot.processIdentifier,
            capturedPID != NSWorkspace.shared.frontmostApplication?.processIdentifier {
-            rslog("auto: bail process-changed"); return
+            bail("process-changed"); return
         }
         if let captured = snapshot.bundleIdentifier, captured != frontID {
-            rslog("auto: bail focus-changed"); return  // фокус уехал между пробелом и сейчас
+            bail("focus-changed"); return  // фокус уехал между пробелом и сейчас
         }
 
         let allKeys = snapshot.keys
         let bc = snapshot.boundaryCount
-        guard !allKeys.isEmpty else { rslog("auto: bail empty-keys"); return }  // курсор уехал — небезопасно
-        guard let fullPair = DynamicKeyMapping.convertKeys(allKeys) else { rslog("auto: bail convertKeys-nil"); return }
+        guard !allKeys.isEmpty else { bail("empty-keys"); return }  // курсор уехал — небезопасно
+        guard let fullPair = DynamicKeyMapping.convertKeys(allKeys) else { bail("key-conversion-unavailable"); return }
 
         // issue #15: слово с прилипшей пунктуацией ("ghbdtn,") — отщепляем хвост, детектим
         // и конвертим ядро, хвост вернётся в поле литералом. Проверка счёта — инвариант
@@ -990,7 +1174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             suffix = split.suffix
         }
         guard let pair = suffix.isEmpty ? fullPair : DynamicKeyMapping.convertKeys(keys) else {
-            rslog("auto: bail convertKeys-nil"); return
+            bail("key-conversion-unavailable"); return
         }
 
         // Язык для детектора. Для проброшенного через удалёнку текста (все символы — char)
@@ -1002,6 +1186,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let layouts = LayoutSwitcher.installedLayouts()
         let layout1ID = settings.layout1ID.isEmpty ? LayoutSwitcher.autoDetectID1(from: layouts) : settings.layout1ID
         let layout2ID = settings.layout2ID.isEmpty ? LayoutSwitcher.autoDetectID2(from: layouts) : settings.layout2ID
+        func configuredLayoutID(for language: String) -> String? {
+            let wanted = String(language.prefix(2)).lowercased()
+            return [layout1ID, layout2ID].first { id in
+                guard let source = layouts.first(where: { LayoutSwitcher.sourceID($0) == id }),
+                      let code = LayoutSwitcher.languageCode(source) else { return false }
+                return String(code.prefix(2)).lowercased() == wanted
+            }
+        }
+        var capturedSourceLayoutID: String?
+        var oppositeLayoutIDAtBoundary: String?
         if let sourceID = keys.reversed().compactMap(\.sourceLayoutID).first,
            let source = layouts.first(where: { LayoutSwitcher.sourceID($0) == sourceID }),
            let sourceLanguage = LayoutSwitcher.languageCode(source) {
@@ -1009,21 +1203,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let targetID,
                   let target = layouts.first(where: { LayoutSwitcher.sourceID($0) == targetID }),
                   let targetLanguage = LayoutSwitcher.languageCode(target) else {
-                rslog("auto: bail captured-layout-not-paired"); return
+                bail("captured-layout-not-paired"); return
             }
             langs = (String(sourceLanguage.prefix(2)), String(targetLanguage.prefix(2)))
+            capturedSourceLayoutID = sourceID
+            oppositeLayoutIDAtBoundary = targetID
         } else if keys.allSatisfy({ $0.char != nil }) {
             let typedIsCyrillic = pair.original.unicodeScalars.contains { $0.value >= 0x0400 && $0.value <= 0x04FF }
             langs = typedIsCyrillic ? ("ru", "en") : ("en", "ru")
+            capturedSourceLayoutID = LayoutSwitcher.currentLayoutID()
+            oppositeLayoutIDAtBoundary = configuredLayoutID(for: langs.opposite)
         } else if let l = LayoutSwitcher.currentAndOppositeLanguage() {
             langs = l
+            capturedSourceLayoutID = LayoutSwitcher.currentLayoutID()
+            oppositeLayoutIDAtBoundary = configuredLayoutID(for: langs.opposite)
         } else {
-            rslog("auto: bail langs-nil"); return
+            bail("language-pair-unavailable"); return
         }
-        let activeLanguageAtBoundary = LayoutSwitcher.currentAndOppositeLanguage()?.current ?? langs.current
+        let currentLayoutIDAtBoundary = LayoutSwitcher.currentLayoutID()
+        let sourceLayoutIDAtBoundary = capturedSourceLayoutID
+            ?? (currentLayoutIDAtBoundary.isEmpty
+                ? configuredLayoutID(for: langs.current)
+                : currentLayoutIDAtBoundary)
+        // The source recorded on each key is the layout that actually generated the
+        // token. A live TIS query here can observe a later switch while the boundary
+        // request is queued and invert the language-transition decision.
+        let activeLanguageAtBoundary = langs.current
+        if SettingsManager.shared.debugLogEnabled {
+            func slot(_ id: String?) -> String {
+                guard let id, !id.isEmpty else { return "unknown" }
+                if id == layout1ID { return "layout-1" }
+                if id == layout2ID { return "layout-2" }
+                return "other" // Never persist a custom input-source identifier.
+            }
+            let evidence = keys.allSatisfy { $0.char != nil }
+                ? "typed-script"
+                : (keys.contains { $0.sourceLayoutID != nil } ? "per-key-source" : "boundary-source")
+            let aligned = currentLayoutIDAtBoundary.isEmpty || sourceLayoutIDAtBoundary == currentLayoutIDAtBoundary
+            rslog("auto: layout-state op=\(replacementOperationID) evidence=\(evidence) " +
+                  "source=\(slot(sourceLayoutIDAtBoundary)) live=\(slot(currentLayoutIDAtBoundary)) " +
+                  "aligned=\(aligned) pair=\(langs.current)/\(langs.opposite)")
+        }
 
-        let initialRuleDecision = settings.automaticRuleDecision(typed: pair.original, converted: pair.converted)
-        if initialRuleDecision == .neverConvert { rslog("auto: bail denied-word"); return }
+        guard let ruleEvaluator = settings.preparedAutomaticRuleEvaluator() else {
+            settings.prepareAutomaticRules()
+            bail("rules-not-ready")
+            return
+        }
+        let initialRuleDecision = ruleEvaluator.decision(typed: pair.original, converted: pair.converted)
+        if initialRuleDecision == .neverConvert {
+            bail("never-convert-rule")
+            return
+        }
 
         let mixedCandidate: LayoutCorrectionEngine.Candidate?
         if LayoutCorrectionEngine.isMixedScript(pair.original),
@@ -1058,27 +1289,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let ruleDecision: ProfileRuleDecision
         if mixedCandidate != nil {
             ruleDecision = initialRuleDecision == .none
-                ? settings.automaticRuleDecision(typed: pair.original, converted: targetWord)
+                ? ruleEvaluator.decision(typed: pair.original, converted: targetWord)
                 : initialRuleDecision
         } else {
             ruleDecision = initialRuleDecision
         }
-        if ruleDecision == .neverConvert { rslog("auto: bail denied-word"); return }
+        if ruleDecision == .neverConvert { bail("never-convert-rule"); return }
         if case .replace(let value) = ruleDecision {
             targetWord = value
             changesLayout = false
-        }
-
-        if changesLayout,
-           snapshot.lineKeys.count >= allKeys.count + bc,
-           let prefix = DynamicKeyMapping.lineString(
-               from: Array(snapshot.lineKeys.dropLast(allKeys.count + bc))
-           ),
-           LayoutCorrectionEngine.shouldPreserveInputLanguageForTrustedName(
-               corrected: targetWord, prefix: prefix, currentLanguage: langs.current
-           ) {
-            changesLayout = false
-            rslog("auto: kept sentence input layout after trusted name")
         }
 
         // Ревью-находка (#15): '.', ',', ';', ':' в EN — клавиши букв ю/б/ж/Ж в ЙЦУКЕН,
@@ -1101,7 +1320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 guard ch.isLetter else { break }
                 candidate.append(ch)
                 if Dict.isValidWordForAutomaticPath(candidate.lowercased(), lang: oth) {
-                    rslog("auto: bail ambiguous-suffix")
+                    bail("ambiguous-suffix")
                     return
                 }
             }
@@ -1120,24 +1339,71 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             } else {
                 verdict = LayoutDetector.decide(typed: pair.original, converted: pair.converted,
                                                 currentLang: langs.current, otherLang: langs.opposite,
-                                                capsLock: capsLock)
+                                                capsLock: capsLock,
+                                                operationID: replacementOperationID,
+                                                rulesAlreadyEvaluated: true)
             }
         }
-        rslog("auto: len=\(pair.original.count) \(langs.current)/\(langs.opposite) verdict=\(verdict)")  // слова не логируем (приватность)
-        guard verdict == .switchToConverted else { return }
+        rslog("auto: decision op=\(replacementOperationID) len=\(pair.original.count) \(langs.current)/\(langs.opposite) verdict=\(verdict)")  // слова не логируем (приватность)
+        guard verdict == .switchToConverted else {
+            logAutomaticReplacementOutcome(
+                operationID: replacementOperationID,
+                startedAt: replacementStartedAt,
+                result: verdict == .keep ? "kept" : "undecided",
+                layout: "unchanged",
+                reason: "detector-verdict"
+            )
+            return
+        }
+
+        if changesLayout,
+           snapshot.lineKeys.count >= allKeys.count + bc,
+           let prefix = DynamicKeyMapping.lineString(
+               from: Array(snapshot.lineKeys.dropLast(allKeys.count + bc))
+           ) {
+            let targetIsConfirmedWord = LayoutCorrectionEngine.canonicalTrustedTerm(for: targetWord) != nil
+                || Dict.isValidWordForAutomaticPath(targetWord.lowercased(), lang: langs.opposite)
+            if LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+                corrected: targetWord,
+                prefix: prefix,
+                currentLanguage: langs.current,
+                targetLanguage: langs.opposite,
+                targetIsConfirmedWord: targetIsConfirmedWord,
+                requiredConsecutiveTargetWords: snapshot.languageSwitchWordThreshold,
+                isKnownTargetWord: { word, language in
+                    LayoutCorrectionEngine.canonicalTrustedTerm(for: word) != nil
+                        || Dict.isValidWordForAutomaticPath(word.lowercased(), lang: language)
+                }
+            ) {
+                changesLayout = false
+                rslog("auto: input-layout=keep reason=no-consecutive-target-language-run op=\(replacementOperationID)")
+            }
+        }
+        let layoutIDAfterCorrection = changesLayout ? oppositeLayoutIDAtBoundary : nil
+        if changesLayout && layoutIDAfterCorrection == nil {
+            rslog("auto: input-layout op=\(replacementOperationID) result=target-source-unavailable")
+        }
 
         if deferToRemote {
             // Удалёнка: текст конвертит офисный инстанс по реальным проброшенным символам.
             // Здесь меняем СВОЮ раскладку — чтобы дальнейший ввод пошёл уже в правильной.
-            if changesLayout { LayoutSwitcher.switchToOpposite() }
+            let layoutResult = applyAutomaticInputLayout(
+                sourceLayoutID: sourceLayoutIDAtBoundary,
+                targetLayoutID: layoutIDAfterCorrection,
+                operationID: replacementOperationID
+            )
             updateStatusIcon()
-            rslog("auto: local layout switched, conversion handled by controlled instance")
+            logAutomaticReplacementOutcome(
+                operationID: replacementOperationID,
+                startedAt: replacementStartedAt,
+                result: "remote-layout-only",
+                layout: layoutResult.logValue
+            )
             return
         }
 
         // A short leading word has no reliable standalone signal. Keep it unchanged
         // until this independently confirmed word supplies context, then rewrite only
-        // the exact buffered line/query suffix that was captured at the boundary.
         if let lineOriginal = DynamicKeyMapping.lineString(from: snapshot.lineKeys) {
             let lineCorrected = SmartConvert.selection(lineOriginal, useSystemDictionary: false)
             if LayoutCorrectionEngine.shouldApplyContextualRewrite(
@@ -1153,7 +1419,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let targetProcessID = field.processID
                     let targetIdentity = field.identity
                     _ = enqueueAutomaticAXReplacement(
-                        snapshot: snapshot, word: pair.original, changesLayout: changesLayout,
+                        operationID: replacementOperationID, startedAt: replacementStartedAt,
+                        snapshot: snapshot, word: pair.original, visibleKeyCount: keys.count,
+                        visibleWord: nil, visibleLine: lineCorrected,
+                        sourceLayoutID: sourceLayoutIDAtBoundary,
+                        targetLayoutID: layoutIDAfterCorrection,
                         label: "contextual Safari suffix",
                         apply: {
                             self.textConverter.convertSafariAddressBarSuffix(
@@ -1167,7 +1437,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     )
                     return
                 case .uncertain:
-                    rslog("auto: Safari address field uncertain; contextual rewrite skipped")
+                    bail("safari-context-field-uncertain")
                     return
                 case .inactive:
                     break
@@ -1177,7 +1447,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let targetProcessID = field.processID
                     let targetIdentity = field.identity
                     _ = enqueueAutomaticAXReplacement(
-                        snapshot: snapshot, word: pair.original, changesLayout: changesLayout,
+                        operationID: replacementOperationID, startedAt: replacementStartedAt,
+                        snapshot: snapshot, word: pair.original, visibleKeyCount: keys.count,
+                        visibleWord: nil, visibleLine: lineCorrected,
+                        sourceLayoutID: sourceLayoutIDAtBoundary,
+                        targetLayoutID: layoutIDAfterCorrection,
                         label: "contextual Spotlight suffix",
                         apply: {
                             self.textConverter.convertSpotlightSuffix(
@@ -1190,26 +1464,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                     )
                 case .uncertain:
-                    rslog("auto: contextual rewrite skipped for uncertain field")
+                    bail("spotlight-context-field-uncertain")
                 case .inactive:
-                    _ = textConverter.replaceBufferText(
+                    let accepted = textConverter.replaceBufferTextPreservingTypedSuffix(
+                        operationID: replacementOperationID,
                         original: lineOriginal,
                         converted: lineCorrected,
                         backspaceCount: snapshot.lineKeys.count,
                         changesLayout: changesLayout,
+                        processIdentifier: snapshot.processIdentifier,
                         performIfCurrent: { operation in
-                            self.keyboardMonitor.performIfInputGenerationIsCurrent(
-                                snapshot.inputGeneration, operation: operation
+                            self.keyboardMonitor.performIfWordBoundaryIsCurrent(
+                                snapshot, operationID: replacementOperationID, operation: operation
                             )
                         },
                         completion: { completed in
-                            guard completed else { rslog("auto: contextual replacement cancelled") ; return }
-                            _ = self.completeAutomaticConversion(word: pair.original, snapshot: snapshot,
-                                                                 changesLayout: changesLayout)
-                            if changesLayout { LayoutSwitcher.switchToOpposite() }
+                            guard completed else {
+                                self.logAutomaticReplacementOutcome(
+                                    operationID: replacementOperationID, startedAt: replacementStartedAt,
+                                    result: "cancelled-contextual-buffer", layout: "unchanged"
+                                )
+                                return
+                            }
+                            self.reconcileAutomaticVisibleText(
+                                snapshot: snapshot, keyCount: keys.count,
+                                visibleLine: lineCorrected, operationID: replacementOperationID
+                            )
+                            let layoutResult = self.applyAutomaticInputLayout(
+                                sourceLayoutID: sourceLayoutIDAtBoundary,
+                                targetLayoutID: layoutIDAfterCorrection,
+                                operationID: replacementOperationID
+                            )
+                            _ = self.completeAutomaticConversion(
+                                word: pair.original,
+                                snapshot: snapshot,
+                                changesLayout: layoutResult.changedLayout
+                            )
                             self.updateStatusIcon()
+                            self.logAutomaticReplacementOutcome(
+                                operationID: replacementOperationID, startedAt: replacementStartedAt,
+                                result: "committed-contextual-buffer",
+                                layout: layoutResult.logValue
+                            )
                         }
                     )
+                    if !accepted {
+                        logAutomaticReplacementOutcome(
+                            operationID: replacementOperationID, startedAt: replacementStartedAt,
+                            result: "refused-contextual-buffer", layout: "unchanged"
+                        )
+                    }
                 }
                 return
             }
@@ -1225,7 +1529,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let targetProcessID = field.processID
             let targetIdentity = field.identity
             _ = enqueueAutomaticAXReplacement(
-                snapshot: snapshot, word: pair.original, changesLayout: changesLayout,
+                operationID: replacementOperationID, startedAt: replacementStartedAt,
+                snapshot: snapshot, word: pair.original, visibleKeyCount: keys.count,
+                visibleWord: targetWord, visibleLine: nil,
+                sourceLayoutID: sourceLayoutIDAtBoundary,
+                targetLayoutID: layoutIDAfterCorrection,
                 label: "Safari word",
                 apply: {
                     self.textConverter.convertSafariAddressBarWord(
@@ -1237,7 +1545,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             )
             return
         case .uncertain:
-            rslog("auto: Safari address field uncertain; refusing count-based replacement")
+            bail("safari-field-uncertain")
             return
         case .inactive:
             break
@@ -1249,9 +1557,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .active(let field):
             let targetProcessID = field.processID
             let targetIdentity = field.identity
-            rslog("auto: Spotlight field active")
+            rslog("auto: Spotlight field active op=\(replacementOperationID)")
             _ = enqueueAutomaticAXReplacement(
-                snapshot: snapshot, word: pair.original, changesLayout: changesLayout,
+                operationID: replacementOperationID, startedAt: replacementStartedAt,
+                snapshot: snapshot, word: pair.original, visibleKeyCount: keys.count,
+                visibleWord: targetWord, visibleLine: nil,
+                sourceLayoutID: sourceLayoutIDAtBoundary,
+                targetLayoutID: layoutIDAfterCorrection,
                 label: "Spotlight word",
                 apply: {
                     self.textConverter.convertSpotlightWord(
@@ -1263,10 +1575,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             )
             return
         case .uncertain:
-            rslog("auto: Spotlight may own focus; refusing count-based replacement")
+            bail("spotlight-field-uncertain")
             return
         case .inactive:
-            rslog("auto: Spotlight not detected; using regular replacement path")
+            rslog("auto: Spotlight not detected op=\(replacementOperationID); using regular replacement path")
         }
 
         let outputSuffix: String
@@ -1278,29 +1590,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let spaces = String(repeating: " ", count: bc)
         let originalText = pair.original + suffix + spaces
         let convertedText = targetWord + outputSuffix + spaces
-        rslog("auto: convert len=\(keys.count) (+\(suffix.count) punct, +\(bc) sp)")
+        rslog("auto: convert op=\(replacementOperationID) len=\(keys.count) (+\(suffix.count) punct, +\(bc) sp)")
         guard textConverter.replaceBufferTextPreservingTypedSuffix(
+            operationID: replacementOperationID,
             original: originalText,
             converted: convertedText,
             backspaceCount: keys.count + suffix.count + bc,
             changesLayout: changesLayout,
             processIdentifier: snapshot.processIdentifier,
             performIfCurrent: { operation in
-                self.keyboardMonitor.performIfWordBoundaryIsCurrent(snapshot, operation: operation)
+                self.keyboardMonitor.performIfWordBoundaryIsCurrent(
+                    snapshot, operationID: replacementOperationID, operation: operation
+                )
             },
             completion: { completed in
-                guard completed else { rslog("auto: replacement cancelled before input changed") ; return }
+                guard completed else {
+                    self.logAutomaticReplacementOutcome(
+                        operationID: replacementOperationID, startedAt: replacementStartedAt,
+                        result: "cancelled-buffer", layout: "unchanged"
+                    )
+                    return
+                }
+                self.reconcileAutomaticVisibleText(
+                    snapshot: snapshot, keyCount: keys.count,
+                    visibleWord: targetWord, operationID: replacementOperationID
+                )
+                let layoutResult = self.applyAutomaticInputLayout(
+                    sourceLayoutID: sourceLayoutIDAtBoundary,
+                    targetLayoutID: layoutIDAfterCorrection,
+                    operationID: replacementOperationID
+                )
                 _ = self.completeAutomaticConversion(
                     word: pair.original,
                     snapshot: snapshot,
-                    changesLayout: changesLayout,
+                    changesLayout: layoutResult.changedLayout,
                     preservingTypedSuffixKeyCount: self.textConverter.lastPreservedSuffixKeyCount
                 )
-                if changesLayout { LayoutSwitcher.switchToOpposite() }
                 self.updateStatusIcon()
+                self.logAutomaticReplacementOutcome(
+                    operationID: replacementOperationID, startedAt: replacementStartedAt,
+                    result: "committed-buffer", layout: layoutResult.logValue
+                )
             }
         ) else {
-            rslog("auto: buffer replacement unavailable")
+            logAutomaticReplacementOutcome(
+                operationID: replacementOperationID, startedAt: replacementStartedAt,
+                result: "refused-buffer", layout: "unchanged"
+            )
             return
         }
     }
@@ -1360,6 +1696,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // (updateStatusIcon/rebuildMenu) продолжают работать без nil-проверок.
         statusItem.isVisible = !SettingsManager.shared.hideMenuBarIcon
         rebuildMenu()
+        // Set a readable layout badge immediately, including while permissions or the
+        // keyboard monitor are still starting up.
+        updateStatusIcon()
         // issue #9: иконка должна отражать раскладку и при СИСТЕМНОЙ смене (стандартный/
         // переопределённый хоткей), а не только при нашей конверсии. Слушаем системное
         // распределённое уведомление о смене источника ввода.
@@ -1651,53 +1990,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let autoEnabled = SettingsManager.shared.autoSwitchEnabled
             && SettingsManager.shared.autoConvert
             && !SettingsManager.shared.isPaused
-        if SettingsManager.shared.monochromeIcon {
-            statusItem.button?.title = ""
-            statusItem.button?.image = badgeImage(for: badge, crossedOut: !autoEnabled)
-        } else {
-            // Keep the menu-bar mark compact and language-specific: AЯ for Russian, AZ for English.
-            // The disabled state strikes through these letters instead of adding a separate badge.
-            statusItem.button?.image = nil
-            let attributes: [NSAttributedString.Key: Any] = autoEnabled
-                ? [:]
-                : [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
-            statusItem.button?.attributedTitle = NSAttributedString(string: badge, attributes: attributes)
+        // Keep the menu-bar mark compact and language-specific: AЯ for Russian, AZ for English.
+        // Use native text instead of a punched-out template image: AppKit's template tinting
+        // can flatten the old monochrome badge into an unreadable gray dot in some menu bars.
+        statusItem.button?.image = nil
+        statusItem.button?.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        var attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: NSColor.labelColor,
+        ]
+        if !autoEnabled {
+            attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
         }
+        statusItem.button?.attributedTitle = NSAttributedString(string: badge, attributes: attributes)
         if changed { caretIndicator?.layoutChanged() }
-    }
-
-    /// Монохромная плашка в стиле системного индикатора раскладки Sequoia: скруглённый
-    /// прямоугольник с «выбитыми» буквами. Template-image — система сама красит её под
-    /// светлый/тёмный меню-бар и пользовательский тинт.
-    private func badgeImage(for label: String, crossedOut: Bool) -> NSImage {
-        let cacheKey = "\(label)|\(crossedOut)"
-        if let cached = badgeCache[cacheKey] { return cached }
-        let font = NSFont.systemFont(ofSize: 10, weight: .bold)
-        let textSize = label.size(withAttributes: [.font: font])
-        let size = NSSize(width: max(ceil(textSize.width) + 8, 20), height: 15)
-        let image = NSImage(size: size, flipped: false) { rect in
-            NSColor.black.setFill()
-            NSBezierPath(roundedRect: rect, xRadius: 3.5, yRadius: 3.5).fill()
-            // Буквы «выбиваются» из плашки (прозрачные), как у системного индикатора.
-            NSGraphicsContext.current?.cgContext.setBlendMode(.destinationOut)
-            label.draw(at: NSPoint(x: (rect.width - textSize.width) / 2,
-                                   y: (rect.height - textSize.height) / 2),
-                       withAttributes: [.font: font, .foregroundColor: NSColor.white])
-            if crossedOut {
-                // Чёрная линия поверх вырезанного текста даёт читаемое состояние «выкл».
-                NSGraphicsContext.current?.cgContext.setBlendMode(.normal)
-                NSColor.black.setStroke()
-                let strike = NSBezierPath()
-                strike.lineWidth = 1.4
-                strike.move(to: NSPoint(x: 2, y: rect.midY))
-                strike.line(to: NSPoint(x: rect.maxX - 2, y: rect.midY))
-                strike.stroke()
-            }
-            return true
-        }
-        image.isTemplate = true
-        badgeCache[cacheKey] = image
-        return image
     }
 
     /// Буквенная метка текущей раскладки по коду языка (BCP-47).
@@ -1837,12 +2143,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         sender.state = SettingsManager.shared.caretFlag ? .on : .off
         settingsController.updateCaretFlagState(SettingsManager.shared.caretFlag)
         syncCaretIndicator()   // создать/снести индикатор и обновить гейт onUserInput
-    }
-
-    @objc private func toggleMonoIcon(_ sender: NSMenuItem) {
-        SettingsManager.shared.monochromeIcon.toggle()
-        sender.state = SettingsManager.shared.monochromeIcon ? .on : .off
-        updateStatusIcon()   // перерисовать в новом стиле сразу
     }
 
     @objc private func toggleRemoteDesktop(_ sender: NSMenuItem) {

@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Carbon
 import MultiSwitcherCore
 import QuartzCore
@@ -57,9 +58,94 @@ private final class SettingsSidebarDivider: NSView {
     }
 }
 
+/// A quiet, adaptive selection surface matching the graphite navigation used by MultiShift.
+@MainActor
+private final class SettingsSidebarRowView: NSTableRowView {
+    override func drawSelection(in dirtyRect: NSRect) {
+        let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let selection = NSBezierPath(
+            roundedRect: bounds.insetBy(dx: 4, dy: 2),
+            xRadius: 9,
+            yRadius: 9
+        )
+        NSColor.labelColor.withAlphaComponent(dark ? 0.22 : 0.12).setFill()
+        selection.fill()
+    }
+}
+
+/// Dynamic system-colored grouped surface for preference clusters.
+@MainActor
+private final class SettingsCardBackground: NSView {
+    override var isOpaque: Bool { false }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let rect = bounds.insetBy(dx: 0.5, dy: 0.5)
+        let path = NSBezierPath(roundedRect: rect, xRadius: 15, yRadius: 15)
+        NSColor.controlBackgroundColor.setFill()
+        path.fill()
+        NSColor.separatorColor.withAlphaComponent(0.4).setStroke()
+        path.lineWidth = 0.8
+        path.stroke()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+}
+
+private enum SettingsCardMetrics {
+    static let horizontalPadding: CGFloat = 16
+    static let verticalPadding: CGFloat = 12
+    static let gutter: CGFloat = 12
+    static let controlSpacing: CGFloat = 8
+    static let formLabelGap: CGFloat = 12
+}
+
+private enum SettingsMotionMetrics {
+    static let pageFadeOut: TimeInterval = 0.07
+    static let pageFadeIn: TimeInterval = 0.09
+    static let pageFadeOutOpacity: CGFloat = 0.84
+    static let expandPage: TimeInterval = 0.22
+}
+
+/// Monochrome AЯ app signature with colors that invert naturally with macOS appearance.
+@MainActor
+private final class SettingsBrandMarkView: NSView {
+    private let mark = NSTextField(labelWithString: "AЯ")
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        mark.font = SystemTypography.font(.headline, weight: .bold)
+        mark.textColor = .windowBackgroundColor
+        mark.alignment = .center
+        mark.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(mark)
+        NSLayoutConstraint.activate([
+            mark.leadingAnchor.constraint(equalTo: leadingAnchor),
+            mark.trailingAnchor.constraint(equalTo: trailingAnchor),
+            mark.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        setAccessibilityLabel("MultiSwitcher AЯ")
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.labelColor.setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 10, yRadius: 10).fill()
+    }
+}
+
 /// Нативное окно настроек с полноценной боковой навигацией.
 @MainActor
 final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSTabViewDelegate, NSWindowDelegate {
+    private struct PreviewLayoutChoice {
+        let id: String
+        let name: String
+        let language: String
+    }
+
     private struct NavigationItem {
         let title: String
         let symbol: String
@@ -80,6 +166,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private var sidebarWidth: CGFloat = 206
     private let sidebarDividerWidth: CGFloat = 6
     private var navigationTable: NSTableView?
+    private var suppressSidebarSelectionChange = false
     private var settingsTabView: NSTabView?
     private var autoSwitchCheckbox: NSButton?
     private var launchAtLoginCheckbox: NSButton?
@@ -87,8 +174,15 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private var caretFlagCheckbox: NSButton?
     private var autoConvertCheckbox: NSButton?      // #4: синк тумблера меню → окно настроек
     private var remoteDesktopCheckbox: NSButton?    // #5: то же (опционален — за фичефлагом)
-    private var smartConversionCheckbox: NSButton?
-    private var convertByTextCheckbox: NSButton?
+    private weak var conversionModeHint: NSTextField?
+    private weak var permissionStatusLabel: NSTextField?
+    private weak var permissionStatusSymbol: NSImageView?
+    private weak var exampleContextField: NSTextField?
+    private weak var exampleWordField: NSTextField?
+    private weak var exampleLayoutPopup: NSPopUpButton?
+    private weak var exampleCorrectedLabel: NSTextField?
+    private weak var exampleNextLayoutLabel: NSTextField?
+    private weak var exampleReasonLabel: NSTextField?
     private var layout1Popup: NSPopUpButton?
     private var layout2Popup: NSPopUpButton?
     private var languagePopup: NSPopUpButton?
@@ -113,13 +207,16 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     var onCaretFlagChanged: ((Bool) -> Void)?
     var onHideIconChanged: ((Bool) -> Void)?
     var onWindowVisibilityChanged: ((Bool) -> Void)?
+    var onPermissionsReviewRequested: (() -> Void)?
 
     func showWindow() {
+        refreshPermissionStatus()
         if let window {
             exceptionEditors.forEach { $0.reloadFromStore() }
             learningListEditor?.reloadFromStore()
             ruleEditor?.reloadFromStore()
             NSApp.setActivationPolicy(.regular)
+            updateWindowTitle()
             installWindowShortcutMonitor(for: window)
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -129,14 +226,15 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
         NSApp.setActivationPolicy(.regular)
         sidebarWidth = CGFloat(SettingsManager.shared.settingsSidebarWidth)
+        selectedPageIndex = 0
         let win = SettingsWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 780),
+            contentRect: NSRect(x: 0, y: 0, width: 940, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         win.onQuitShortcut = { [weak self] in self?.onQuitRequested?() }
-        win.title = L10n.settingsTitle
+        win.title = navigationItems[0].title
         win.appearance = nil // Inherit the current macOS light/dark appearance.
         win.collectionBehavior = [.managed, .fullScreenPrimary]
         win.isReleasedWhenClosed = false
@@ -172,32 +270,30 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         sidebarView = sidebar
         sidebarSeparator = separator
 
-        let brandMark = NSTextField(labelWithString: "AЯ")
-        brandMark.frame = NSRect(x: 18, y: root.bounds.height - 40, width: 34, height: 24)
-        brandMark.font = SystemTypography.font(.headline, weight: .bold)
-        // Keep the AЯ signature monochrome in both appearances; system accent remains
-        // reserved for interactive selection and status feedback.
-        brandMark.textColor = .labelColor
-        brandMark.alignment = .center
+        let brandMark = SettingsBrandMarkView(frame: NSRect(x: 18, y: root.bounds.height - 52,
+                                                             width: 34, height: 34))
         brandMark.autoresizingMask = [.minYMargin]
         sidebar.addSubview(brandMark)
         let brand = NSTextField(labelWithString: "MultiSwitcher")
-        brand.frame = NSRect(x: 58, y: root.bounds.height - 40, width: 132, height: 22)
-        brand.font = SystemTypography.font(.headline, weight: .semibold)
+        brand.frame = NSRect(x: 62, y: root.bounds.height - 48,
+                             width: max(100, sidebarWidth - 76), height: 25)
+        brand.font = SystemTypography.font(.title3, weight: .semibold)
+        brand.lineBreakMode = .byTruncatingTail
         brand.autoresizingMask = [.minYMargin]
         sidebar.addSubview(brand)
 
         let navigationScroll = NSScrollView(frame: NSRect(x: 8, y: 12, width: sidebarWidth - 16,
-                                                           height: root.bounds.height - 58))
+                                                           height: root.bounds.height - 72))
         navigationScroll.borderType = .noBorder
         navigationScroll.hasVerticalScroller = false
         navigationScroll.drawsBackground = false
         navigationScroll.autoresizingMask = [.width, .height]
         let navigation = NSTableView(frame: navigationScroll.bounds)
-        navigation.style = .sourceList
+        navigation.style = .plain
+        navigation.selectionHighlightStyle = .regular
         navigation.headerView = nil
-        navigation.rowHeight = 42
-        navigation.intercellSpacing = NSSize(width: 0, height: 4)
+        navigation.rowHeight = 40
+        navigation.intercellSpacing = NSSize(width: 0, height: 5)
         navigation.usesAlternatingRowBackgroundColors = false
         navigation.backgroundColor = .clear
         navigation.dataSource = self
@@ -227,8 +323,6 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         applyCompactMode(SettingsManager.shared.compactSettings)
 
         let tallest = tabView.tabViewItems.compactMap { $0.view?.frame.height }.max() ?? 700
-        minimumDocumentHeight = max(root.bounds.height, tallest)
-        tabView.frame.size.height = minimumDocumentHeight
         tabView.autoresizingMask = [.width, .height]
         let paneScroll = NSScrollView(frame: NSRect(x: paneOriginX, y: 0,
                                                     width: root.bounds.width - paneOriginX,
@@ -248,15 +342,23 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         applyCompactMode(SettingsManager.shared.compactSettings)
         navigation.reloadData()
         navigation.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        refreshNavigationSelectionAppearance()
         tabView.selectTabViewItem(at: 0)
 
         // Keep the comfortable initial size, while allowing the content itself to
         // grow with the window instead of leaving the right half empty.
         let visibleFrame = (win.screen ?? NSScreen.main)?.visibleFrame
+        let availableWidth = max(800, (visibleFrame?.width ?? 1024) - 80)
         let availableHeight = max(360, (visibleFrame?.height ?? 720) - 56)
         let minimumHeight = min(480, availableHeight)
+        let desiredWidth = min(940, availableWidth)
         let desiredHeight = min(max(680, tallest + 16), availableHeight)
-        win.setContentSize(NSSize(width: 800, height: max(minimumHeight, desiredHeight)))
+        // Size the document against the window's actual initial viewport. Using the
+        // pre-resize content-view height left the scroll view scrolled past the first
+        // controls on shorter displays and restored windows.
+        minimumDocumentHeight = max(tallest, desiredHeight)
+        tabView.frame.size.height = minimumDocumentHeight
+        win.setContentSize(NSSize(width: desiredWidth, height: max(minimumHeight, desiredHeight)))
         win.minSize = NSSize(width: 800, height: minimumHeight)
         let autosaveName = "MultiSwitcher.SettingsWindow"
         win.setFrameAutosaveName(autosaveName)
@@ -268,10 +370,12 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         NSApp.activate(ignoringOtherApps: true)
 
         window = win
+        updateWindowTitle()
         installWindowShortcutMonitor(for: win)
         setSidebarWidth(sidebarWidth)
         onWindowVisibilityChanged?(true)
         updatePagePresentation()
+        scrollPaneToTop()
     }
 
     func closeSettingsWindow() {
@@ -391,7 +495,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             sidebarSeparator?.alphaValue = 0
         }
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.22
+            context.duration = SettingsMotionMetrics.expandPage
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             paneScrollView.animator().frame = targetFrame
             if isExpanded {
@@ -420,6 +524,22 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
                                          height: max(minimumDocumentHeight, paneScrollView.contentSize.height)))
     }
 
+    /// AppKit clip views use a bottom-left origin unless the document is flipped.
+    /// Explicitly reveal the document's first row when a page is opened so restored
+    /// window sizes never leave the first card underneath the title bar.
+    private func scrollPaneToTop() {
+        guard let paneScrollView, let documentView = paneScrollView.documentView else { return }
+        paneScrollView.layoutSubtreeIfNeeded()
+        documentView.layoutSubtreeIfNeeded()
+        let clipView = paneScrollView.contentView
+        var origin = clipView.bounds.origin
+        origin.y = documentView.isFlipped
+            ? 0
+            : max(0, documentView.bounds.height - clipView.bounds.height)
+        clipView.scroll(to: origin)
+        paneScrollView.reflectScrolledClipView(clipView)
+    }
+
     private func setSidebarWidth(_ requested: CGFloat) {
         guard let rootView, let sidebarView, let sidebarSeparator else { return }
         let maximum = max(180, min(320, rootView.bounds.width - sidebarDividerWidth - 480))
@@ -439,8 +559,8 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     }
 
     private func applyCompactMode(_ compact: Bool) {
-        navigationTable?.rowHeight = compact ? 36 : 42
-        navigationTable?.intercellSpacing = NSSize(width: 0, height: compact ? 2 : 4)
+        navigationTable?.rowHeight = compact ? 36 : 40
+        navigationTable?.intercellSpacing = NSSize(width: 0, height: compact ? 2 : 5)
         navigationTable?.reloadData()
         exceptionEditors.forEach { $0.setCompactMode(compact) }
         learningListEditor?.setCompactMode(compact)
@@ -485,41 +605,82 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         ]
     }
 
+    private func updateWindowTitle() {
+        guard navigationItems.indices.contains(selectedPageIndex) else { return }
+        window?.title = navigationItems[selectedPageIndex].title
+    }
+
     func numberOfRows(in tableView: NSTableView) -> Int { navigationItems.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard navigationItems.indices.contains(row) else { return nil }
         let item = navigationItems[row]
         let cell = NSTableCellView()
-        let icon = NSImageView()
-        icon.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)
-        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
-        icon.contentTintColor = .secondaryLabelColor
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        let label = NSTextField(labelWithString: item.title)
-        label.font = SystemTypography.font(.body, weight: .medium)
-        label.textColor = .labelColor
-        label.lineBreakMode = .byTruncatingTail
-        label.translatesAutoresizingMaskIntoConstraints = false
-        cell.addSubview(icon)
-        cell.addSubview(label)
+        let button = NSButton(title: item.title, target: self,
+                              action: #selector(navigationButtonPressed(_:)))
+        button.tag = row
+        button.isBordered = false
+        button.bezelStyle = .inline
+        button.alignment = .left
+        button.imagePosition = .imageLeading
+        button.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 15, weight: .medium))
+        button.contentTintColor = tableView.selectedRow == row ? .labelColor : .secondaryLabelColor
+        button.font = SystemTypography.font(.body, weight: tableView.selectedRow == row ? .semibold : .medium)
+        button.lineBreakMode = .byTruncatingTail
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setAccessibilityLabel(item.title)
+        button.toolTip = item.title
+        cell.addSubview(button)
         NSLayoutConstraint.activate([
-            icon.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 12),
-            icon.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18),
-            icon.heightAnchor.constraint(equalToConstant: 18),
-            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
-            label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -8),
-            label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            button.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
+            button.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
+            button.topAnchor.constraint(equalTo: cell.topAnchor),
+            button.bottomAnchor.constraint(equalTo: cell.bottomAnchor),
         ])
         return cell
+    }
+
+    @objc private func navigationButtonPressed(_ sender: NSButton) {
+        guard navigationItems.indices.contains(sender.tag) else { return }
+        transitionToPage(sender.tag, animated: true)
+    }
+
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        SettingsSidebarRowView()
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
         guard let navigationTable,
               (notification.object as? NSTableView) === navigationTable,
-              navigationTable.selectedRow >= 0 else { return }
-        transitionToPage(navigationTable.selectedRow, animated: true)
+              navigationTable.selectedRow >= 0,
+              !suppressSidebarSelectionChange else { return }
+        // Keep the selection index intact. A full reloadData() here can clear
+        // NSTableView's selection before transitionToPage reads selectedRow,
+        // leaving the sidebar visible but every navigation item inert.
+        let selectedIndex = navigationTable.selectedRow
+        transitionToPage(selectedIndex, animated: true)
+        refreshNavigationSelectionAppearance()
+    }
+
+    private func refreshNavigationSelectionAppearance() {
+        guard let navigationTable else { return }
+        let selectedRow = navigationTable.selectedRow
+        for row in 0..<navigationItems.count {
+            guard let cell = navigationTable.view(atColumn: 0, row: row,
+                                                   makeIfNecessary: false) as? NSTableCellView else {
+                navigationTable.rowView(atRow: row, makeIfNecessary: false)?.needsDisplay = true
+                continue
+            }
+            for subview in cell.subviews {
+                if let button = subview as? NSButton {
+                    let selected = row == selectedRow
+                    button.contentTintColor = selected ? .labelColor : .secondaryLabelColor
+                    button.font = SystemTypography.font(.body, weight: selected ? .semibold : .medium)
+                }
+            }
+            navigationTable.rowView(atRow: row, makeIfNecessary: false)?.needsDisplay = true
+        }
     }
 
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
@@ -527,8 +688,9 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
               let index = tabView.tabViewItems.firstIndex(of: tabViewItem),
               navigationTable?.selectedRow != index else { return }
         selectedPageIndex = index
+        updateWindowTitle()
         if !canExpandSelectedPage { expandedPage = false }
-        navigationTable?.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        selectSidebarRow(index)
         updatePagePresentation(animated: true)
     }
 
@@ -536,12 +698,14 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         guard navigationItems.indices.contains(index) else { return }
         let willChange = selectedPageIndex != index
         selectedPageIndex = index
+        updateWindowTitle()
         if !canExpandSelectedPage { expandedPage = false }
-        navigationTable?.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        selectSidebarRow(index)
         guard let settingsTabView, willChange, animated, !reduceMotion,
               let paneScrollView, window?.isVisible == true else {
             settingsTabView?.selectTabViewItem(at: index)
             updatePagePresentation(animated: willChange)
+            if willChange { scrollPaneToTop() }
             return
         }
 
@@ -549,21 +713,30 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         let generation = pageTransitionGeneration
         paneScrollView.alphaValue = 1
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.09
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            paneScrollView.animator().alphaValue = 0.72
+            context.duration = SettingsMotionMetrics.pageFadeOut
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            paneScrollView.animator().alphaValue = SettingsMotionMetrics.pageFadeOutOpacity
             context.completionHandler = { [weak self, weak settingsTabView, weak paneScrollView] in
                 guard let self, let settingsTabView, let paneScrollView,
                       self.pageTransitionGeneration == generation else { return }
                 settingsTabView.selectTabViewItem(at: index)
                 self.updatePagePresentation(animated: true)
+                self.scrollPaneToTop()
                 NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.16
-                    context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                    context.duration = SettingsMotionMetrics.pageFadeIn
+                    context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                     paneScrollView.animator().alphaValue = 1
                 }
             }
         }
+    }
+
+    private func selectSidebarRow(_ index: Int) {
+        guard let navigationTable else { return }
+        suppressSidebarSelectionChange = true
+        navigationTable.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        suppressSidebarSelectionChange = false
+        refreshNavigationSelectionAppearance()
     }
 
     /// Обновить состояние чекбокса автопереключения извне
@@ -586,6 +759,77 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
     // MARK: - General Tab
 
+    /// Adds a restrained, system-adaptive group surface behind related controls.
+    /// It is added after text fitting so the layout pass only measures real controls.
+    private func addSettingsCard(to container: NSView,
+                                 around views: [NSView],
+                                 horizontalPadding: CGFloat = SettingsCardMetrics.horizontalPadding,
+                                 verticalPadding: CGFloat = SettingsCardMetrics.verticalPadding,
+                                 stretchesVertically: Bool = false) {
+        let visible = views.filter { !$0.isHidden }
+        guard var frame = visible.first?.frame else { return }
+        func expandedFrame() -> NSRect {
+            var result = visible[0].frame
+            for view in visible.dropFirst() { result = result.union(view.frame) }
+            return result.insetBy(dx: -horizontalPadding, dy: -verticalPadding)
+        }
+        frame = expandedFrame()
+        let existingCards = container.subviews.compactMap { $0 as? SettingsCardBackground }
+        let groupIDs = Set(visible.map(ObjectIdentifier.init))
+        let followingControls = container.subviews.filter { subview in
+            !subview.isHidden && !(subview is SettingsCardBackground) &&
+            !groupIDs.contains(ObjectIdentifier(subview)) && subview.frame.maxY <= frame.minY
+        }
+        let movingControls = visible + followingControls
+
+        // Text fitting can make localized labels taller after the original y positions
+        // were assigned. Place this group below the lowest existing card that shares its
+        // horizontal span. Moving below the bottom-most card in one step avoids leaving
+        // unresolved intersections when a localized row grows after its initial placement.
+        let layoutFrame = SettingsCardFrame(
+            x: Double(frame.origin.x), y: Double(frame.origin.y),
+            width: Double(frame.size.width), height: Double(frame.size.height)
+        )
+        let existingFrames = existingCards.map { card in
+            SettingsCardFrame(
+                x: Double(card.frame.origin.x), y: Double(card.frame.origin.y),
+                width: Double(card.frame.size.width), height: Double(card.frame.size.height)
+            )
+        }
+        let shift = CGFloat(SettingsCardLayoutPolicy.downwardShift(
+            for: layoutFrame,
+            existingFrames: existingFrames,
+            gutter: Double(SettingsCardMetrics.gutter)
+        ))
+        if shift > 0 {
+            for view in movingControls { view.frame.origin.y -= shift }
+            frame = expandedFrame()
+        }
+
+        // Keep a non-fatal diagnostic for unusual geometry. Settings must remain usable
+        // even if a future localization introduces a layout collision.
+#if DEBUG
+        if existingCards.contains(where: { $0.frame.intersects(frame) }) {
+            rslog("Settings card layout overlap after fallback: new=\(frame), previous=\(existingCards.map(\.frame))")
+        }
+#endif
+        let card = SettingsCardBackground(frame: frame)
+        card.autoresizingMask = stretchesVertically ? [.width, .height] : [.width]
+        if let firstSubview = container.subviews.first {
+            container.addSubview(card, positioned: .below, relativeTo: firstSubview)
+        } else {
+            container.addSubview(card)
+        }
+        let minimumContentBottom: CGFloat = 16
+        let lowestSubview = container.subviews.filter { !$0.isHidden }
+            .map { $0.frame.minY }.min() ?? minimumContentBottom
+        let rebase = max(0, minimumContentBottom - lowestSubview)
+        if rebase > 0 {
+            for subview in container.subviews { subview.frame.origin.y += rebase }
+            container.frame.size.height += rebase
+        }
+    }
+
     /// Прижимает контент вкладки к ВЕРХУ. NSTabView растягивает вид вкладки на всю высоту окна,
     /// а под-вью с абсолютными координатами (y от низа) иначе провисают к низу/центру короткой
     /// вкладки. Оборачиваем фиксированный контент в растягивающийся контейнер и пиним контент к
@@ -600,6 +844,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         // already aligned to the content edge; keep labels and compact buttons fixed.
         content.autoresizingMask = fillsHeight ? [.width, .height] : [.width, .minYMargin]
         for child in content.subviews {
+            if child is SettingsCardBackground { continue }
             var mask: NSView.AutoresizingMask = child.frame.maxX >= content.frame.width - 46 ? [.width] : []
             if fillsHeight {
                 if child.frame.height < 40 && child.frame.minY < 30 {
@@ -616,319 +861,293 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         return outer
     }
 
-    // MARK: - Подгонка вёрстки под длину текста
-
-    /// Вкладки свёрстаны абсолютными фреймами, и длинные переводы обрезались: на 16 языках
-    /// нашлось 113 мест (проверка: site/tools/make_shots.sh --audit). После сборки вкладки
-    /// этот проход подгоняет её под фактический текст:
-    ///  • строки «подпись + список» — общая колонка подписей по самой длинной; если список
-    ///    при этом не влезает, подпись переносится на несколько строк;
-    ///  • многострочные пояснения и длинные чекбоксы получают нужную высоту (чекбоксы переносятся);
-    ///  • кнопки расширяются под текст, а ряд кнопок, который не влезает, встаёт в столбик;
-    ///  • всё, что ниже выросшего элемента, сдвигается вниз, высота вкладки — по содержимому.
-    private func fitToText(_ view: NSView) {
-        let left: CGFloat = 20, right: CGFloat = 440, gap: CGFloat = 8
-        let items = view.subviews.filter { !$0.isHidden }
-        guard !items.isEmpty else { return }
-        let topMargin = view.frame.height - (items.map { $0.frame.maxY }.max() ?? view.frame.height)
-
-        // Строки — элементы, чьи рамки заметно пересекаются по вертикали (подпись и список рядом).
-        func sameRow(_ a: NSRect, _ b: NSRect) -> Bool {
-            min(a.maxY, b.maxY) - max(a.minY, b.minY) > 0.3 * min(a.height, b.height)
+    /// Constraint-based form primitives for preference pages that need to reflow
+    /// predictably as the window, localization, or text size changes.
+    private func settingsVerticalStack(
+        _ views: [NSView],
+        spacing: CGFloat = SettingsCardMetrics.controlSpacing
+    ) -> NSStackView {
+        let stack = NSStackView(views: views)
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.distribution = .fill
+        stack.spacing = spacing
+        stack.detachesHiddenViews = true
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        for view in views {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
-        var rows: [[NSView]] = []
-        for v in items.sorted(by: { $0.frame.maxY > $1.frame.maxY }) {
-            if let i = rows.firstIndex(where: { $0.contains { sameRow($0.frame, v.frame) } }) {
-                rows[i].append(v)
-            } else {
-                rows.append([v])
+        return stack
+    }
+
+    /// Reflows legacy controls as a real Auto Layout stack instead of carrying their
+    /// original, fixed x/y coordinates into every window size and localization.
+    private func adaptiveControlsStack(
+        _ views: [NSView],
+        spacing: CGFloat = SettingsCardMetrics.controlSpacing
+    ) -> NSStackView {
+        views.forEach { $0.removeFromSuperview() }
+        for view in views {
+            if let label = view as? NSTextField, !label.isEditable {
+                label.cell?.wraps = true
+                label.cell?.lineBreakMode = .byWordWrapping
+                label.maximumNumberOfLines = 0
+                label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            } else if let button = view as? NSButton, !(button is NSPopUpButton) {
+                button.cell?.wraps = true
+                button.cell?.lineBreakMode = .byWordWrapping
+                button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             }
         }
-        rows.sort { ($0.map { $0.frame.maxY }.max() ?? 0) > ($1.map { $0.frame.maxY }.max() ?? 0) }
+        return settingsVerticalStack(views, spacing: spacing)
+    }
 
-        var grow: [ObjectIdentifier: CGFloat] = [:]       // на сколько выросла высота (верх на месте)
-        func setHeight(_ v: NSView, _ h: CGFloat) {
-            let top = v.frame.maxY
-            grow[ObjectIdentifier(v), default: 0] += h - v.frame.height
-            v.frame = NSRect(x: v.frame.minX, y: top - h, width: v.frame.width, height: h)
+    private func adaptiveButtonRow(
+        _ views: [NSView],
+        spacing: CGFloat = SettingsCardMetrics.controlSpacing
+    ) -> NSStackView {
+        views.forEach { $0.removeFromSuperview() }
+        let row = NSStackView(views: views)
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fillEqually
+        row.spacing = spacing
+        row.translatesAutoresizingMaskIntoConstraints = false
+        views.forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            $0.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            $0.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
-        func fitHeight(_ c: NSControl, width: CGFloat) -> CGFloat {
-            ceil(c.cell?.cellSize(forBounds: NSRect(x: 0, y: 0, width: width, height: 10_000)).height ?? c.frame.height)
-        }
-        func makeWrapping(_ c: NSControl) {
-            c.cell?.wraps = true
-            c.cell?.lineBreakMode = .byWordWrapping
-            (c as? NSTextField)?.maximumNumberOfLines = 0
-        }
+        return row
+    }
 
-        // 1. «Подпись + список»: одна колонка подписей на всю вкладку.
-        var pairs: [(label: NSTextField, popup: NSPopUpButton)] = []
-        for row in rows {
-            let labels = row.compactMap { $0 as? NSTextField }.filter { !$0.isEditable && $0.cell?.wraps != true }
-            let popups = row.compactMap { $0 as? NSPopUpButton }
-            if labels.count == 1, popups.count == 1, labels[0].frame.minX < popups[0].frame.minX {
-                pairs.append((labels[0], popups[0]))
-            }
-        }
-        if !pairs.isEmpty {
-            let popupNeed = min(pairs.map { ceil($0.popup.cell?.cellSize.width ?? 0) }.max() ?? 0, right - left - gap - 90)
-            let labelNeed = pairs.map { ceil($0.label.cell?.cellSize.width ?? 0) + 2 }.max() ?? 0
-            // Колонка не уже самого длинного слова: иначе слово рвётся по буквам («Դասավորությա / ն»).
-            let longestWord = pairs.flatMap { p in
-                p.label.stringValue.split(whereSeparator: \.isWhitespace).map { word in
-                    ceil(NSAttributedString(string: String(word), attributes: [.font: p.label.font ?? SystemTypography.font(.body)]).size().width) + 4
-                }
-            }.max() ?? 0
-            let column = min(labelNeed, max(90, right - left - gap - popupNeed))
-            if column >= longestWord {
-                for (label, popup) in pairs {
-                    label.frame = NSRect(x: left, y: label.frame.minY, width: column, height: label.frame.height)
-                    if ceil(label.cell?.cellSize.width ?? 0) + 2 > column {
-                        makeWrapping(label)
-                        setHeight(label, fitHeight(label, width: column))
-                    }
-                    let x = left + column + gap
-                    popup.frame = NSRect(x: x, y: popup.frame.minY, width: right - x, height: popup.frame.height)
-                }
-            } else {
-                // Подписи над списками, во всю ширину — одинаково для всей вкладки.
-                for (label, popup) in pairs {
-                    let top = max(label.frame.maxY, popup.frame.maxY)
-                    let rowHeight = top - min(label.frame.minY, popup.frame.minY)
-                    makeWrapping(label)
-                    let lh = fitHeight(label, width: right - left)
-                    label.frame = NSRect(x: left, y: top - lh, width: right - left, height: lh)
-                    popup.frame = NSRect(x: left, y: label.frame.minY - 4 - popup.frame.height,
-                                         width: right - left, height: popup.frame.height)
-                    grow[ObjectIdentifier(popup), default: 0] += (lh + 4 + popup.frame.height) - rowHeight
-                }
-            }
-        }
+    private func settingsCard(containing content: NSView) -> SettingsCardBackground {
+        let card = SettingsCardBackground(frame: .zero)
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor,
+                                             constant: SettingsCardMetrics.horizontalPadding),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor,
+                                              constant: -SettingsCardMetrics.horizontalPadding),
+            content.topAnchor.constraint(equalTo: card.topAnchor,
+                                         constant: SettingsCardMetrics.verticalPadding),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor,
+                                            constant: -SettingsCardMetrics.verticalPadding),
+        ])
+        return card
+    }
 
-        // 2. Многострочные пояснения и чекбоксы (кнопки без рамки) — высота по тексту.
-        for v in items {
-            if let tf = v as? NSTextField, !tf.isEditable, tf.cell?.wraps == true {
-                let h = fitHeight(tf, width: tf.frame.width)
-                if h > tf.frame.height { setHeight(tf, h) }
-            } else if let b = v as? NSButton, !(b is NSPopUpButton), !b.isBordered, !b.title.isEmpty,
-                      ceil(b.cell?.cellSize.width ?? 0) > b.frame.width {
-                makeWrapping(b)
-                setHeight(b, max(b.frame.height, fitHeight(b, width: b.frame.width)))
-            }
-        }
+    private func settingsFormRow(_ title: String, control: NSView) -> NSStackView {
+        let label = NSTextField(wrappingLabelWithString: title)
+        label.font = SystemTypography.font(.body)
+        label.textColor = .labelColor
+        label.maximumNumberOfLines = 0
+        label.cell?.lineBreakMode = .byWordWrapping
+        label.translatesAutoresizingMaskIntoConstraints = false
+        control.translatesAutoresizingMaskIntoConstraints = false
+        control.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        // 3. Кнопки с рамкой: ширина по тексту; ряд, который не влезает, — в столбик на всю ширину.
-        for row in rows {
-            let buttons = row.compactMap { $0 as? NSButton }.filter { !($0 is NSPopUpButton) && $0.isBordered }
-                .sorted { $0.frame.minX < $1.frame.minX }
-            guard !buttons.isEmpty else { continue }
-            let need = buttons.map { ceil($0.cell?.cellSize.width ?? 0) + 2 }     // cellSize уже с полями кнопки
-            guard zip(buttons, need).contains(where: { $0.frame.width < $1 }) else { continue }
-            let start = buttons[0].frame.minX
-            let rowGap: CGFloat = buttons.count > 1 ? buttons[1].frame.minX - buttons[0].frame.maxX : 10
-            let gaps = rowGap * CGFloat(buttons.count - 1)
-            // прежние ширины, где хватает; если ряд так не влезает — точно по тексту
-            var widths = zip(buttons, need).map { max($0.frame.width, $1) }
-            if start + widths.reduce(0, +) + gaps > right { widths = need }
-            if start + widths.reduce(0, +) + gaps <= right {
-                var x = start
-                for (b, w) in zip(buttons, widths) {
-                    b.frame = NSRect(x: x, y: b.frame.minY, width: w, height: b.frame.height)
-                    x += w + rowGap
-                }
-            } else {
-                // столбиком: первая кнопка на месте, остальные ниже; рост ряда — на первой кнопке
-                let h = buttons[0].frame.height, step = h + 8
-                for (i, b) in buttons.enumerated() {
-                    b.frame = NSRect(x: start, y: buttons[0].frame.minY - CGFloat(i) * step, width: right - start, height: h)
-                }
-                grow[ObjectIdentifier(buttons[0]), default: 0] += step * CGFloat(buttons.count - 1)
-            }
-        }
+        let row = NSStackView(views: [label, control])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fill
+        row.spacing = SettingsCardMetrics.formLabelGap
+        row.translatesAutoresizingMaskIntoConstraints = false
+        label.widthAnchor.constraint(equalToConstant: 150).isActive = true
+        return row
+    }
 
-        // 4. Сдвиг вниз всего, что ниже выросших элементов.
-        var offset: CGFloat = 0
-        for row in rows {
-            var rowGrow: CGFloat = 0
-            for v in row {
-                v.frame.origin.y -= offset
-                rowGrow = max(rowGrow, grow[ObjectIdentifier(v)] ?? 0)
-            }
-            offset += rowGrow
+    private func settingsCardPage(_ cards: [NSView]) -> NSView {
+        let pageWidth: CGFloat = 540
+        let page = NSView(frame: NSRect(x: 0, y: 0, width: pageWidth, height: 800))
+        let stack = settingsVerticalStack(cards, spacing: SettingsCardMetrics.gutter)
+        // A settings pane can become shorter during window resize or localization.
+        // Keep each card at its measured content height instead of letting NSStackView
+        // compress neighboring cards into one another.
+        stack.setContentCompressionResistancePriority(.required, for: .vertical)
+        for card in cards {
+            card.setContentCompressionResistancePriority(.required, for: .vertical)
         }
-
-        // 5. Высота вкладки — по содержимому: прежний отступ сверху, 16 снизу.
-        let low = items.map { $0.frame.minY }.min() ?? 0
-        let high = items.map { $0.frame.maxY }.max() ?? 0
-        let height = topMargin + (high - low) + 16
-        for v in items { v.frame.origin.y += 16 - low }
-        view.frame = NSRect(x: view.frame.minX, y: view.frame.minY, width: view.frame.width, height: height)
+        page.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: page.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: page.trailingAnchor, constant: -16),
+            stack.topAnchor.constraint(equalTo: page.topAnchor, constant: 16),
+        ])
+        page.layoutSubtreeIfNeeded()
+        let contentHeight = ceil(stack.fittingSize.height)
+        page.setFrameSize(NSSize(width: pageWidth, height: contentHeight + 32))
+        page.layoutSubtreeIfNeeded()
+        return topAligned(page)
     }
 
     private func createGeneralTab() -> NSTabViewItem {
         let item = NSTabViewItem()
         item.label = L10n.settingsTabGeneral
 
-        let view = NSView(frame: NSRect(x: 0, y: 0, width: 460, height: 790))
-        var y: CGFloat = 750
-
-        // Автопереключение
-        let autoSwitch = NSButton(checkboxWithTitle: L10n.settingsAutoSwitch, target: self, action: #selector(autoSwitchChanged))
-        autoSwitch.frame = NSRect(x: 20, y: y, width: 420, height: 22)
+        let autoSwitch = NSButton(checkboxWithTitle: L10n.settingsAutoSwitch,
+                                  target: self, action: #selector(autoSwitchChanged))
         autoSwitch.state = SettingsManager.shared.autoSwitchEnabled ? .on : .off
-        view.addSubview(autoSwitch)
         autoSwitchCheckbox = autoSwitch
-        y -= 30
 
-        // Триггер конвертации
-        let triggerLabel = NSTextField(labelWithString: L10n.settingsTrigger)
-        triggerLabel.frame = NSRect(x: 20, y: y, width: 150, height: 22)
-        view.addSubview(triggerLabel)
+        let emptySymbol = NSImage(size: NSSize(width: 16, height: 16))
+        let permissionSymbol = NSImageView(image: NSImage(systemSymbolName: "info.circle", accessibilityDescription: L10n.settingsPermissionsStatus) ?? emptySymbol)
+        permissionSymbol.contentTintColor = .secondaryLabelColor
+        permissionSymbol.setContentHuggingPriority(.required, for: .horizontal)
+        permissionSymbol.setAccessibilityLabel(L10n.settingsPermissionsStatus)
+        permissionStatusSymbol = permissionSymbol
 
-        let triggerPopup = NSPopUpButton(frame: NSRect(x: 175, y: y - 2, width: 255, height: 26))
+        let permissionLabel = NSTextField(wrappingLabelWithString: "")
+        permissionLabel.font = SystemTypography.font(.footnote)
+        permissionLabel.textColor = .secondaryLabelColor
+        permissionLabel.maximumNumberOfLines = 0
+        permissionLabel.cell?.lineBreakMode = .byWordWrapping
+        permissionStatusLabel = permissionLabel
+
+        let permissionReview = NSButton(title: L10n.settingsPermissionsReview,
+                                        target: self, action: #selector(reviewPermissions))
+        permissionReview.bezelStyle = .rounded
+        permissionReview.setAccessibilityLabel(L10n.settingsPermissionsReview)
+
+        let permissionRow = NSStackView(views: [permissionSymbol, permissionLabel, permissionReview])
+        permissionRow.orientation = .horizontal
+        permissionRow.alignment = .centerY
+        permissionRow.distribution = .fill
+        permissionRow.spacing = 8
+        permissionRow.translatesAutoresizingMaskIntoConstraints = false
+        permissionLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        permissionReview.setContentHuggingPriority(.required, for: .horizontal)
+        permissionRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 28).isActive = true
+
+        let triggerPopup = NSPopUpButton(frame: .zero)
         populateTriggerPopup(triggerPopup)
         triggerPopup.target = self
         triggerPopup.action = #selector(triggerChanged)
-        view.addSubview(triggerPopup)
-        y -= 34
 
-        let rightOnlyCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerRightOnly, target: self, action: #selector(triggerRightOnlyChanged))
-        rightOnlyCheckbox.frame = NSRect(x: 40, y: y, width: 390, height: 22)
+        let rightOnlyCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerRightOnly,
+                                         target: self, action: #selector(triggerRightOnlyChanged))
         rightOnlyCheckbox.state = SettingsManager.shared.triggerRightOnly ? .on : .off
-        view.addSubview(rightOnlyCheckbox)
-        y -= 26
-
-        let doubleTapCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerDoubleTap, target: self, action: #selector(triggerDoubleTapChanged))
-        doubleTapCheckbox.frame = NSRect(x: 40, y: y, width: 390, height: 22)
+        let doubleTapCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerDoubleTap,
+                                         target: self, action: #selector(triggerDoubleTapChanged))
         doubleTapCheckbox.state = SettingsManager.shared.triggerDoubleTap ? .on : .off
-        view.addSubview(doubleTapCheckbox)
-        y -= 30
 
-        // issue #14: отдельный хоткей чистого переключения раскладки (без конверсии) —
-        // в т.ч. Ctrl+Shift и другие модификаторные комбо, недоступные системным настройкам.
-        let switchLabel = NSTextField(labelWithString: L10n.settingsSwitchHotkey)
-        switchLabel.frame = NSRect(x: 20, y: y, width: 150, height: 22)
-        view.addSubview(switchLabel)
+        let hotkeyLabel = NSTextField(wrappingLabelWithString: L10n.settingsHotkey)
+        hotkeyLabel.font = SystemTypography.font(.footnote)
+        hotkeyLabel.textColor = .secondaryLabelColor
+        hotkeyLabel.maximumNumberOfLines = 0
+        hotkeyLabel.cell?.lineBreakMode = .byWordWrapping
 
-        let switchPopup = NSPopUpButton(frame: NSRect(x: 175, y: y - 2, width: 255, height: 26))
+        let triggerControls = settingsVerticalStack([
+            autoSwitch,
+            permissionRow,
+            settingsFormRow(L10n.settingsTrigger, control: triggerPopup),
+            rightOnlyCheckbox,
+            doubleTapCheckbox,
+            hotkeyLabel,
+        ], spacing: 8)
+
+        let switchPopup = NSPopUpButton(frame: .zero)
         populateSwitchHotkeyPopup(switchPopup)
         switchPopup.target = self
         switchPopup.action = #selector(switchHotkeyChanged)
-        view.addSubview(switchPopup)
         switchHotkeyPopup = switchPopup
-        y -= 34   // как зазор popup→rightOnly у триггера (попап высотой 26 на y-2)
 
-        // issue #14: только правая клавиша хоткея смены (зеркало rightOnly триггера).
-        let switchRightOnlyCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerRightOnly, target: self, action: #selector(switchRightOnlyChanged))
-        switchRightOnlyCheckbox.frame = NSRect(x: 40, y: y, width: 390, height: 22)
+        let switchRightOnlyCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerRightOnly,
+                                               target: self, action: #selector(switchRightOnlyChanged))
         switchRightOnlyCheckbox.state = SettingsManager.shared.switchRightOnly ? .on : .off
-        view.addSubview(switchRightOnlyCheckbox)
-        y -= 26
-
-        // issue #14: смена по двойному тапу выбранного хоткея (зеркало double-tap триггера).
-        let switchDoubleTapCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerDoubleTap, target: self, action: #selector(switchDoubleTapChanged))
-        switchDoubleTapCheckbox.frame = NSRect(x: 40, y: y, width: 390, height: 22)
+        let switchDoubleTapCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerDoubleTap,
+                                               target: self, action: #selector(switchDoubleTapChanged))
         switchDoubleTapCheckbox.state = SettingsManager.shared.switchDoubleTap ? .on : .off
-        view.addSubview(switchDoubleTapCheckbox)
-        y -= 34
 
-        // issue #29: отдельный хоткей смены регистра (последнее слово / выделение), как Alt+Break
-        // в Punto. Должен отличаться от триггера и от хоткея смены раскладки (движок игнорирует совпадения).
-        let caseLabel = NSTextField(labelWithString: L10n.settingsCaseHotkey)
-        caseLabel.frame = NSRect(x: 20, y: y, width: 150, height: 22)
-        view.addSubview(caseLabel)
-
-        let casePopup = NSPopUpButton(frame: NSRect(x: 175, y: y - 2, width: 255, height: 26))
+        let casePopup = NSPopUpButton(frame: .zero)
         populateCaseHotkeyPopup(casePopup)
         casePopup.target = self
         casePopup.action = #selector(caseHotkeyChanged)
-        view.addSubview(casePopup)
         caseHotkeyPopup = casePopup
-        y -= 34
-
-        let caseRightOnlyCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerRightOnly, target: self, action: #selector(caseRightOnlyChanged))
-        caseRightOnlyCheckbox.frame = NSRect(x: 40, y: y, width: 390, height: 22)
+        let caseRightOnlyCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerRightOnly,
+                                             target: self, action: #selector(caseRightOnlyChanged))
         caseRightOnlyCheckbox.state = SettingsManager.shared.caseRightOnly ? .on : .off
-        view.addSubview(caseRightOnlyCheckbox)
-        y -= 26
-
-        let caseDoubleTapCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerDoubleTap, target: self, action: #selector(caseDoubleTapChanged))
-        caseDoubleTapCheckbox.frame = NSRect(x: 40, y: y, width: 390, height: 22)
+        let caseDoubleTapCheckbox = NSButton(checkboxWithTitle: L10n.settingsTriggerDoubleTap,
+                                             target: self, action: #selector(caseDoubleTapChanged))
         caseDoubleTapCheckbox.state = SettingsManager.shared.caseDoubleTap ? .on : .off
-        view.addSubview(caseDoubleTapCheckbox)
-        y -= 32
 
-        let triggerHint = NSTextField(wrappingLabelWithString: L10n.settingsTriggerHint)
-        triggerHint.frame = NSRect(x: 40, y: y - 22, width: 400, height: 36)
-        triggerHint.font = SystemTypography.font(.footnote)
-        triggerHint.textColor = .secondaryLabelColor
-        view.addSubview(triggerHint)
-        y -= 48
+        let hotkeyControls = settingsVerticalStack([
+            settingsFormRow(L10n.settingsSwitchHotkey, control: switchPopup),
+            switchRightOnlyCheckbox,
+            switchDoubleTapCheckbox,
+            settingsFormRow(L10n.settingsCaseHotkey, control: casePopup),
+            caseRightOnlyCheckbox,
+            caseDoubleTapCheckbox,
+        ], spacing: 8)
 
-        // Запуск при логине
-        let loginCheckbox = NSButton(checkboxWithTitle: L10n.settingsLaunchAtLogin, target: self, action: #selector(launchAtLoginChanged))
-        loginCheckbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
+        let loginCheckbox = NSButton(checkboxWithTitle: L10n.settingsLaunchAtLogin,
+                                     target: self, action: #selector(launchAtLoginChanged))
         loginCheckbox.state = SettingsManager.shared.launchAtLogin ? .on : .off
-        view.addSubview(loginCheckbox)
         launchAtLoginCheckbox = loginCheckbox
-        y -= 30
-
-        // Запоминание раскладки по приложению
-        let perAppCheckbox = NSButton(checkboxWithTitle: L10n.settingsPerAppLayout, target: self, action: #selector(perAppLayoutChanged))
-        perAppCheckbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
+        let perAppCheckbox = NSButton(checkboxWithTitle: L10n.settingsPerAppLayout,
+                                      target: self, action: #selector(perAppLayoutChanged))
         perAppCheckbox.state = SettingsManager.shared.perAppLayout ? .on : .off
-        view.addSubview(perAppCheckbox)
-        y -= 30
 
-        // Язык интерфейса
-        let langLabel = NSTextField(labelWithString: L10n.settingsLanguage)
-        langLabel.frame = NSRect(x: 20, y: y, width: 130, height: 22)
-        view.addSubview(langLabel)
-
-        let langPopup = NSPopUpButton(frame: NSRect(x: 155, y: y - 2, width: 275, height: 26))
+        let langPopup = NSPopUpButton(frame: .zero)
         populateLanguagePopup(langPopup)
         langPopup.target = self
         langPopup.action = #selector(languageChanged)
-        view.addSubview(langPopup)
         languagePopup = langPopup
-        y -= 40
 
-        // Раскладка 1
-        let label1 = NSTextField(labelWithString: L10n.settingsLayout1)
-        label1.frame = NSRect(x: 20, y: y, width: 100, height: 22)
-        view.addSubview(label1)
-
-        let popup1 = NSPopUpButton(frame: NSRect(x: 130, y: y - 2, width: 300, height: 26))
+        let popup1 = NSPopUpButton(frame: .zero)
         populateLayoutPopup(popup1, selectedID: SettingsManager.shared.layout1ID)
         popup1.target = self
         popup1.action = #selector(layout1Changed)
-        view.addSubview(popup1)
         layout1Popup = popup1
-        y -= 35
 
-        // Раскладка 2
-        let label2 = NSTextField(labelWithString: L10n.settingsLayout2)
-        label2.frame = NSRect(x: 20, y: y, width: 100, height: 22)
-        view.addSubview(label2)
-
-        let popup2 = NSPopUpButton(frame: NSRect(x: 130, y: y - 2, width: 300, height: 26))
+        let popup2 = NSPopUpButton(frame: .zero)
         populateLayoutPopup(popup2, selectedID: SettingsManager.shared.layout2ID)
         popup2.target = self
         popup2.action = #selector(layout2Changed)
-        view.addSubview(popup2)
         layout2Popup = popup2
-        y -= 50
 
-        // Описание хоткея
-        let hotkeyLabel = NSTextField(wrappingLabelWithString: L10n.settingsHotkey)
-        hotkeyLabel.frame = NSRect(x: 20, y: y - 40, width: 420, height: 55)
-        hotkeyLabel.font = SystemTypography.font(.footnote)
-        hotkeyLabel.textColor = .secondaryLabelColor
-        view.addSubview(hotkeyLabel)
+        let preferences = settingsVerticalStack([
+            loginCheckbox,
+            perAppCheckbox,
+            settingsFormRow(L10n.settingsLanguage, control: langPopup),
+            settingsFormRow(L10n.settingsLayout1, control: popup1),
+            settingsFormRow(L10n.settingsLayout2, control: popup2),
+        ], spacing: 10)
 
-        fitToText(view)
-        item.view = topAligned(view)
+        item.view = settingsCardPage([
+            settingsCard(containing: triggerControls),
+            settingsCard(containing: hotkeyControls),
+            settingsCard(containing: preferences),
+        ])
+        refreshPermissionStatus()
         return item
+    }
+
+    private func refreshPermissionStatus() {
+        updatePermissionStatus(accessibility: AXIsProcessTrusted(),
+                               inputMonitoring: CGPreflightListenEventAccess())
+    }
+
+    func updatePermissionStatus(accessibility: Bool, inputMonitoring: Bool) {
+        if accessibility && inputMonitoring {
+            permissionStatusLabel?.stringValue = L10n.settingsPermissionsReady
+            permissionStatusSymbol?.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: L10n.settingsPermissionsReady)
+        } else {
+            let missing = [
+                accessibility ? nil : L10n.permissionAccessibilityName,
+                inputMonitoring ? nil : L10n.permissionInputMonitoringName,
+            ].compactMap { $0 }.joined(separator: ", ")
+            permissionStatusLabel?.stringValue = L10n.settingsPermissionsMissing(missing)
+            permissionStatusSymbol?.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: L10n.settingsPermissionsStatus)
+        }
+        permissionStatusSymbol?.contentTintColor = .secondaryLabelColor
+        permissionStatusLabel?.superview?.layoutSubtreeIfNeeded()
+    }
+
+    @objc private func reviewPermissions() {
+        onPermissionsReviewRequested?()
     }
 
     // MARK: - Exceptions Tab
@@ -967,6 +1186,11 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         view.addSubview(cfHint)
         y -= 52
 
+        var preferenceControls: [NSView] = [autoConvert, acHint, caretFlag, cfHint]
+
+        // Leave room for both neighboring card insets before the application lists.
+        y -= 36
+
         // Режим удалённого стола отложен в 2.5 — блок скрыт за флагом (для тестирования).
         if SettingsManager.shared.showRemoteDesktopBeta {
             let remote = NSButton(checkboxWithTitle: L10n.menuRemoteDesktop, target: self, action: #selector(remoteDesktopChanged))
@@ -979,37 +1203,51 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             rHint.frame = NSRect(x: 40, y: y - 44, width: 400, height: 44)
             rHint.font = SystemTypography.font(.footnote); rHint.textColor = .secondaryLabelColor
             view.addSubview(rHint)
+            preferenceControls += [remote, rHint]
             y -= 52
         }
 
         // Секция: заголовок сверху, ниже — таблица с кнопками. Зазоры фиксированные,
         // поэтому раскладка одинаково корректна на всех языках (заголовки не переносятся).
-        func addSection(_ title: String, _ editor: ExceptionListEditor) {
+        var sectionCards: [[NSView]] = []
+        func addSection(_ title: String, hint: String, _ editor: ExceptionListEditor) {
             let header = NSTextField(labelWithString: title)
             header.frame = NSRect(x: 20, y: y - 18, width: 420, height: 18)
             header.font = SystemTypography.font(.subheadline, weight: .bold)
             header.lineBreakMode = .byTruncatingTail
             view.addSubview(header)
+            let hintLabel = NSTextField(wrappingLabelWithString: hint)
+            hintLabel.frame = NSRect(x: 20, y: y - 43, width: 420, height: 22)
+            hintLabel.font = SystemTypography.font(.footnote)
+            hintLabel.textColor = .secondaryLabelColor
+            view.addSubview(hintLabel)
             let contH: CGFloat = 96
-            let cont = editor.makeContainer(frame: NSRect(x: 20, y: y - 22 - contH, width: 420, height: contH))
+            let cont = editor.makeContainer(frame: NSRect(x: 20, y: y - 47 - contH, width: 420, height: contH))
+            cont.heightAnchor.constraint(equalToConstant: contH).isActive = true
+            cont.setContentCompressionResistancePriority(.required, for: .vertical)
             view.addSubview(cont)
+            sectionCards.append([header, hintLabel, cont])
             exceptionEditors.append(editor)
-            y -= (22 + contH + 14)   // заголовок+зазор + таблица + зазор до следующей секции
+            // Keep the purpose of both adjacent lists visible without relying on a tooltip.
+            y -= (47 + contH + 28)
         }
 
-        addSection(L10n.settingsExceptionsApps, ExceptionListEditor(
+        addSection(L10n.settingsExceptionsApps, hint: L10n.settingsExceptionsAppsHint, ExceptionListEditor(
             kind: .apps,
             get: { SettingsManager.shared.deniedApps },
             set: { SettingsManager.shared.deniedApps = $0 },
             isProtected: { AutoSwitchPolicy.protectedApps.contains($0) }))
 
-        addSection(L10n.settingsExceptionsAllActions, ExceptionListEditor(
+        addSection(L10n.settingsExceptionsAllActions, hint: L10n.settingsExceptionsAllActionsHint, ExceptionListEditor(
             kind: .apps,
             get: { SettingsManager.shared.allActionsDeniedApps },
             set: { SettingsManager.shared.allActionsDeniedApps = $0 }))
 
-        fitToText(view)
-        item.view = topAligned(view)
+        var cards = [settingsCard(containing: adaptiveControlsStack(preferenceControls))]
+        cards += sectionCards.map { section in
+            settingsCard(containing: adaptiveControlsStack(section))
+        }
+        item.view = settingsCardPage(cards)
         return item
     }
 
@@ -1024,17 +1262,13 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         editor.onRulesChanged = { [weak self] in
             self?.exceptionEditors.forEach { $0.reloadFromStore() }
         }
-        let container = editor.makeContainer(frame: NSRect(x: 20, y: 54, width: 540, height: 590))
+        let container = editor.makeContainer(frame: NSRect(x: 20, y: 18, width: 540, height: 626))
         container.autoresizingMask = [.width, .height]
         view.addSubview(container)
-        let importPunto = NSButton(title: L10n.settingsImportPunto, target: self, action: #selector(importPuntoProfile))
-        importPunto.image = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: nil)
-        importPunto.imagePosition = .imageLeading
-        importPunto.bezelStyle = .rounded
-        importPunto.frame = NSRect(x: 20, y: 16, width: 320, height: 30)
-        importPunto.autoresizingMask = [.maxYMargin]
-        view.addSubview(importPunto)
         ruleEditor = editor
+
+        addSettingsCard(to: view, around: [container], horizontalPadding: 12, verticalPadding: 12,
+                        stretchesVertically: true)
 
         item.view = topAligned(view, fillsHeight: true)
         return item
@@ -1056,6 +1290,9 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         view.addSubview(container)
         editor.reloadFromStore()
         learningListEditor = editor
+
+        addSettingsCard(to: view, around: [hint, container], horizontalPadding: 12, verticalPadding: 12,
+                        stretchesVertically: true)
 
         item.view = topAligned(view, fillsHeight: true)
         return item
@@ -1158,8 +1395,10 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             restoreProfileButton = restore
         }
 
-        fitToText(view)
-        item.view = topAligned(view)
+        let aboutControls = view.subviews
+        item.view = settingsCardPage([
+            settingsCard(containing: adaptiveControlsStack(aboutControls))
+        ])
         return item
     }
 
@@ -1171,41 +1410,71 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
         let view = NSView(frame: NSRect(x: 0, y: 0, width: 460, height: 595))
         var y: CGFloat = 545
+        var conversionControls: [NSView] = []
+        var dictionaryControls: [NSView] = []
+        var behaviorControls: [NSView] = []
 
-        // issue #22 (B): умная по-словная конверсия выделения. По умолчанию ВКЛ.
-        let smartCheckbox = NSButton(checkboxWithTitle: L10n.settingsSmartConversion,
-                                     target: self, action: #selector(smartConversionChanged))
-        smartConversionCheckbox = smartCheckbox
-        smartCheckbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
-        smartCheckbox.state = SettingsManager.shared.smartConversion ? .on : .off
-        smartCheckbox.toolTip = L10n.settingsSmartConversionHint
-        view.addSubview(smartCheckbox)
-        y -= 18
+        let conversionModeTitle = NSTextField(labelWithString: L10n.settingsConversionMode)
+        conversionModeTitle.font = SystemTypography.font(.body, weight: .semibold)
+        conversionModeTitle.frame = NSRect(x: 20, y: y, width: 420, height: 22)
+        view.addSubview(conversionModeTitle)
+        conversionControls.append(conversionModeTitle)
+        y -= 31
 
-        let smartHint = NSTextField(wrappingLabelWithString: L10n.settingsSmartConversionHint)
-        smartHint.frame = NSRect(x: 40, y: y - 18, width: 400, height: 32)
-        smartHint.font = SystemTypography.font(.footnote)
-        smartHint.textColor = .secondaryLabelColor
-        view.addSubview(smartHint)
-        y -= 47
+        let modePopup = NSPopUpButton(frame: NSRect(x: 20, y: y, width: 420, height: 28), pullsDown: false)
+        modePopup.addItems(withTitles: [L10n.settingsSmartConversion,
+                                       L10n.settingsConvertByText,
+                                       L10n.settingsOneWayConversion])
+        if SettingsManager.shared.smartConversion {
+            modePopup.selectItem(at: 0)
+        } else if SettingsManager.shared.convertByText {
+            modePopup.selectItem(at: 1)
+        } else {
+            modePopup.selectItem(at: 2)
+        }
+        modePopup.target = self
+        modePopup.action = #selector(conversionModeChanged(_:))
+        modePopup.setAccessibilityLabel(L10n.settingsConversionMode)
+        view.addSubview(modePopup)
+        conversionControls.append(modePopup)
+        y -= 34
 
-        // issue #22 (A): ручной триггер конвертирует ПО ТЕКСТУ (тотальный флип обеих
-        // письменностей). По умолчанию ВЫКЛ; перебивает умную конверсию.
-        let byTextCheckbox = NSButton(checkboxWithTitle: L10n.settingsConvertByText,
-                                      target: self, action: #selector(convertByTextChanged))
-        convertByTextCheckbox = byTextCheckbox
-        byTextCheckbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
-        byTextCheckbox.state = SettingsManager.shared.convertByText ? .on : .off
-        byTextCheckbox.toolTip = L10n.settingsConvertByTextHint
-        view.addSubview(byTextCheckbox)
-        y -= 18
+        let modeHint = NSTextField(wrappingLabelWithString: conversionModeDescription(for: modePopup.indexOfSelectedItem))
+        modeHint.frame = NSRect(x: 20, y: y - 18, width: 420, height: 34)
+        modeHint.font = SystemTypography.font(.footnote)
+        modeHint.textColor = .secondaryLabelColor
+        modeHint.maximumNumberOfLines = 0
+        conversionModeHint = modeHint
+        view.addSubview(modeHint)
+        conversionControls.append(modeHint)
+        y -= 48
 
-        let byTextHint = NSTextField(wrappingLabelWithString: L10n.settingsConvertByTextHint)
-        byTextHint.frame = NSRect(x: 40, y: y - 18, width: 400, height: 32)
-        byTextHint.font = SystemTypography.font(.footnote)
-        byTextHint.textColor = .secondaryLabelColor
-        view.addSubview(byTextHint)
-        y -= 47
+        let languageSwitchTitle = NSTextField(labelWithString: L10n.settingsLanguageSwitchThreshold)
+        languageSwitchTitle.font = SystemTypography.font(.body, weight: .semibold)
+        languageSwitchTitle.frame = NSRect(x: 20, y: y, width: 420, height: 22)
+        view.addSubview(languageSwitchTitle)
+        conversionControls.append(languageSwitchTitle)
+        y -= 30
+
+        let languageSwitchPopup = NSPopUpButton(frame: NSRect(x: 20, y: y, width: 420, height: 28), pullsDown: false)
+        languageSwitchPopup.addItems(withTitles: [L10n.settingsLanguageSwitchAfterTwo,
+                                                  L10n.settingsLanguageSwitchAfterOne])
+        languageSwitchPopup.selectItem(at: SettingsManager.shared.languageSwitchWordThreshold == 1 ? 1 : 0)
+        languageSwitchPopup.target = self
+        languageSwitchPopup.action = #selector(languageSwitchThresholdChanged(_:))
+        languageSwitchPopup.setAccessibilityLabel(L10n.settingsLanguageSwitchThreshold)
+        view.addSubview(languageSwitchPopup)
+        conversionControls.append(languageSwitchPopup)
+        y -= 30
+
+        let languageSwitchHint = NSTextField(wrappingLabelWithString: L10n.settingsLanguageSwitchThresholdHint)
+        languageSwitchHint.frame = NSRect(x: 20, y: y - 12, width: 420, height: 34)
+        languageSwitchHint.font = SystemTypography.font(.footnote)
+        languageSwitchHint.textColor = .secondaryLabelColor
+        languageSwitchHint.maximumNumberOfLines = 0
+        view.addSubview(languageSwitchHint)
+        conversionControls.append(languageSwitchHint)
+        y -= 48
 
         // issue #24: триггер конвертирует всю строку (не только последнее слово). По умолч. ВЫКЛ.
         let wholeLineCheckbox = NSButton(checkboxWithTitle: L10n.settingsConvertWholeLine,
@@ -1214,6 +1483,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         wholeLineCheckbox.state = SettingsManager.shared.convertWholeLine ? .on : .off
         wholeLineCheckbox.toolTip = L10n.settingsConvertWholeLineHint
         view.addSubview(wholeLineCheckbox)
+        conversionControls.append(wholeLineCheckbox)
         y -= 18
 
         let wholeLineHint = NSTextField(wrappingLabelWithString: L10n.settingsConvertWholeLineHint)
@@ -1221,7 +1491,9 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         wholeLineHint.font = SystemTypography.font(.footnote)
         wholeLineHint.textColor = .secondaryLabelColor
         view.addSubview(wholeLineHint)
-        y -= 47
+        conversionControls.append(wholeLineHint)
+        // Leave a modest natural gap; card layout adds more only when localization needs it.
+        y -= 56
 
         // issue #27: показывать неактивирующую подсказку о защищённом вводе. По умолчанию ВКЛ.
         let secureNoticeCheckbox = NSButton(checkboxWithTitle: L10n.settingsSecureNotice,
@@ -1229,12 +1501,14 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         secureNoticeCheckbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
         secureNoticeCheckbox.state = SettingsManager.shared.secureInputNoticeEnabled ? .on : .off
         view.addSubview(secureNoticeCheckbox)
+        dictionaryControls.append(secureNoticeCheckbox)
         y -= 32
 
         let dictionaryHeading = NSTextField(labelWithString: L10n.settingsDictionaryPacks)
         dictionaryHeading.font = SystemTypography.font(.body, weight: .semibold)
         dictionaryHeading.frame = NSRect(x: 20, y: y, width: 420, height: 22)
         view.addSubview(dictionaryHeading)
+        dictionaryControls.append(dictionaryHeading)
         y -= 27
 
         let themeTitles = [
@@ -1252,6 +1526,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             checkbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
             checkbox.state = enabledThemes.contains(themeIDs[index]) ? .on : .off
             view.addSubview(checkbox)
+            dictionaryControls.append(checkbox)
             y -= 24
         }
         let dictionaryHint = NSTextField(wrappingLabelWithString: L10n.settingsDictionaryPacksHint)
@@ -1259,7 +1534,9 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         dictionaryHint.font = SystemTypography.font(.footnote)
         dictionaryHint.textColor = .secondaryLabelColor
         view.addSubview(dictionaryHint)
-        y -= 50
+        dictionaryControls.append(dictionaryHint)
+        // Leave an 8 pt gutter between the dictionary and behavior cards.
+        y -= 52
 
         // Скрыть иконку из меню-бара (запрос пользователя). По умолчанию ВЫКЛ.
         // При включении — подтверждающий алерт с объяснением, как вернуть (reopen).
@@ -1268,6 +1545,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         hideIconCheckbox.frame = NSRect(x: 20, y: y, width: 420, height: 22)
         hideIconCheckbox.state = SettingsManager.shared.hideMenuBarIcon ? .on : .off
         view.addSubview(hideIconCheckbox)
+        behaviorControls.append(hideIconCheckbox)
         y -= 18
 
         let hideIconHint = NSTextField(wrappingLabelWithString: L10n.settingsHideIconHint)
@@ -1275,7 +1553,9 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         hideIconHint.font = SystemTypography.font(.footnote)
         hideIconHint.textColor = .secondaryLabelColor
         view.addSubview(hideIconHint)
-        y -= 47
+        behaviorControls.append(hideIconHint)
+        // Keep diagnostics in its own card with a clear 8 pt gutter.
+        y -= 56
 
         // Debug log
         let debugCheckbox = NSButton(checkboxWithTitle: L10n.settingsDebugLog, target: self, action: #selector(debugLogChanged))
@@ -1315,9 +1595,116 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         quitBtn.bezelStyle = .rounded
         view.addSubview(quitBtn)
 
-        fitToText(view)
-        item.view = topAligned(view)
+        let diagnosticsButtons = adaptiveButtonRow([showLogBtn, sendLogBtn])
+        let debugHint = NSTextField(wrappingLabelWithString: L10n.settingsDebugLogHint)
+        debugHint.frame = NSRect(x: 40, y: y, width: 400, height: 34)
+        debugHint.font = SystemTypography.font(.footnote)
+        debugHint.textColor = .secondaryLabelColor
+        debugHint.maximumNumberOfLines = 0
+        view.addSubview(debugHint)
+
+        let diagnostics = [debugCheckbox, debugHint, diagnosticsButtons, pathLabel, quitBtn] as [NSView]
+        item.view = settingsCardPage([
+            settingsCard(containing: adaptiveControlsStack(conversionControls)),
+            makeAutomaticExamplePreviewCard(),
+            settingsCard(containing: adaptiveControlsStack(dictionaryControls)),
+            settingsCard(containing: adaptiveControlsStack(behaviorControls)),
+            settingsCard(containing: adaptiveControlsStack(diagnostics)),
+        ])
         return item
+    }
+
+    /// A local, non-persistent preview of the automatic word path. It deliberately
+    /// calls LayoutDetector rather than the separate smart-selection converter.
+    private func makeAutomaticExamplePreviewCard() -> SettingsCardBackground {
+        let title = NSTextField(labelWithString: L10n.settingsExampleTitle)
+        title.font = SystemTypography.font(.body, weight: .semibold)
+
+        let hint = NSTextField(wrappingLabelWithString: L10n.settingsExampleHint)
+        hint.font = SystemTypography.font(.footnote)
+        hint.textColor = .secondaryLabelColor
+        hint.maximumNumberOfLines = 0
+
+        let runtimeCaveat = NSTextField(wrappingLabelWithString: L10n.settingsExampleRuntimeCaveat)
+        runtimeCaveat.font = SystemTypography.font(.caption2)
+        runtimeCaveat.textColor = .tertiaryLabelColor
+        runtimeCaveat.maximumNumberOfLines = 0
+
+        let context = NSTextField(string: "")
+        context.placeholderString = "want вот "
+        context.setAccessibilityLabel(L10n.settingsExampleContext)
+        exampleContextField = context
+
+        let word = NSTextField(string: "")
+        word.placeholderString = "ctqxfc"
+        word.setAccessibilityLabel(L10n.settingsExampleWord)
+        exampleWordField = word
+
+        let layoutPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        layoutPopup.setAccessibilityLabel(L10n.settingsExampleLayout)
+        let choices = configuredPreviewLayouts()
+        for choice in choices {
+            layoutPopup.addItem(withTitle: choice.name)
+            layoutPopup.lastItem?.representedObject = choice.id as NSString
+        }
+        let activeID = LayoutSwitcher.currentLayoutID()
+        if let index = choices.firstIndex(where: { $0.id == activeID }) {
+            layoutPopup.selectItem(at: index)
+        } else if !choices.isEmpty {
+            layoutPopup.selectItem(at: 0)
+        }
+        layoutPopup.isEnabled = choices.count == 2
+        exampleLayoutPopup = layoutPopup
+
+        let checkButton = NSButton(title: L10n.settingsExampleCheck,
+                                   target: self, action: #selector(checkAutomaticExample(_:)))
+        checkButton.bezelStyle = .rounded
+
+        let corrected = NSTextField(wrappingLabelWithString: "")
+        corrected.font = SystemTypography.font(.footnote, weight: .medium)
+        corrected.textColor = .labelColor
+        corrected.maximumNumberOfLines = 0
+        corrected.isHidden = true
+        exampleCorrectedLabel = corrected
+
+        let nextLayout = NSTextField(wrappingLabelWithString: "")
+        nextLayout.font = SystemTypography.font(.footnote, weight: .medium)
+        nextLayout.textColor = .labelColor
+        nextLayout.maximumNumberOfLines = 0
+        nextLayout.isHidden = true
+        exampleNextLayoutLabel = nextLayout
+
+        let reason = NSTextField(wrappingLabelWithString: choices.count == 2 ? "" : L10n.settingsExampleNoPair)
+        reason.font = SystemTypography.font(.footnote)
+        reason.textColor = .secondaryLabelColor
+        reason.maximumNumberOfLines = 0
+        reason.isHidden = choices.count == 2
+        exampleReasonLabel = reason
+
+        let contextRow = settingsFormRow(L10n.settingsExampleContext, control: context)
+        let wordRow = settingsFormRow(L10n.settingsExampleWord, control: word)
+        let layoutRow = settingsFormRow(L10n.settingsExampleLayout, control: layoutPopup)
+        let content = settingsVerticalStack([
+            title, hint, contextRow, wordRow, layoutRow, checkButton,
+            corrected, nextLayout, reason, runtimeCaveat,
+        ], spacing: SettingsCardMetrics.controlSpacing)
+        checkButton.isEnabled = choices.count == 2
+        return settingsCard(containing: content)
+    }
+
+    private func configuredPreviewLayouts() -> [PreviewLayoutChoice] {
+        let sources = LayoutSwitcher.installedLayouts()
+        let settings = SettingsManager.shared
+        let firstID = settings.layout1ID.isEmpty
+            ? LayoutSwitcher.autoDetectID1(from: sources) : settings.layout1ID
+        let secondID = settings.layout2ID.isEmpty
+            ? LayoutSwitcher.autoDetectID2(from: sources) : settings.layout2ID
+        guard !firstID.isEmpty, !secondID.isEmpty, firstID != secondID else { return [] }
+        return [firstID, secondID].compactMap { id in
+            guard let source = sources.first(where: { LayoutSwitcher.sourceID($0) == id }),
+                  let language = LayoutSwitcher.languageCode(source) else { return nil }
+            return PreviewLayoutChoice(id: id, name: LayoutSwitcher.sourceName(source), language: language)
+        }
     }
 
     @objc private func hideIconChanged(_ sender: NSButton) {
@@ -1629,49 +2016,6 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         onAutoConvertChanged?(enabled)
     }
 
-    @objc private func importPuntoProfile() {
-        let panel = NSOpenPanel()
-        panel.title = L10n.settingsImportPunto
-        panel.message = L10n.settingsImportPuntoChooseFile
-        panel.allowedContentTypes = [.propertyList]
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-
-        let puntoPreferences = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Preferences/ru.yandex.punto.plist")
-        if FileManager.default.fileExists(atPath: puntoPreferences.path) {
-            panel.directoryURL = puntoPreferences.deletingLastPathComponent()
-            panel.nameFieldStringValue = puntoPreferences.lastPathComponent
-        }
-
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-
-        do {
-            let report = try SettingsManager.shared.importPuntoProfile(from: url)
-            exceptionEditors.forEach { $0.reloadFromStore() }
-            ruleEditor?.reloadFromStore()
-
-            let alert = NSAlert()
-            alert.alertStyle = .informational
-            alert.messageText = L10n.settingsImportPuntoSuccess
-            alert.informativeText = L10n.settingsImportPuntoAppliedDetails(
-                report.rulesImported,
-                report.unverifiedRules,
-                report.learningImported,
-                report.learningDiscardedByReview,
-                report.snapshotName
-            )
-            alert.runModal()
-        } catch {
-            let alert = NSAlert()
-            alert.alertStyle = .warning
-            alert.messageText = L10n.settingsImportPuntoFailure
-            alert.informativeText = error.localizedDescription
-            alert.runModal()
-        }
-    }
-
     @objc private func remoteDesktopChanged(_ sender: NSButton) {
         let enabled = sender.state == .on
         SettingsManager.shared.remoteDesktopMode = enabled
@@ -1684,14 +2028,213 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         onCaretFlagChanged?(enabled)
     }
 
-    @objc private func smartConversionChanged(_ sender: NSButton) {
-        SettingsManager.shared.smartConversion = sender.state == .on
-        if sender.state == .on { convertByTextCheckbox?.state = .off }
+    private func conversionModeDescription(for index: Int) -> String {
+        switch index {
+        case 0: return L10n.settingsSmartConversionHint
+        case 1: return L10n.settingsConvertByTextHint
+        default: return L10n.settingsOneWayConversionHint
+        }
     }
 
-    @objc private func convertByTextChanged(_ sender: NSButton) {
-        SettingsManager.shared.convertByText = sender.state == .on
-        if sender.state == .on { smartConversionCheckbox?.state = .off }
+    @objc private func conversionModeChanged(_ sender: NSPopUpButton) {
+        switch sender.indexOfSelectedItem {
+        case 0:
+            SettingsManager.shared.smartConversion = true
+        case 1:
+            SettingsManager.shared.convertByText = true
+        default:
+            SettingsManager.shared.smartConversion = false
+            SettingsManager.shared.convertByText = false
+        }
+        conversionModeHint?.stringValue = conversionModeDescription(for: sender.indexOfSelectedItem)
+    }
+
+    @objc private func languageSwitchThresholdChanged(_ sender: NSPopUpButton) {
+        SettingsManager.shared.languageSwitchWordThreshold = sender.indexOfSelectedItem == 1 ? 1 : 2
+    }
+
+    @objc private func checkAutomaticExample(_ sender: NSButton) {
+        guard let wordField = exampleWordField,
+              let contextField = exampleContextField,
+              let layoutPopup = exampleLayoutPopup else { return }
+
+        let typed = wordField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !typed.isEmpty else {
+            showAutomaticExampleResult(text: "", layout: "", reason: L10n.settingsExampleEnterWord)
+            return
+        }
+        guard !typed.contains(where: \.isWhitespace) else {
+            showAutomaticExampleResult(text: typed,
+                                       layout: selectedPreviewLayoutName(in: layoutPopup) ?? "",
+                                       reason: L10n.settingsExampleOneWordOnly)
+            return
+        }
+        let punctuation = LayoutDetector.splitTrailingPunctuation(typed)
+        let typedCharacters = Array(typed)
+        let token = String(typedCharacters.prefix(punctuation.coreLength))
+        let suffix = punctuation.suffix
+        guard !token.isEmpty else {
+            showAutomaticExampleResult(text: typed,
+                                       layout: selectedPreviewLayoutName(in: layoutPopup) ?? "",
+                                       reason: L10n.settingsExampleOneWordOnly)
+            return
+        }
+
+        let choices = configuredPreviewLayouts()
+        guard choices.count == 2,
+              let sourceID = layoutPopup.selectedItem?.representedObject as? String,
+              let sourceIndex = choices.firstIndex(where: { $0.id == sourceID }) else {
+            showAutomaticExampleResult(text: typed, layout: "", reason: L10n.settingsExampleNoPair)
+            return
+        }
+        let source = choices[sourceIndex]
+        let target = choices[1 - sourceIndex]
+        let currentLanguage = String(source.language.prefix(2)).lowercased()
+        let targetLanguage = String(target.language.prefix(2)).lowercased()
+        let converted = DynamicKeyMapping.convertBidirectional(token)
+        let settings = SettingsManager.shared
+
+        var corrected = token
+        var changesLayout = false
+        var hasMixedCandidate = false
+        var reason = L10n.settingsExampleReasonUncertain
+        let initialRule = settings.automaticRuleDecision(typed: token, converted: converted)
+
+        switch initialRule {
+        case .neverConvert:
+            reason = L10n.settingsExampleReasonException
+        case .alwaysConvert:
+            corrected = converted
+            changesLayout = true
+            reason = L10n.settingsExampleReasonForced
+        case .replace(let replacement):
+            corrected = replacement
+            reason = L10n.settingsExampleReasonReplacement
+        case .none:
+            let mixedCandidate: LayoutCorrectionEngine.Candidate?
+            if LayoutCorrectionEngine.isMixedScript(token),
+               Dict.isAvailable(currentLanguage), Dict.isAvailable(targetLanguage),
+               let currentCandidate = DynamicKeyMapping.convertMixedScript(token, towardLang: currentLanguage),
+               let targetCandidate = DynamicKeyMapping.convertMixedScript(token, towardLang: targetLanguage) {
+                mixedCandidate = LayoutCorrectionEngine.uniqueMixedCandidate(
+                    typed: token,
+                    currentLanguage: currentLanguage,
+                    oppositeLanguage: targetLanguage,
+                    currentCandidate: currentCandidate,
+                    oppositeCandidate: targetCandidate,
+                    isValidWord: { candidate, language in
+                        let letters = candidate.filter(\.isLetter).lowercased()
+                        return letters.count >= 2 && Dict.isValidWordForAutomaticPath(letters, lang: language)
+                    }
+                )
+            } else {
+                mixedCandidate = nil
+            }
+
+            if let mixedCandidate {
+                hasMixedCandidate = true
+                let mixedRule = settings.automaticRuleDecision(typed: token, converted: mixedCandidate.text)
+                switch mixedRule {
+                case .neverConvert:
+                    reason = L10n.settingsExampleReasonException
+                case .replace(let replacement):
+                    corrected = replacement
+                    reason = L10n.settingsExampleReasonReplacement
+                case .alwaysConvert, .none:
+                    corrected = mixedCandidate.text
+                    changesLayout = mixedCandidate.changesLayout
+                    reason = mixedCandidate.changesLayout
+                        ? L10n.settingsExampleReasonConverted
+                        : L10n.settingsExampleReasonValidSource
+                }
+            } else {
+                let verdict = LayoutDetector.decide(
+                    typed: token,
+                    converted: converted,
+                    currentLang: currentLanguage,
+                    otherLang: targetLanguage,
+                    capsLock: false,
+                    rulesAlreadyEvaluated: true,
+                    logDiagnostics: false
+                )
+                switch verdict {
+                case .switchToConverted:
+                    corrected = converted
+                    changesLayout = true
+                    reason = L10n.settingsExampleReasonConverted
+                case .keep:
+                    if Dict.isAvailable(currentLanguage),
+                       Dict.isValidWordForAutomaticPath(typed.lowercased(), lang: currentLanguage) {
+                        reason = L10n.settingsExampleReasonValidSource
+                    } else {
+                        reason = L10n.settingsExampleReasonCandidateRejected
+                    }
+                case .undecided:
+                    reason = Dict.isAvailable(targetLanguage)
+                        ? L10n.settingsExampleReasonUncertain
+                        : L10n.settingsExampleReasonDictionaryUnavailable
+                }
+            }
+        }
+
+        if !suffix.isEmpty, !hasMixedCandidate, !LayoutDetector.isHebrew(targetLanguage),
+           Dict.isAvailable(targetLanguage) {
+            let fullConverted = DynamicKeyMapping.convertBidirectional(typed)
+            let convertedCharacters = Array(fullConverted)
+            var suffixCandidate = String(convertedCharacters.prefix(punctuation.coreLength))
+            for character in convertedCharacters.dropFirst(punctuation.coreLength) {
+                guard character.isLetter else { break }
+                suffixCandidate.append(character)
+                if Dict.isValidWordForAutomaticPath(suffixCandidate.lowercased(), lang: targetLanguage) {
+                    corrected = token
+                    changesLayout = false
+                    reason = L10n.settingsExampleReasonAmbiguousPunctuation
+                    break
+                }
+            }
+        }
+
+        let context = String(contextField.stringValue.suffix(256))
+        if changesLayout {
+            let targetIsConfirmed = LayoutCorrectionEngine.canonicalTrustedTerm(for: corrected) != nil
+                || Dict.isValidWordForAutomaticPath(corrected.lowercased(), lang: targetLanguage)
+            if LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+                corrected: corrected,
+                prefix: context,
+                currentLanguage: currentLanguage,
+                targetLanguage: targetLanguage,
+                targetIsConfirmedWord: targetIsConfirmed,
+                requiredConsecutiveTargetWords: settings.languageSwitchWordThreshold,
+                isKnownTargetWord: { word, language in
+                    LayoutCorrectionEngine.canonicalTrustedTerm(for: word) != nil
+                        || Dict.isValidWordForAutomaticPath(word.lowercased(), lang: language)
+                }
+            ) {
+                changesLayout = false
+                reason = L10n.settingsExampleReasonContext
+            }
+        }
+
+        let automaticEnabled = settings.autoSwitchEnabled && settings.autoConvert
+        let resultingLayout = changesLayout && automaticEnabled ? target.name : source.name
+        if !automaticEnabled {
+            reason += " " + L10n.settingsExampleReasonDisabled
+        }
+        showAutomaticExampleResult(text: corrected + suffix, layout: resultingLayout, reason: reason)
+    }
+
+    private func selectedPreviewLayoutName(in popup: NSPopUpButton) -> String? {
+        guard let id = popup.selectedItem?.representedObject as? String else { return nil }
+        return configuredPreviewLayouts().first(where: { $0.id == id })?.name
+    }
+
+    private func showAutomaticExampleResult(text: String, layout: String, reason: String) {
+        exampleCorrectedLabel?.stringValue = L10n.settingsExampleCorrected(text)
+        exampleNextLayoutLabel?.stringValue = L10n.settingsExampleNextLayout(layout)
+        exampleReasonLabel?.stringValue = L10n.settingsExampleReason(reason)
+        exampleCorrectedLabel?.isHidden = false
+        exampleNextLayoutLabel?.isHidden = false
+        exampleReasonLabel?.isHidden = false
     }
 
     @objc private func convertWholeLineChanged(_ sender: NSButton) {

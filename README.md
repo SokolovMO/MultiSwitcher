@@ -4,17 +4,23 @@ A native macOS menu-bar utility for correcting text typed in the wrong keyboard 
 
 ## Status
 
-MultiSwitcher is preparing its first public alpha. The local source candidate is 0.3.3 (22); no signed, notarized end-user release has been published. Input integrity, hands-on compatibility on macOS 15/26/27, and update recovery remain release gates. See [Release readiness](RELEASE.md).
+MultiSwitcher is preparing its first public alpha. Local candidate 0.3.8 (44), arm64, builds and passes bundle-integrity checks with an ad-hoc signature; it is not a trusted public-release build. It has not replaced the installed 0.3.8 (43). Input Monitoring is currently off by user choice, so live keyboard conversion has not been verified in this candidate. Input integrity, hands-on compatibility on macOS 15/26/27, Developer ID signing, notarization, and update recovery remain release gates. See [Release readiness](RELEASE.md).
 
 ## Requirements
 
 - Apple Silicon Mac (arm64)
 - macOS 15 or newer
-- Accessibility and Input Monitoring permissions for global keyboard monitoring
+- Accessibility and Input Monitoring permissions for global keyboard conversion
+
+## macOS permissions
+
+On first launch, MultiSwitcher explains the permissions used for keyboard conversion and offers **Open Settings** or **Later**. It does not request or change macOS privacy permissions in the background. You can keep either permission off; the app and its settings remain available, while global keyboard conversion stays paused. To review them later, use **Check Permissions…** in the menu-bar menu or **Review…** in General settings.
+
+The first path is **System Settings → Privacy & Security → Accessibility → MultiSwitcher** on macOS 15–26, and **System Settings → Privacy & Security → Device Control & Data Access → MultiSwitcher** on macOS 27. The second path is **System Settings → Privacy & Security → Input Monitoring → MultiSwitcher**. MultiSwitcher uses the first permission to work with text in supported fields and Input Monitoring to receive keyboard events for layout detection and shortcuts. You can leave either switch off; global conversion then stays paused. If you enable both after choosing **Open Settings**, MultiSwitcher restarts once to apply keyboard monitoring. macOS remains in control of both switches.
 
 ## Install
 
-When Public Alpha 1 passes its gates and is manually published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted. The planned first alpha tag is `beta-v0.3.3-build22`; stable 1.0 will be a separate release. The website source is in `docs/`; a repository owner must enable GitHub Pages once.
+When Public Alpha 1 passes its gates and is manually published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted. The release tag must match the reviewed version and build metadata; stable 1.0 will be a separate release. The website source is in `docs/`; a repository owner must enable GitHub Pages once.
 
 Release builds use pinned Sparkle 2.10 with signed appcasts. The updater has not yet been verified end to end with a notarized public release; a commit or tag alone does not deliver updates. See [RELEASE.md](RELEASE.md) before relying on the updater.
 

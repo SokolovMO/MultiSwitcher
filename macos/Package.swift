@@ -46,5 +46,10 @@ let package = Package(
             dependencies: ["MultiSwitcherCore"],
             path: "Tests/MultiSwitcherCoreTests"
         ),
+        .testTarget(
+            name: "MultiSwitcherCoreUnitTests",
+            dependencies: ["MultiSwitcherCore"],
+            path: "Tests/MultiSwitcherCoreUnitTests"
+        ),
     ]
 )

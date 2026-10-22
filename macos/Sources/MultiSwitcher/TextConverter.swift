@@ -13,7 +13,9 @@ final class TextConverter {
     private var ownedClipboardChangeCount: Int?
     private var clipboardRestoreWork: DispatchWorkItem?
     private var isConverting = false
-    private var replacementQueue = SerialReplacementQueue<PendingTextReplacement>(capacity: 8)
+    // Repeated Option taps and rapid word boundaries must survive normal bursts.
+    // Keep a hard cap to avoid unbounded stale work when an app stops responding.
+    private var replacementQueue = SerialReplacementQueue<PendingTextReplacement>(capacity: 32)
     /// Очередь для инжекта нажатий буферного движка — чтобы usleep не блокировал
     /// main-поток, на котором висит event tap (иначе тап голодает → лаги/потери нажатий).
     nonisolated private let injectQueue = DispatchQueue(label: "com.ruswitcher.inject", qos: .userInteractive)
@@ -32,15 +34,36 @@ final class TextConverter {
     /// Последняя clipboard-конверсия содержала RTL — реконверт стрелками небезопасен.
     private var lastClipboardRTL = false
 
+    /// The automatic text edit can finish after the user changes the input source.
+    /// The app records the layout only if it selected that source, so Option undo does
+    /// not flip a layout the user chose independently.
+    func reconcileLastConversionLayoutChange(_ changedByApp: Bool) {
+        lastConversionChangesLayout = changedByApp
+        // AX undo state snapshots this flag when the replacement commits. If changing
+        // the system input source failed or the user chose another layout while the
+        // replacement waited, keep the undo metadata consistent with what actually
+        // happened so a second Option never toggles the wrong layout.
+        if var undo = spotlightUndo, undo.operationID == lastConversionOperationID {
+            undo.changesLayout = changedByApp
+            spotlightUndo = undo
+        }
+        if var undo = safariUndo, undo.operationID == lastConversionOperationID {
+            undo.changesLayout = changedByApp
+            safariUndo = undo
+        }
+    }
+
     private struct SpotlightUndo {
         let processID: pid_t
         let identity: CFHashCode
         let operationID: String
         var state: ExactTextUndoState
-        let changesLayout: Bool
+        var changesLayout: Bool
     }
 
     private struct PendingBufferReplacement: @unchecked Sendable {
+        let operationID: String
+        let enqueuedAtUptimeNanoseconds: UInt64
         let original: String
         let converted: String
         let backspaceCount: Int
@@ -51,8 +74,10 @@ final class TextConverter {
     }
 
     private struct PendingSerializedReplacement {
+        let operationID: String
+        let enqueuedAtUptimeNanoseconds: UInt64
         let processIdentifier: pid_t?
-        let isContextCurrent: @MainActor @Sendable () -> Bool
+        let contextRejectionReason: @MainActor @Sendable () -> String?
         let perform: @MainActor @Sendable (@escaping @MainActor @Sendable (Bool) -> Void) -> Void
         let completion: @MainActor @Sendable (Bool) -> Void
     }
@@ -832,12 +857,17 @@ final class TextConverter {
         performIfCurrent: @escaping @Sendable (@escaping @Sendable () -> Void) -> Bool,
         completion: @escaping @MainActor @Sendable (Bool) -> Void
     ) -> Bool {
-        guard !original.isEmpty, !converted.isEmpty,
-              original != converted, backspaceCount > 0 else {
-            rslog("buffer replacement unavailable: invalid replacement request")
+        let operationID = UUID().uuidString
+        if let reason = bufferReplacementValidationReason(
+            original: original, converted: converted, backspaceCount: backspaceCount
+        ) {
+            rslog("replacement refused op=\(operationID) engine=buffer reason=invalid-\(reason)")
             return false
         }
-        guard replacementQueue.enqueue(.buffer(PendingBufferReplacement(
+        let enqueuedAt = DispatchTime.now().uptimeNanoseconds
+        let request = PendingBufferReplacement(
+            operationID: operationID,
+            enqueuedAtUptimeNanoseconds: enqueuedAt,
             original: original,
             converted: converted,
             backspaceCount: backspaceCount,
@@ -847,10 +877,9 @@ final class TextConverter {
                 performIfCurrent { operation("") } ? "" : nil
             },
             completion: completion
-        ))) else {
-            rslog("buffer replacement queue full; request refused")
-            return false
-        }
+        )
+        let result = replacementQueue.enqueueReportingStatus(.buffer(request))
+        guard logReplacementEnqueue(result, operationID: operationID, engine: "buffer") else { return false }
         processNextReplacement()
         return true
     }
@@ -858,6 +887,7 @@ final class TextConverter {
     /// Automatic correction variant that preserves letters typed after the captured
     /// space while the replacement waits in the main/injection queues.
     func replaceBufferTextPreservingTypedSuffix(
+        operationID: String,
         original: String,
         converted: String,
         backspaceCount: Int,
@@ -866,12 +896,16 @@ final class TextConverter {
         performIfCurrent: @escaping @Sendable (@escaping @Sendable (String) -> Void) -> String?,
         completion: @escaping @MainActor @Sendable (Bool) -> Void
     ) -> Bool {
-        guard !original.isEmpty, !converted.isEmpty, original != converted,
-              backspaceCount > 0 else {
-            rslog("buffer replacement unavailable: invalid request or queue full")
+        let enqueuedAt = DispatchTime.now().uptimeNanoseconds
+        if let reason = bufferReplacementValidationReason(
+            original: original, converted: converted, backspaceCount: backspaceCount
+        ) {
+            rslog("replacement refused op=\(operationID) engine=buffer reason=invalid-\(reason)")
             return false
         }
-        guard replacementQueue.enqueue(.buffer(PendingBufferReplacement(
+        let request = PendingBufferReplacement(
+            operationID: operationID,
+            enqueuedAtUptimeNanoseconds: enqueuedAt,
             original: original,
             converted: converted,
             backspaceCount: backspaceCount,
@@ -879,32 +913,65 @@ final class TextConverter {
             processIdentifier: processIdentifier,
             performIfCurrent: performIfCurrent,
             completion: completion
-        ))) else {
-            rslog("buffer replacement queue full; request refused")
-            return false
-        }
+        )
+        let result = replacementQueue.enqueueReportingStatus(.buffer(request))
+        guard logReplacementEnqueue(result, operationID: operationID, engine: "buffer") else { return false }
         processNextReplacement()
         return true
+    }
+
+    private func logReplacementEnqueue(
+        _ result: SerialReplacementQueueEnqueueResult,
+        operationID: String,
+        engine: String
+    ) -> Bool {
+        switch result {
+        case .accepted(let waitingCount, let hasActiveOperation, let capacity):
+            rslog("replacement queued op=\(operationID) engine=\(engine) " +
+                  "waiting=\(waitingCount) active=\(hasActiveOperation) capacity=\(capacity)")
+            return true
+        case .full(let waitingCount, let hasActiveOperation, let capacity):
+            rslog("replacement refused op=\(operationID) engine=\(engine) reason=queue-full " +
+                  "waiting=\(waitingCount) active=\(hasActiveOperation) capacity=\(capacity)")
+            return false
+        }
+    }
+
+    /// Returns a privacy-safe reason code instead of conflating an invalid edit with
+    /// queue saturation in diagnostics. Never include the text being replaced.
+    private func bufferReplacementValidationReason(
+        original: String,
+        converted: String,
+        backspaceCount: Int
+    ) -> String? {
+        if original.isEmpty { return "empty-source" }
+        if converted.isEmpty { return "empty-target" }
+        if original == converted { return "no-op" }
+        if backspaceCount <= 0 { return "empty-range" }
+        return nil
     }
 
     /// Serializes non-buffer operations with injected replacements. Requests retain
     /// only their captured operation data and are revalidated at the moment of apply.
     @discardableResult
     func enqueueSerializedReplacement(
+        operationID: String = UUID().uuidString,
         processIdentifier: pid_t?,
-        isContextCurrent: @escaping @MainActor @Sendable () -> Bool,
+        contextRejectionReason: @escaping @MainActor @Sendable () -> String?,
         perform: @escaping @MainActor @Sendable (@escaping @MainActor @Sendable (Bool) -> Void) -> Void,
         completion: @escaping @MainActor @Sendable (Bool) -> Void
     ) -> Bool {
-        guard replacementQueue.enqueue(.serialized(PendingSerializedReplacement(
+        let enqueuedAt = DispatchTime.now().uptimeNanoseconds
+        let request = PendingSerializedReplacement(
+            operationID: operationID,
+            enqueuedAtUptimeNanoseconds: enqueuedAt,
             processIdentifier: processIdentifier,
-            isContextCurrent: isContextCurrent,
+            contextRejectionReason: contextRejectionReason,
             perform: perform,
             completion: completion
-        ))) else {
-            rslog("replacement queue full; request refused")
-            return false
-        }
+        )
+        let result = replacementQueue.enqueueReportingStatus(.serialized(request))
+        guard logReplacementEnqueue(result, operationID: operationID, engine: "accessibility") else { return false }
         processNextReplacement()
         return true
     }
@@ -915,15 +982,29 @@ final class TextConverter {
         if case .serialized(let request) = next {
             let sameProcess = request.processIdentifier != nil
                 && request.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier
-            guard sameProcess, request.isContextCurrent() else {
-                rslog("serialized replacement cancelled: captured process or input changed")
+            guard sameProcess else {
+                rslog("replacement cancelled op=\(request.operationID) engine=accessibility reason=process-changed")
                 request.completion(false)
                 replacementQueue.finishCurrent()
                 processNextReplacement()
                 return
             }
+            if let reason = request.contextRejectionReason() {
+                rslog("replacement cancelled op=\(request.operationID) engine=accessibility reason=\(reason)")
+                request.completion(false)
+                replacementQueue.finishCurrent()
+                processNextReplacement()
+                return
+            }
+            let startedAt = DispatchTime.now().uptimeNanoseconds
+            let queueWaitMS = (startedAt &- request.enqueuedAtUptimeNanoseconds) / 1_000_000
+            rslog("replacement started op=\(request.operationID) engine=accessibility queue-wait-ms=\(queueWaitMS)")
             request.perform { [weak self] completed in
                 guard let self else { return }
+                let finishedAt = DispatchTime.now().uptimeNanoseconds
+                let elapsedMS = (finishedAt &- request.enqueuedAtUptimeNanoseconds) / 1_000_000
+                rslog("replacement finished op=\(request.operationID) engine=accessibility " +
+                      "result=\(completed ? "applied" : "adapter-rejected") elapsed-ms=\(elapsedMS)")
                 request.completion(completed)
                 self.replacementQueue.finishCurrent()
                 self.processNextReplacement()
@@ -936,26 +1017,44 @@ final class TextConverter {
             processNextReplacement()
             return
         }
+        // TextConverter is MainActor-isolated. Read AppKit's frontmost application
+        // here, before dispatching to the injection queue; querying NSWorkspace from
+        // that background queue intermittently returned a stale/nil process and
+        // cancelled otherwise-valid automatic conversions.
+        let sameProcess = request.processIdentifier != nil
+            && request.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier
+        guard sameProcess else {
+            rslog("replacement cancelled op=\(request.operationID) engine=buffer reason=process-changed")
+            request.completion(false)
+            replacementQueue.finishCurrent()
+            processNextReplacement()
+            return
+        }
         isConverting = true
+        let startedAt = DispatchTime.now().uptimeNanoseconds
+        let queueWaitMS = (startedAt &- request.enqueuedAtUptimeNanoseconds) / 1_000_000
+        rslog("replacement started op=\(request.operationID) engine=buffer queue-wait-ms=\(queueWaitMS)")
         injectQueue.async { [weak self] in
             guard let self else { return }
-            let sameProcess = request.processIdentifier != nil
-                && request.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier
-            let preservedSuffix = sameProcess ? request.performIfCurrent { typedSuffix in
+            let applyStartedAt = DispatchTime.now().uptimeNanoseconds
+            let preservedSuffix = request.performIfCurrent { typedSuffix in
                 self.backspace(request.backspaceCount + typedSuffix.count)
                 usleep(20_000)
                 self.insertText(request.converted + typedSuffix)
-            } : nil
+            }
             let committed = preservedSuffix != nil
+            let finishedAt = DispatchTime.now().uptimeNanoseconds
+            let applyMS = (finishedAt &- applyStartedAt) / 1_000_000
+            let elapsedMS = (finishedAt &- request.enqueuedAtUptimeNanoseconds) / 1_000_000
             Task { @MainActor in
                 self.isConverting = false
                 if !committed {
-                    rslog("buffer replacement cancelled: captured process or input changed before commit")
+                    rslog("replacement cancelled op=\(request.operationID) engine=buffer reason=input-changed")
                 } else {
                     let suffix = preservedSuffix ?? ""
                     self.lastOriginal = request.original + suffix
                     self.lastConverted = request.converted + suffix
-                    self.lastConversionOperationID = UUID().uuidString
+                    self.lastConversionOperationID = request.operationID
                     self.lastUndoneOperationID = nil
                     self.bufferReplacementLifecycle.commit(operationID: self.lastConversionOperationID ?? "")
                     self.bufferProcessIdentifier = request.processIdentifier
@@ -965,8 +1064,10 @@ final class TextConverter {
                     self.lastConvertedCount = 0
                     self.lastBoundaryCount = 0
                     self.lastPreservedSuffixKeyCount = suffix.count
-                    rslog("buffer replacement committed")
+                    rslog("buffer replacement committed op=\(request.operationID) suffix-count=\(self.lastPreservedSuffixKeyCount)")
                 }
+                rslog("replacement finished op=\(request.operationID) engine=buffer " +
+                      "result=\(committed ? "applied" : "cancelled") apply-ms=\(applyMS) elapsed-ms=\(elapsedMS)")
                 request.completion(committed)
                 self.replacementQueue.finishCurrent()
                 self.processNextReplacement()
