@@ -196,6 +196,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private weak var profileRecoveryNoteLabel: NSTextField?
     private weak var restoreProfileButton: NSButton?
     private var pageTransitionGeneration = 0
+    private var scrollToTopGeneration = 0
     private var windowShortcutMonitor: Any?
 
     /// Callback для обновления меню
@@ -378,7 +379,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         setSidebarWidth(sidebarWidth)
         onWindowVisibilityChanged?(true)
         updatePagePresentation()
-        scrollPaneToTop()
+        scrollPaneToTopAfterLayout()
     }
 
     func closeSettingsWindow() {
@@ -564,10 +565,30 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     /// AppKit clip views use a bottom-left origin unless the document is flipped.
     /// Explicitly reveal the document's first row when a page is opened so restored
     /// window sizes never leave the first card underneath the title bar.
+    /// A restored/resized NSWindow can finish autoresizing its document view after
+    /// `makeKeyAndOrderFront`. Scrolling before that pass uses the old clip-view
+    /// height and can leave the first row underneath the title bar. Defer one run-loop
+    /// turn, lay out the selected page, then calculate the top offset from final bounds.
+    private func scrollPaneToTopAfterLayout() {
+        scrollToTopGeneration += 1
+        let generation = scrollToTopGeneration
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.scrollToTopGeneration == generation,
+                  let window = self.window,
+                  window.isVisible else { return }
+            window.contentView?.layoutSubtreeIfNeeded()
+            self.settingsTabView?.selectedTabViewItem?.view?.layoutSubtreeIfNeeded()
+            self.updateDocumentSize()
+            self.scrollPaneToTop()
+        }
+    }
+
     private func scrollPaneToTop() {
         guard let paneScrollView, let documentView = paneScrollView.documentView else { return }
         paneScrollView.layoutSubtreeIfNeeded()
         documentView.layoutSubtreeIfNeeded()
+        settingsTabView?.selectedTabViewItem?.view?.layoutSubtreeIfNeeded()
         let clipView = paneScrollView.contentView
         var origin = clipView.bounds.origin
         origin.y = documentView.isFlipped
@@ -619,6 +640,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         guard (notification.object as? NSWindow) === window else { return }
         removeWindowShortcutMonitor()
         pageTransitionGeneration += 1
+        scrollToTopGeneration += 1
         paneScrollView?.alphaValue = 1
         expandedPage = false
         updatePagePresentation()
@@ -742,7 +764,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
               let paneScrollView, window?.isVisible == true else {
             settingsTabView?.selectTabViewItem(at: index)
             updatePagePresentation(animated: willChange)
-            if willChange { scrollPaneToTop() }
+            if willChange { scrollPaneToTopAfterLayout() }
             return
         }
 
@@ -758,7 +780,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
                       self.pageTransitionGeneration == generation else { return }
                 settingsTabView.selectTabViewItem(at: index)
                 self.updatePagePresentation(animated: true)
-                self.scrollPaneToTop()
+                self.scrollPaneToTopAfterLayout()
                 NSAnimationContext.runAnimationGroup { context in
                     context.duration = SettingsMotionMetrics.pageFadeIn
                     context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -996,7 +1018,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         return row
     }
 
-    private func settingsCardPage(_ cards: [NSView]) -> NSView {
+    private func settingsCardPage(_ cards: [NSView], maxContentWidth: CGFloat = 980) -> NSView {
         let pageWidth: CGFloat = 540
         let page = NSView(frame: NSRect(x: 0, y: 0, width: pageWidth, height: 800))
         let stack = settingsVerticalStack(cards, spacing: SettingsCardMetrics.gutter)
@@ -1008,9 +1030,14 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             card.setContentCompressionResistancePriority(.required, for: .vertical)
         }
         page.addSubview(stack)
+        let availableWidth = stack.widthAnchor.constraint(equalTo: page.widthAnchor, constant: -32)
+        availableWidth.priority = .defaultHigh
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: page.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: page.trailingAnchor, constant: -16),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: page.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: page.trailingAnchor, constant: -16),
+            stack.centerXAnchor.constraint(equalTo: page.centerXAnchor),
+            stack.widthAnchor.constraint(lessThanOrEqualToConstant: maxContentWidth),
+            availableWidth,
             stack.topAnchor.constraint(equalTo: page.topAnchor, constant: 16),
         ])
         page.layoutSubtreeIfNeeded()
