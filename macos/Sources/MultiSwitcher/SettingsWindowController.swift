@@ -164,6 +164,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private var selectedPageIndex = 0
     private var minimumDocumentHeight: CGFloat = 0
     private var baselineDocumentHeight: CGFloat = 0
+    private var adaptiveLayoutUpdateGeneration = 0
     private var adaptivePageLayouts: [(outer: NSView, content: NSView, stack: NSStackView)] = []
     private var sidebarWidth: CGFloat = 206
     private let sidebarDividerWidth: CGFloat = 6
@@ -525,6 +526,17 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private func updateDocumentSize() {
         guard let paneScrollView, let documentView = paneScrollView.documentView else { return }
         let clipView = paneScrollView.contentView
+
+        // Propagate a new viewport width through the scroll document and tab view
+        // before asking wrapping labels for their fitting height. Measuring first
+        // can use the previous, wider width and leave the next card over the text.
+        paneScrollView.layoutSubtreeIfNeeded()
+        documentView.setFrameSize(NSSize(
+            width: paneScrollView.contentSize.width,
+            height: max(documentView.frame.height, paneScrollView.contentSize.height)
+        ))
+        documentView.layoutSubtreeIfNeeded()
+
         let oldDocumentHeight = documentView.bounds.height
         let oldTopOffset = documentView.isFlipped
             ? clipView.bounds.minY
@@ -542,10 +554,27 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             guard measuredHeight.isFinite, measuredHeight > 32 else { continue }
             layout.content.setFrameSize(NSSize(width: layout.content.frame.width, height: measuredHeight))
             layout.outer.setFrameSize(NSSize(width: layout.outer.frame.width, height: measuredHeight))
+            layout.outer.layoutSubtreeIfNeeded()
+#if DEBUG
+            let cardFrames = layout.stack.arrangedSubviews.map {
+                $0.convert($0.bounds, to: layout.stack)
+            }
+            for first in cardFrames.indices {
+                for second in cardFrames.indices where second > first {
+                    if NSIntersectsRect(cardFrames[first], cardFrames[second]) {
+                        rslog("Settings adaptive card overlap: first=\(first) second=\(second) stack=\(layout.stack.frame) a=\(cardFrames[first]) b=\(cardFrames[second])")
+                    }
+                }
+            }
+#endif
         }
         minimumDocumentHeight = max(
-            baselineDocumentHeight,
-            adaptivePageLayouts.map { $0.outer.frame.height }.max() ?? 0
+            CGFloat(SettingsCardLayoutPolicy.documentHeight(
+                viewportHeight: Double(paneScrollView.contentSize.height),
+                baselineHeight: Double(baselineDocumentHeight),
+                pageHeights: adaptivePageLayouts.map { Double($0.outer.frame.height) }
+            )),
+            0
         )
         documentView.setFrameSize(NSSize(width: paneScrollView.contentSize.width,
                                          height: max(minimumDocumentHeight, paneScrollView.contentSize.height)))
@@ -1197,6 +1226,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     }
 
     func updatePermissionStatus(accessibility: Bool, inputMonitoring: Bool) {
+        let previousStatus = permissionStatusLabel?.stringValue
         if accessibility && inputMonitoring {
             permissionStatusLabel?.stringValue = L10n.settingsPermissionsReady
             permissionStatusSymbol?.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: L10n.settingsPermissionsReady)
@@ -1210,6 +1240,28 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         }
         permissionStatusSymbol?.contentTintColor = .secondaryLabelColor
         permissionStatusLabel?.superview?.layoutSubtreeIfNeeded()
+        if previousStatus != permissionStatusLabel?.stringValue {
+            scheduleAdaptiveDocumentLayoutUpdate()
+        }
+    }
+
+    /// Re-measures wrapped preference rows after their text changes. Deferring one
+    /// main-loop turn lets AppKit invalidate intrinsic text sizes before fitting the
+    /// surrounding card stack.
+    private func scheduleAdaptiveDocumentLayoutUpdate() {
+        guard paneScrollView != nil else { return }
+        adaptiveLayoutUpdateGeneration += 1
+        let generation = adaptiveLayoutUpdateGeneration
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.adaptiveLayoutUpdateGeneration == generation,
+                  let window = self.window,
+                  window.isVisible else { return }
+            window.contentView?.layoutSubtreeIfNeeded()
+            self.settingsTabView?.layoutSubtreeIfNeeded()
+            self.settingsTabView?.selectedTabViewItem?.view?.layoutSubtreeIfNeeded()
+            self.updateDocumentSize()
+        }
     }
 
     @objc private func reviewPermissions() {
@@ -2301,6 +2353,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         exampleCorrectedLabel?.isHidden = false
         exampleNextLayoutLabel?.isHidden = false
         exampleReasonLabel?.isHidden = false
+        scheduleAdaptiveDocumentLayoutUpdate()
     }
 
     @objc private func convertWholeLineChanged(_ sender: NSButton) {

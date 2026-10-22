@@ -20,6 +20,20 @@ public struct SettingsCardFrame: Equatable, Sendable {
 /// Computes the smallest downward movement that gives a settings card a consistent
 /// vertical gutter from every existing card sharing its horizontal span.
 public enum SettingsCardLayoutPolicy {
+    /// Keeps the scroll document large enough for both its viewport and every
+    /// measured settings page. Dynamic status rows can make one page taller after
+    /// the window has already been created.
+    public static func documentHeight(
+        viewportHeight: Double,
+        baselineHeight: Double,
+        pageHeights: [Double]
+    ) -> Double {
+        max(
+            max(0, viewportHeight),
+            max(max(0, baselineHeight), pageHeights.map { max(0, $0) }.max() ?? 0)
+        )
+    }
+
     public static func downwardShift(
         for frame: SettingsCardFrame,
         existingFrames: [SettingsCardFrame],

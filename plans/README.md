@@ -3,7 +3,7 @@
 | # | Plan | Severity | Status |
 |---|---|---:|---|
 | 001 | [Make settings navigation feel immediate](001-settings-navigation-motion.md) | Medium | Source implemented; Reduce Motion feel check pending |
-| 002 | [Responsive settings and calm permission onboarding](002-responsive-settings-and-permission-onboarding.md) | High | Build 45 verified; small-window and live-input checks remain open |
+| 002 | [Responsive settings and calm permission onboarding](002-responsive-settings-and-permission-onboarding.md) | High | Build 47 layout remeasurement implemented and core-tested; installed visual regression check still open |
 
 ## Order
 

@@ -214,6 +214,13 @@ private func testAppendedInputPolicy() {
 }
 
 private func testSettingsCardLayoutPolicy() {
+    expect(SettingsCardLayoutPolicy.documentHeight(
+        viewportHeight: 700, baselineHeight: 620, pageHeights: [560, 680]
+    ) == 700, "the settings document always covers its visible viewport")
+    expect(SettingsCardLayoutPolicy.documentHeight(
+        viewportHeight: 700, baselineHeight: 620, pageHeights: [760, 680]
+    ) == 760, "a dynamically expanded localized page grows the scroll document")
+
     let newCard = SettingsCardFrame(x: 6, y: 197, width: 448, height: 82)
     let previousCard = SettingsCardFrame(x: 6, y: 271, width: 448, height: 215)
     let shift = SettingsCardLayoutPolicy.downwardShift(
