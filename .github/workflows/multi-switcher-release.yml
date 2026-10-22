@@ -83,6 +83,32 @@ jobs:
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
           echo "crash_reporting=$crash_reporting" >> "$GITHUB_OUTPUT"
 
+      - name: Install checksum-pinned Sentry CLI for native dSYM uploads
+        if: steps.release_config.outputs.crash_reporting == '1'
+        run: |
+          set -euo pipefail
+          SENTRY_CLI_VERSION="2.58.6"
+          SENTRY_CLI_SHA512="udAVvcyfNa0R+95GvPz/+43/N3TC0TYKdkQ7D7jhPSzbcMc7l2fxRNN5yB3UpCA5fWFnW4toeaqwDBhb/Wh3LA=="
+          INSTALL_DIR="$RUNNER_TEMP/multiswitcher-sentry-cli"
+          ARCHIVE="$INSTALL_DIR/sentry-cli-darwin-$SENTRY_CLI_VERSION.tgz"
+          SENTRY_CLI="$INSTALL_DIR/sentry-cli"
+          mkdir -m 700 -p "$INSTALL_DIR"
+          curl -fsSL "https://registry.npmjs.org/@sentry/cli-darwin/-/cli-darwin-$SENTRY_CLI_VERSION.tgz" -o "$ARCHIVE"
+          ACTUAL_SHA512="$(/usr/bin/openssl dgst -sha512 -binary "$ARCHIVE" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
+          [[ "$ACTUAL_SHA512" == "$SENTRY_CLI_SHA512" ]] || {
+            echo "Pinned Sentry CLI package integrity check failed." >&2; exit 1;
+          }
+          /usr/bin/tar -xzf "$ARCHIVE" -C "$INSTALL_DIR" package/bin/sentry-cli
+          /bin/mv "$INSTALL_DIR/package/bin/sentry-cli" "$SENTRY_CLI"
+          /bin/chmod 755 "$SENTRY_CLI"
+          cd "$RUNNER_TEMP"
+          [[ "$("$SENTRY_CLI" --version)" == "sentry-cli $SENTRY_CLI_VERSION" ]] || {
+            echo "Unexpected Sentry CLI version." >&2; exit 1;
+          }
+          "$SENTRY_CLI" debug-files upload --help >/dev/null
+          echo "MULTISWITCHER_SENTRY_CLI=$SENTRY_CLI" >> "$GITHUB_ENV"
+          /bin/rm -rf "$INSTALL_DIR/package" "$ARCHIVE"
+
       - name: Import Developer ID certificate into temporary keychain
         env:
           CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
@@ -124,16 +150,12 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.MULTISWITCHER_SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ vars.MULTISWITCHER_SENTRY_ORG_SLUG }}
           SENTRY_PROJECT: ${{ vars.MULTISWITCHER_SENTRY_PROJECT_SLUG }}
-          SENTRY_FORCE_ENV_TOKEN: "1"
-          SENTRY_CLI_NO_TELEMETRY: "1"
-          DO_NOT_TRACK: "1"
         run: |
           set -euo pipefail
-          INSTALL_DIR="$RUNNER_TEMP/sentry-cli"
-          curl -fsSL https://cli.sentry.dev/install | SENTRY_VERSION=0.42.2 SENTRY_INSTALL_DIR="$INSTALL_DIR" bash -s -- --no-modify-path --no-completions --no-agent-skills
-          SENTRY_CLI="$INSTALL_DIR/sentry"
-          "$SENTRY_CLI" --version
-          "$SENTRY_CLI" debug-files upload "$RUNNER_TEMP/MultiSwitcher-release-build/MultiSwitcher.app.dSYM" --type dsym --wait
+          cd "$RUNNER_TEMP"
+          "$MULTISWITCHER_SENTRY_CLI" debug-files upload \
+            "$RUNNER_TEMP/MultiSwitcher-release-build/MultiSwitcher.app.dSYM" \
+            --type dsym --wait
 
       - name: Configure notarization credentials
         env:
