@@ -15,9 +15,14 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
 
     private var items: [String] = []
     private let table = NSTableView()
+    private let emptyStateLabel = NSTextField(wrappingLabelWithString: "")
     private let removeButton = NSButton()
     /// Кэш имени/иконки по bundle id, чтобы не дёргать NSWorkspace на каждый vend ячейки.
     private var infoCache: [String: (text: String, icon: NSImage?)] = [:]
+
+    func setCompactMode(_ compact: Bool) {
+        table.rowHeight = compact ? 18 : 22
+    }
 
     init(kind: Kind,
          get: @escaping () -> [String],
@@ -36,16 +41,23 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
     /// Контейнер: прокручиваемая таблица + строка кнопок «+»/«−» снизу.
     func makeContainer(frame: NSRect) -> NSView {
         let container = NSView(frame: frame)
+        container.autoresizesSubviews = true
         let stripH: CGFloat = 26
 
         let scroll = NSScrollView(frame: NSRect(x: 0, y: stripH, width: frame.width, height: frame.height - stripH))
+        scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.borderType = .bezelBorder
 
         let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("col"))
         col.width = frame.width - 4
+        col.minWidth = 120
+        col.maxWidth = .greatestFiniteMagnitude
+        col.resizingMask = .autoresizingMask
         table.addTableColumn(col)
+        table.autoresizingMask = [.width]
+        table.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
         table.headerView = nil
         table.rowHeight = 22
         table.dataSource = self
@@ -53,7 +65,22 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         scroll.documentView = table
         container.addSubview(scroll)
 
+        emptyStateLabel.stringValue = kind == .apps ? L10n.exceptionsEmptyApps : L10n.exceptionsEmptyWords
+        emptyStateLabel.alignment = .center
+        emptyStateLabel.textColor = .secondaryLabelColor
+        emptyStateLabel.maximumNumberOfLines = 2
+        emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(emptyStateLabel)
+        NSLayoutConstraint.activate([
+            emptyStateLabel.centerXAnchor.constraint(equalTo: scroll.centerXAnchor),
+            emptyStateLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
+            emptyStateLabel.leadingAnchor.constraint(greaterThanOrEqualTo: scroll.leadingAnchor, constant: 18),
+            emptyStateLabel.trailingAnchor.constraint(lessThanOrEqualTo: scroll.trailingAnchor, constant: -18),
+            emptyStateLabel.widthAnchor.constraint(lessThanOrEqualTo: scroll.widthAnchor, constant: -36)
+        ])
+
         let addBtn = NSButton(frame: NSRect(x: 0, y: 0, width: 28, height: 24))
+        addBtn.autoresizingMask = [.maxYMargin]
         addBtn.title = "+"
         addBtn.bezelStyle = .smallSquare
         addBtn.target = self
@@ -61,12 +88,15 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         container.addSubview(addBtn)
 
         removeButton.frame = NSRect(x: 30, y: 0, width: 28, height: 24)
+        removeButton.autoresizingMask = [.maxYMargin]
         removeButton.title = "−"
         removeButton.bezelStyle = .smallSquare
         removeButton.target = self
         removeButton.action = #selector(removeTapped)
         removeButton.isEnabled = false
         container.addSubview(removeButton)
+
+        updateEmptyState()
 
         return container
     }
@@ -170,13 +200,19 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
     private func persist() {
         setList(items)
         table.reloadData()
+        updateEmptyState()
         updateRemoveButton()
     }
 
     func reloadFromStore() {
         items = getList()
         table.reloadData()
+        updateEmptyState()
         updateRemoveButton()
+    }
+
+    private func updateEmptyState() {
+        emptyStateLabel.isHidden = !items.isEmpty
     }
 
     // MARK: - Display helpers

@@ -6,15 +6,6 @@ public enum PuntoProfileMigration {
     /// Local removals are stored as tombstones so a later Punto import does not resurrect them.
     public static let removedRuleIDsSettingKey = "com.multiswitcher.removedPuntoRuleIDs"
 
-    private static let deletedHistoryKeys = Set(
-        PuntoProfileImporter.reviewedHistoryDeletions.map(normalizedKey)
-    )
-    private static let renames = Dictionary(
-        uniqueKeysWithValues: PuntoProfileImporter.reviewedHistoryRenames.map {
-            (normalizedKey($0.key), $0.value)
-        }
-    )
-
     @discardableResult
     public static func apply(
         _ report: PuntoImportReport,
@@ -37,9 +28,9 @@ public enum PuntoProfileMigration {
         profile.rules.removeAll { $0.origin == .punto }
         profile.rules.append(contentsOf: importedRules)
 
-        let reviewedHistory = cleanedHistory(report.learnedEntries)
+        let importedHistory = preservedHistory(report.learnedEntries)
         profile.learning.removeAll { $0.origin == .punto }
-        profile.learning.append(contentsOf: reviewedHistory.entries)
+        profile.learning.append(contentsOf: importedHistory)
         profile.importedPuntoSettings = report.sourceSettingsData
         profile.importedPuntoRules = sourceRules
 
@@ -60,8 +51,8 @@ public enum PuntoProfileMigration {
         return PuntoAppliedImportReport(
             rulesImported: importedRules.count,
             unverifiedRules: importedRules.count,
-            learningImported: reviewedHistory.entries.count,
-            learningDiscardedByReview: reviewedHistory.discarded,
+            learningImported: importedHistory.count,
+            learningDiscardedByReview: 0,
             snapshotName: sourceSnapshotName,
             sourceSHA256: sourceSHA256
         )
@@ -144,39 +135,33 @@ public enum PuntoProfileMigration {
         "\(rule.sourceTypeCode ?? -1)|\((rule.sourceFlags ?? []).map { $0 ? "1" : "0" }.joined())|\(rule.pattern.precomposedStringWithCanonicalMapping)"
     }
 
-    private static func cleanedHistory(
+    /// Public imports preserve user data verbatim. Personal review decisions must never
+    /// be applied to another user's Punto profile as implicit global cleanup.
+    private static func preservedHistory(
         _ entries: [PuntoLearnedEntry]
-    ) -> (entries: [LearningEntry], discarded: Int) {
+    ) -> [LearningEntry] {
         var merged: [String: LearningEntry] = [:]
-        var discarded = 0
         for item in entries {
-            let sourceKey = normalizedKey(item.word)
-            guard !deletedHistoryKeys.contains(sourceKey) else {
-                discarded += 1
-                continue
-            }
-            let destination = renames[sourceKey] ?? item.word
-            let key = normalizedKey(destination)
-            guard !key.isEmpty else {
-                discarded += 1
-                continue
-            }
+            let key = normalizedKey(item.word)
+            guard !key.isEmpty else { continue }
             if var existing = merged[key] {
-                existing.cancellationCount = max(existing.cancellationCount, item.cancellationCount)
-                existing.word = destination
+                existing.importedCancellationCount = max(
+                    existing.importedCancellationCount ?? 0,
+                    item.cancellationCount
+                )
                 merged[key] = existing
             } else {
                 merged[key] = LearningEntry(
-                    word: destination,
-                    cancellationCount: item.cancellationCount,
+                    word: item.word,
+                    cancellationCount: 0,
                     isExcluded: false,
                     origin: .punto,
-                    updatedAt: nil
+                    updatedAt: nil,
+                    importedCancellationCount: item.cancellationCount
                 )
             }
         }
-        return (merged.values.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending },
-                discarded)
+        return merged.values.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending }
     }
 
     /// The raw source plist is always retained. Only mappings confirmed by a stable

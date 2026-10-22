@@ -1,39 +1,140 @@
-# Release and update pipeline
+# Public Alpha 1 readiness
 
-The release workflow builds an arm64 app, runs the core checks, signs it with Developer ID, submits the app and disk image for Apple notarization, staples the tickets, and publishes the DMG plus `version.json` to GitHub Releases. The app checks the latest release manifest and verifies the downloaded DMG hash, bundle identifier, Team ID signature, and Gatekeeper assessment before replacing the installed app.
+Last verified locally: 2026-10-23. This document describes source preparation, not a published release.
 
-## One-time GitHub configuration
+## Release state
 
-Add these repository variables:
+**Do not publish Public Alpha 1 yet.** `/Applications/MultiSwitcher.app` is freshly launched from Finder as **0.3.11 (52), arm64, ad-hoc signed**. Its executable SHA-256 is `a4da1644cc51d1b4f4d34ade1d2cc023c800fe8696945294f8f6da26e18b7a53`; the app's About page reports `v0.3.11`. On 2026-10-23, a physical TextEdit smoke check confirmed that automatic `ghbdtn` + Space conversion and Option conversion of a selected word both work; privacy-safe logs record a committed buffer replacement and a successful Accessibility replacement. This is a single-session smoke check, not the planned 30-run or multi-application matrix. One intermediate automatic request was safely refused as a no-op because the computed replacement equaled the source; no text was edited by that request. Unicode input events also reset the in-memory key snapshot, as designed for events that cannot be mapped safely to one physical key. The Learning and Rules pages were visually checked in the current large full-screen layout: the Learning card top edge is no longer clipped, and the help text/table fit inside the card; the Rules table remains inside its card. Minimum-size, manual-resize, light/dark mode, and Reduce Motion checks remain open. The optional permission guide explains each permission and that **Later** leaves keyboard features paused; MultiSwitcher does not change macOS privacy settings. GitHub Actions runs [39850867325](https://github.com/SokolovMO/MultiSwitcher/actions/runs/39850867325) and [39857876932](https://github.com/SokolovMO/MultiSwitcher/actions/runs/39857876932) passed on macOS 15, macOS 26, and the Xcode 27 runner. The latter validates the updated PR code, but does not execute the tag-only signed-release workflow; CI does not replace hands-on validation.
 
-- `MULTISWITCHER_DEVELOPER_TEAM_ID`: the 10-character Apple Developer Team ID.
-- `MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY`: the exact `Developer ID Application: …` identity shown by `security find-identity`.
+Release infrastructure was checked on 2026-10-22: the local keychain has **zero valid code-signing identities**, the repository has **no `multiswitcher-release` GitHub environment**, and the GitHub Pages API returns 404, so the public site is not enabled. The signed-release workflow therefore cannot produce a public build yet. No signing, notarization, Sparkle, or Sentry secret values were inspected or exposed. Trusted Developer ID signing and notarization, a protected release environment, Sparkle keys, and Pages setup remain prerequisites.
 
-Add these Actions secrets:
+A release-workflow audit found that crash-symbol upload used the new Sentry CLI 0.42.2 even though that CLI does not implement native dSYM upload. The workflow now installs the compatible `@sentry/cli-darwin` 2.58.6 archive from the npm registry, verifies its pinned SHA-512 integrity, and checks the `debug-files upload` command before the Developer ID keychain is imported. The local archive integrity, version, and command checks passed. An authenticated upload and Sentry-side symbolication remain unverified because no Sentry release credentials are configured locally.
 
-- `APPLE_DEVELOPER_CERTIFICATE_P12_BASE64`: base64-encoded Developer ID Application certificate and private key.
-- `APPLE_DEVELOPER_CERTIFICATE_PASSWORD`: password for that PKCS#12 file.
-- `APPLE_ID`: Apple ID used for notarization.
-- `APPLE_APP_SPECIFIC_PASSWORD`: app-specific password for notarization.
+Required hands-on checks on **each macOS 15, 26, and 27** before alpha publication:
 
-The workflow creates a temporary keychain and removes it at the end. Never put certificate files or passwords in the repository. Keep a secure offline backup of the signing certificate and its password; updates must continue using the same Team ID.
+- Install, present the new optional permission guide, open permissions only after an explicit user action, remove/regrant permissions manually, launch at login, sleep/wake, and quit.
+- Confirm automatic correction, Option conversion and exact undo, fast typing, edits, secure input, and no damage to neighboring text in TextEdit, Spotlight, Codex, Cursor, Safari, and agreed supported apps.
+- Exercise profile import, backup, restore, learning, and update-preserved profile on a clean user account.
+- Measure idle/active CPU, memory, and input latency.
+- Verify Developer ID signature, notarization, Gatekeeper, fresh install, update from the prior signed build, and rollback.
+- Verify crash-report opt-in/revocation, exact sanitized payload, IP handling/retention, and dSYM symbolication before enabling reporting in a public build.
 
-## Publishing a release
+Historical Build 47 checks passed on Xcode 27.1: the app target compiled, 300 core checks passed, 99 selected-text conversion assertions passed, and 13 XCTest reliability tests passed. For current Build 52, the app target compiles, **306 core checks pass**, and the arm64 installed bundle passes plist, architecture, and `codesign --verify --deep --strict` checks. Its executable hash is recorded above. It is ad-hoc signed, has no dSYM, and is built without Sparkle or crash reporting. Build 52 is freshly launched; its Learning and Rules pages were visually checked at the current large full-screen size, and one physical TextEdit smoke check confirmed automatic and selected-text conversion. Manual edge-drag resize, small-window/minimum-size, light/dark appearance, and Reduce Motion remain unverified. Short Activity Monitor snapshots from earlier builds are not performance benchmarks. No 30-run input matrix, cross-application live matrix, trusted signed/notarized install, updater-forward test, or rollback test is complete.
 
-1. Set `CFBundleShortVersionString` and increment `CFBundleVersion` in `macos/Info.plist`.
-2. Run the core checks and an arm64 build locally. Manually verify real typing, Option undo, Spotlight, secure input, permissions, and installation on each macOS version advertised as supported.
-3. Push a version tag such as `v1.0.0`. The release workflow rejects a tag that differs from the app version and fails closed if any signing or notarization secret is missing.
-4. Confirm the GitHub Release contains the notarized DMG and `version.json`, then install the release and verify an in-app update from the previous signed release.
+The local review bundle used `-debug-info-format none` because this constrained environment blocks SwiftPM's in-build `dsymutil` task with `Operation not permitted`; a separate manual `dsymutil` invocation succeeds. Public and crash-reporting builds must keep the default DWARF setting, upload symbol files, and pass CI on the hosted macOS runner. That configured crash-reporting build has not been verified here.
 
-A local self-signed development build cannot serve as the first in-app-update source for a Developer ID release. Install the first signed release manually; macOS may ask the user to confirm permissions again after the signing identity changes.
+## Public Alpha 1 scope
 
-## Release checklist
+- Keep the existing **beta/test channel**. Public Alpha 1 is a release label on that channel, not a third updater channel.
+- Use a prerelease tag such as `beta-v<version>-build<build>` after version/build metadata is reviewed and code is merged to `main`.
+- Keep the GitHub release as a draft while validating the signed DMG. Publish manually only after every alpha gate above passes.
+- Do not call the build `1.0`. Stable 1.0 is a separate release after alpha feedback and open text-integrity issues are resolved.
+- Do not claim compatibility with an OS version until hands-on testing is recorded.
 
-- [ ] The published tag matches the app version and build number.
-- [ ] Core checks and arm64 build pass on the release commit.
-- [ ] DMG and app pass strict signature and Gatekeeper checks after notarization.
-- [ ] Release manifest SHA-256 matches the exact uploaded DMG.
-- [ ] Fresh install and update from the previous public version work on Apple Silicon.
-- [ ] Real input scenarios pass in Spotlight, native fields, browsers, chat apps, and terminals.
-- [ ] Permission recovery, secure-input exclusions, profile import/restore, and uninstall behavior are verified.
-- [ ] macOS versions are listed as supported only after hands-on testing on those versions.
+## Current distribution mechanism and migration gate
+
+Sparkle 2.10.0 is pinned in `macos/Package.swift`. Distribution builds embed the matching framework and configure EdDSA feed and archive verification. The release workflow uses the same signed feed for stable and beta builds, validates the generated XML and signatures, creates a draft, then waits for manual publication. Every Pages deployment restores the signed `appcast.xml` from the newest published release; the release-triggered copy retries briefly while GitHub makes its asset available. The Sparkle branch compiles in hosted CI; a persistent private key and clean notarized install/update/rollback test are still required before distribution.
+
+The GitHub Pages workflow deploys `docs/` from `main`. A repository owner must enable **Settings → Pages → Build and deployment → GitHub Actions** once. The page discovers the latest published arm64 DMG; draft releases remain unavailable to visitors.
+
+## One-time release configuration
+
+Create the protected GitHub Actions environment `multiswitcher-release`; require a reviewer and permit only reviewed release tags. Keep secrets environment-scoped.
+
+Required for signed release workflow:
+
+- `APPLE_DEVELOPER_CERTIFICATE_P12_BASE64`
+- `APPLE_DEVELOPER_CERTIFICATE_PASSWORD`
+- `APPLE_ID`
+- `APPLE_APP_SPECIFIC_PASSWORD`
+- `MULTISWITCHER_DEVELOPER_TEAM_ID` variable
+- `MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY` variable
+
+Crash reporting is optional. Leave all four values empty to produce a build with crash reporting unavailable. If enabled, configure all four; partial configuration is rejected:
+
+- `MULTISWITCHER_SENTRY_DSN` variable
+- `MULTISWITCHER_SENTRY_ORG_SLUG` and `MULTISWITCHER_SENTRY_PROJECT_SLUG` variables
+- `MULTISWITCHER_SENTRY_AUTH_TOKEN` secret with only debug-symbol upload permission
+
+Required Sparkle updater configuration:
+
+- generate one persistent EdDSA key pair with Sparkle's `generate_keys` tool;
+- set its base64 public key as `MULTISWITCHER_SPARKLE_PUBLIC_KEY`;
+- export the private key once to a local file with Sparkle's `generate_keys -x <file>`, base64-encode that file locally, and store the result as `MULTISWITCHER_SPARKLE_PRIVATE_KEY_BASE64` in the protected release environment;
+- never print the private key or put its raw file in the repository, a build artifact, or workflow output. The workflow decodes it only into the appcast generator's standard input.
+
+Never place signing certificates, private keys, passwords, API tokens, user profiles, or Punto data in the repository, workflow output, website, issue, or chat. The source workflow cannot configure repository rules, required reviewers, Pages settings, Apple Developer enrollment, or Sentry retention/IP scrubbing.
+
+## Release procedure
+
+1. Merge reviewed code to `main`; require passing macOS 15 and 26 CI jobs, and review the macOS 27 `xcode-27` preview job.
+2. Confirm the matching hands-on test logs for macOS 15, 26, and 27 and review known limitations.
+3. Increment `CFBundleVersion`; keep the first public release below 1.0.
+4. Create `beta-v<version>-build<build>` pointing to the reviewed `main` commit. The workflow verifies the tag and creates a draft prerelease with the signed DMG and manifest.
+5. Install that exact signed build on a clean Apple Silicon account. Verify signature, notarization, permissions, profile preservation, and a forward update from the preceding signed build; exercise rollback.
+6. Verify the download page finds the published asset after it is manually published. Confirm crash-report configuration and privacy disclosures match the actual payload.
+7. Publish the draft manually. A Git commit or tag alone does not distribute an update; a published, signed release and working updater are required.
+
+## Data, reports, and support
+
+Conversion and bundled dictionaries run locally. Update checks send ordinary network metadata to GitHub, not typed text or profile data. Crash reports are disabled by default and initialize only after explicit consent in configured builds. Revoking consent closes the reporter and rejects events with a timestamp at or before revocation; an event with no timestamp is rejected when a revocation date exists.
+
+Debug logs are off by default. The support action redacts common paths, app IDs, sensitive key/value fields, URLs, emails, IP addresses, and common token formats; the preview is editable and redacted again after edits. Only after the user chooses to share does the app copy the report and open the GitHub issue form. Nothing is submitted automatically. Redaction is defense in depth, not a guarantee; the user must review the final report.
+
+## Stable 1.0 gate
+
+In addition to the alpha checks, 1.0 requires a public support page and tested update/rollback channel, completed appcast migration or an explicitly reviewed updater decision, no open text/clipboard/learning corruption issues, documented compatibility, accessibility review, and measured resource targets. Public feedback should be triaged and fixes released through reviewed commits and signed builds. There is no response-time commitment.
+
+## Current source revision: 0.3.11 (52), installed for local validation; hosted CI passes
+
+- Build 52 fixes the Learning page card clipping by explicitly measuring top-aligned content and fitting its table/help region within the card. Rules retains a measured 12 pt vertical inset. Six layout-policy regressions raise the Core suite to 306 passing checks.
+- The signed-release workflow now uses the compatible native-symbol Sentry CLI 2.58.6 package with a pinned SHA-512 check; the CLI is installed before importing the signing key and receives no Sentry token until its separate dSYM-upload step. Local package-integrity, version, and command checks pass. The authenticated Sentry upload is not verified.
+- The fresh Finder launch confirms the installed bundle is Build 52; the About page reports 0.3.11. Learning and Rules were inspected at the current large full-screen size. One physical TextEdit test confirmed automatic and selected-text conversion. Minimum-size, manual resize, light/dark appearance, and Reduce Motion remain unverified.
+- Build 52 was compiled ad-hoc and installed at `/Applications/MultiSwitcher.app`. Hosted CI runs 39850867325 and 39857876932 passed on macOS 15, macOS 26, and Xcode 27, including the Sparkle updater branch.
+
+## Historical Build 47 validation
+
+- Build 47 fixes a settings remeasurement gap: the scroll viewport width is propagated before reading wrapped-card fit sizes, dynamic permission and example result text schedules a fresh measurement, and the document height accounts for its viewport and all settings pages. Debug builds record card-frame collisions without user text.
+- A later screenshot reopened the General-page top-margin/card-boundary issue after the earlier Build 46 pass. Build 47 was installed and the screenshot state was visually checked; that overlap is not present at the current large window size. Small-window and manual-resize coverage remains open.
+
+- Build 46 moves initial and page-change scrolling to the next main-loop turn after the window, selected tab, and scroll document finish layout. Settings forms remain centered and capped at 980 points on large displays, while using available width on smaller windows. Build 47's installed screenshot check closes the latest large-window regression only.
+- Build 46 clarifies the English and Russian permission guide: it explains each permission's concrete role, lets users choose **Later**, and states that text correction runs locally. No permissions are changed by the app. The installed candidate's code bundle is verified; all three CI jobs passed for PR commit `1d3d259`.
+
+- Build 45 adds adaptive remeasurement of constraint-based settings cards when the window or sidebar changes size, updates the document height and preserves the scroll position. The installed General page was visually checked at its initial and zoomed sizes; manual resize and minimum-width/minimum-height checks remain required.
+- Build 45 removes the launch-time permission dialog. The status stays visible in General settings, and the menu offers a permission check only when access is missing. The guide appears after an explicit click, explains that both automatic and Option conversion need keyboard access, and defaults to **Later**. UI verification confirmed that choosing **Later** closes the guide without opening System Settings. No TCC permission was changed.
+- Build 45 is installed at `/Applications/MultiSwitcher.app` as an arm64 local build with an ad-hoc signature. Its executable hash matches the verified candidate, the profile was preserved, and duplicate temporary bundles were removed. Automatic and Option input were not validated because the current Accessibility and Input Monitoring states are both off by the user's choice.
+- The CI matrix now also targets the `xcode-27` public-preview runner for macOS 27. The official runner image is preview software; its CI result is supplemental and does not certify release support or replace hands-on testing.
+
+- Build 44 corrected the settings document's initial height and scroll position and added the current macOS 27 “Device Control & Data Access” label with legacy paths for macOS 15–26. Build 45 extends its behavior for resize-driven wrapping and uses a user-opened permission guide.
+
+- Adds a persisted threshold for automatic layout transitions: switch after one confirmed word or two consecutive confirmed words. Two remains the default, and the selection is captured with each word-boundary snapshot.
+- Stores bundled word lists as sorted flat arrays and uses binary search instead of `Set<String>` to reduce dictionary lookup memory. The 80 MB resident-memory target has not yet been measured against the installed app.
+- Uses clearer monochrome card edges, more visible graphite selection, and a consistent 12/16 pt card-spacing scale. Exception-list containers now have a fixed intrinsic height and vertical compression resistance to stop the overlap recorded in the supplied layout audit. Source compilation passes; live visual checks for light/dark appearance, small window sizes, VoiceOver, and keyboard navigation remain open.
+- Allows a pending automatic replacement to recover a typed suffix only if the captured input is still an exact prefix and the number of fresh key events matches the generation change. It rejects stale text, count mismatches, composed characters, empty suffixes, and oversized recovery. If an input event contains multi-character, composed, unsafe, or truncated Unicode, the keyboard monitor invalidates its word snapshot before conversion can use physical-key guesses. This source-level protection still needs live typing validation.
+- Keeps verbose logging off by default and explains the opt-in setting. Upgrades preserve each user's saved debug-log preference.
+- Core checks: 298 passed. XCTest reliability suite: 13 passed. Selection conversion checks: 99 passed. These are deterministic source-level checks, not live keyboard validation. The selection harness also reported AppleSpell/XPC unavailable; its packaged local dictionaries still passed.
+- Build 37 adds privacy-safe operation IDs and queue-depth/capacity diagnostics across buffer and Accessibility replacement, distinguishes queue refusal, process change, stale context, and adapter rejection, and standardizes settings-control spacing. Its local arm64 bundle passed plist, architecture, lexicon, and code-bundle verification. It has an ad-hoc signature and no DWARF; crash reporting is disabled.
+- Build 38 narrows automatic-rule cache invalidation to actual conversion-rule changes, avoids a second rule lookup inside the automatic detector, lays out the rule-editor toolbar in three adaptive Auto Layout rows, and adds coverage for rule revisions and duplicate rule evaluation. The 0.3.8 (38) bundle passes plist, arm64, resource, and code-bundle integrity checks; it remains ad-hoc signed and uninstalled.
+- Build 39 prepares the compiled automatic-rule snapshot on a utility queue before keyboard monitoring starts. It adds regression cases for `want djn ctqxfc → want вот сейчас` and for mixed Russian/English phrases.
+- Build 40 also prewarms the snapshot after profile rule changes and legacy-rule changes. That keeps both startup and edited rules away from the first subsequent word-boundary callback. The build is ad-hoc signed and remains uninstalled pending a trusted signature and live-input verification.
+- Build 41 shortens settings navigation to a 70 ms fade to 84% opacity and a 90 ms fade-in, both eased out. The existing generation guard and Reduce Motion instant transition remain; the 220 ms expand/restore animation is unchanged. Source-level verification passes, but the feel check still needs a live window.
+- Build 42 adds a temporary auto-conversion example checker to Advanced settings. It uses the automatic detector, current rules/dictionaries and context threshold, shows predicted text and next layout separately, and suppresses decision logging for the preview. Examples stay in the open settings view and are not persisted. Live layout and small-window visual checks remain required.
+- No signing identity, notarized build, reliable Instruments trace, measured CPU baseline, or live multi-app test matrix is available in this workspace yet.
+
+## Historical notes from a prior local reliability candidate: 0.3.4 (27)
+
+- Adds reviewed technical, interface-design, brand, and slang entries as separate local lexicon packs; slang is used to preserve valid forms rather than normalize them.
+- Uses the actual selection converter for mixed RU/EN regression cases and keeps ambiguous two-letter fragments unchanged until context is strong enough.
+- Tracks the exact direction of copy/paste conversion toggles so only a confirmed return to the original text can count as one manual-learning cycle. Two cycles create a review candidate; confirmation is still explicit.
+- Serializes automatic Accessibility edits, manual Option edits, exact undo, and injected-buffer replacements through one bounded FIFO. A queued edit is revalidated against the captured process and input context before it starts; changed or unsupported fields are left untouched.
+- Routes terminal whole-line conversion through that same FIFO. A committed buffer replacement now records its exact converted/undone direction and operation ID, so automatic undo evidence cannot silently miss the first return-to-source toggle.
+- Keeps learning and layout updates behind the confirmed replacement completion, and avoids a false learning event when an Option operation fails or its snapshot became stale.
+- Refreshes the open Learning table when a candidate or automatic cancellation changes the profile.
+- Keeps new manual Option learning candidates above imported Punto history, labels imported history distinctly, and explains that a candidate requires a deliberate confirmation before it becomes an exception.
+- Allows queued repeat Option toggles to continue only when the prior successful toggle advanced the field generation for the same operation and no physical input, app, or context changed; this prevents fast intentional toggles from being discarded as stale.
+- Checks the active process on TextConverter's main actor instead of reading `NSWorkspace.frontmostApplication` from the injection queue. An application-activation notification also invalidates pending word-boundary snapshots; this addresses logged automatic conversions that were being cancelled before insertion. Live validation in the installed app is still required.
+- Restores the Settings window's last size and position. ⌘W closes Settings while leaving the menu-bar app running; ⌘Q quits the app. Live smoke checks previously confirmed both behaviors; they were not repeated on build 26.
+- Keeps imported Punto training history separate from new local evidence.
+- Build 27 compiled for arm64 and passed bundle-integrity verification. The 241 Core checks passed against its source; the 85 deterministic actual-source conversion assertions and 3 appcast-validator checks are historical results. These checks do not replace physical keyboard input, Accessibility replacement tests, or the 30-run app matrix.
+- Sparkle 2.10.0 is pinned for release builds, its framework is embedded in the app bundle, and the signed appcast validator checks the current version, channel, download URL, archive signature, and signed-feed trailer.
+- Crash reporting stays disabled when the four Sentry configuration values are all absent; the release workflow rejects partial configuration.

@@ -7,32 +7,84 @@ public enum ProfileRuleDecision: Equatable, Sendable {
     case replace(String)
 }
 
+fileprivate struct PreparedProfileRule: @unchecked Sendable {
+    let rule: ProfileRule
+    let normalizedPattern: String
+    let regularExpression: NSRegularExpression?
+}
+
+/// Immutable, pre-normalized rules for repeated decisions on the keyboard path.
+/// Rebuild this only when the profile or legacy rule lists change.
+public struct CompiledProfileRules: @unchecked Sendable {
+    fileprivate let byOrigin: [ProfileRuleOrigin: [PreparedProfileRule]]
+
+    fileprivate init(_ rules: [ProfileRule]) {
+        var grouped: [ProfileRuleOrigin: [PreparedProfileRule]] = [:]
+        for rule in rules where rule.enabled && !rule.pattern.isEmpty {
+            let canonical = rule.pattern.precomposedStringWithCanonicalMapping
+            var expression: NSRegularExpression?
+            if rule.match == .regularExpression,
+               rule.pattern.count <= 128,
+               ProfileRuleEngine.isConservativeRegex(rule.pattern) {
+                var options: NSRegularExpression.Options = []
+                if !rule.caseSensitive { options.insert(.caseInsensitive) }
+                expression = try? NSRegularExpression(pattern: rule.pattern, options: options)
+            }
+            grouped[rule.origin, default: []].append(PreparedProfileRule(
+                rule: rule,
+                normalizedPattern: rule.caseSensitive ? canonical : canonical.lowercased(),
+                regularExpression: expression
+            ))
+        }
+        byOrigin = grouped
+    }
+}
+
 /// Evaluates typed local rules while keeping unverified Punto rows on the conservative exact fallback.
 public enum ProfileRuleEngine {
-    public static func evaluate(typed: String, converted: String, rules: [ProfileRule]) -> ProfileRuleDecision {
-        let orderedRules = rules.enumerated().sorted { lhs, rhs in
-            func priority(_ origin: ProfileRuleOrigin) -> Int {
-                switch origin { case .user: return 0; case .learned: return 1; case .punto: return 2 }
-            }
-            let lp = priority(lhs.element.origin), rp = priority(rhs.element.origin)
-            return lp == rp ? lhs.offset < rhs.offset : lp < rp
+    private struct NormalizedCandidate {
+        let original: String
+        let folded: String
+
+        init(_ text: String) {
+            original = text.precomposedStringWithCanonicalMapping
+            folded = original.lowercased()
         }
-        for (_, rule) in orderedRules where rule.enabled && !rule.pattern.isEmpty {
-            switch rule.action {
-            case .neverConvert:
-                if matches(rule.pattern, in: typed, mode: rule.match, caseSensitive: rule.caseSensitive)
-                    || matches(rule.pattern, in: converted, mode: rule.match, caseSensitive: rule.caseSensitive) {
-                    return .neverConvert
-                }
-            case .alwaysConvert:
-                guard rule.origin == .user else { continue }
-                if matches(rule.pattern, in: converted, mode: rule.match, caseSensitive: rule.caseSensitive) {
-                    return .alwaysConvert
-                }
-            case .replace:
-                guard rule.origin == .user, let replacement = rule.replacement, !replacement.isEmpty else { continue }
-                if matches(rule.pattern, in: typed, mode: rule.match, caseSensitive: rule.caseSensitive) {
-                    return .replace(replacement)
+
+        func value(caseSensitive: Bool) -> String { caseSensitive ? original : folded }
+    }
+
+    public static func compile(_ rules: [ProfileRule]) -> CompiledProfileRules {
+        CompiledProfileRules(rules)
+    }
+
+    public static func evaluate(typed: String, converted: String, rules: [ProfileRule]) -> ProfileRuleDecision {
+        evaluate(typed: typed, converted: converted, rules: compile(rules))
+    }
+
+    public static func evaluate(typed: String, converted: String,
+                                rules: CompiledProfileRules) -> ProfileRuleDecision {
+        let typedCandidate = NormalizedCandidate(typed)
+        let convertedCandidate = NormalizedCandidate(converted)
+        for origin in [ProfileRuleOrigin.user, .learned, .punto] {
+            for prepared in rules.byOrigin[origin] ?? [] {
+                let rule = prepared.rule
+                switch rule.action {
+                case .neverConvert:
+                    if matches(prepared, candidate: typedCandidate)
+                        || matches(prepared, candidate: convertedCandidate) {
+                        return .neverConvert
+                    }
+                case .alwaysConvert:
+                    guard rule.origin == .user else { continue }
+                    if matches(prepared, candidate: convertedCandidate) {
+                        return .alwaysConvert
+                    }
+                case .replace:
+                    guard rule.origin == .user, let replacement = rule.replacement, !replacement.isEmpty else { continue }
+                    if matches(prepared, candidate: typedCandidate) {
+                        return .replace(replacement)
+                    }
                 }
             }
         }
@@ -75,8 +127,26 @@ public enum ProfileRuleEngine {
         }
     }
 
+    private static func matches(_ prepared: PreparedProfileRule,
+                                candidate: NormalizedCandidate) -> Bool {
+        let rule = prepared.rule
+        switch rule.match {
+        case .exact, .unverifiedPunto:
+            return candidate.value(caseSensitive: rule.caseSensitive) == prepared.normalizedPattern
+        case .prefix:
+            return candidate.value(caseSensitive: rule.caseSensitive).hasPrefix(prepared.normalizedPattern)
+        case .contains:
+            return candidate.value(caseSensitive: rule.caseSensitive).contains(prepared.normalizedPattern)
+        case .regularExpression:
+            guard let expression = prepared.regularExpression,
+                  candidate.original.count <= 1024 else { return false }
+            let range = NSRange(candidate.original.startIndex..<candidate.original.endIndex, in: candidate.original)
+            return expression.firstMatch(in: candidate.original, range: range) != nil
+        }
+    }
+
     /// Accept a small, bounded regular-expression subset in the keyboard event path.
-    private static func isConservativeRegex(_ pattern: String) -> Bool {
+    fileprivate static func isConservativeRegex(_ pattern: String) -> Bool {
         let characters = Array(pattern)
         guard !characters.isEmpty else { return false }
         var index = 0

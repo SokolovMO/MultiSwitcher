@@ -1,5 +1,18 @@
 .DS_Store
 .build/
+__pycache__/
+*.py[cod]
+
+# Local signing credentials and environment secrets
+*.p12
+*.pfx
+*.key
+*.pem
+*.mobileprovision
+*.provisionprofile
+.env
+.env.*
+!.env.example
 /Packages
 xcuserdata/
 DerivedData/
@@ -19,9 +32,10 @@ _local_backups/
 [Oo]bj/
 *.user
 
-# Local-only development notes and artifacts
+# Local-only development notes and agent instructions
 docs/
-MULTI_SWITCHER_PLAN.md
-replica/
+!docs/
+docs/*
+!docs/index.html
 .agents/
 *.log

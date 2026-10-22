@@ -4,19 +4,25 @@ A native macOS menu-bar utility for correcting text typed in the wrong keyboard 
 
 ## Status
 
-The app is under active development. Automated core checks and an arm64 app build are available in this repository. Application-field compatibility and the supported macOS release matrix still require manual validation before calling the project production-ready.
+MultiSwitcher is preparing its first public alpha. Build 0.3.11 (52) is freshly installed locally and confirmed from Finder and the app’s About page. The latest Learning and Rules pages were visually checked in the current large full-screen layout; this does not yet cover minimum-size or manual resizing, dark mode, or Reduce Motion. The app is ad-hoc signed and is not a trusted public-release build. Accessibility and Input Monitoring remain off by the user's choice, so automatic and Option conversion are paused and were not input-tested on this build. Hands-on compatibility on macOS 15/26/27, Developer ID signing, notarization, and update recovery remain release gates. See [Release readiness](RELEASE.md).
 
 ## Requirements
 
 - Apple Silicon Mac (arm64)
 - macOS 15 or newer
-- Accessibility and Input Monitoring permissions for global keyboard monitoring
+- Accessibility and Input Monitoring permissions for global keyboard conversion
+
+## macOS permissions
+
+MultiSwitcher does not interrupt first launch with a permissions dialog or change macOS privacy settings in the background. When keyboard access is missing, **Check Permissions…** appears in the menu-bar menu and a status with **Setup Guide…** appears in General settings. The guide explains each permission before offering to open System Settings; **Later** is the default choice. You can leave either permission off and keep using the app and its settings, but automatic correction and the manual Option shortcut remain paused until both permissions are enabled.
+
+The first path is **System Settings → Privacy & Security → Accessibility → MultiSwitcher** on macOS 15–26, and **System Settings → Privacy & Security → Device Control & Data Access → MultiSwitcher** on macOS 27. The second path is **System Settings → Privacy & Security → Input Monitoring → MultiSwitcher**. MultiSwitcher uses the first permission to work with text in supported fields and Input Monitoring to receive keyboard events for layout detection and shortcuts. If you enable both after choosing **Open Settings**, MultiSwitcher restarts once to apply keyboard monitoring. macOS remains in control of both switches.
 
 ## Install
 
-Once a signed and notarized GitHub release is published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. The app explains the required macOS permissions on first run.
+When Public Alpha 1 passes its gates and is manually published, download the MultiSwitcher DMG from the repository’s Releases page, drag the app to Applications, and launch it. Tagging a build creates a draft for review; it does not publish or deliver an update until the draft is manually promoted. The release tag must match the reviewed version and build metadata; stable 1.0 will be a separate release. The website source is in `docs/`; a repository owner must enable GitHub Pages once.
 
-When release updates are configured, MultiSwitcher checks GitHub Releases no more than once a day (this can be disabled in About) and offers a manual check from the menu-bar menu. Updates are installed only after checking the download hash, bundle identity, Developer ID signature, and Gatekeeper assessment.
+Release builds use pinned Sparkle 2.10 with signed appcasts. The updater has not yet been verified end to end with a notarized public release; a commit or tag alone does not deliver updates. See [RELEASE.md](RELEASE.md) before relying on the updater.
 
 ## Build and checks
 
@@ -27,11 +33,15 @@ swift run --package-path macos MultiSwitcherCoreTests
 bash macos/build_app.sh
 ```
 
-The local build is arm64 and signed with the configured local signing identity. A public release additionally needs an Apple Developer ID certificate, notarization credentials, and GitHub Actions secrets; see [RELEASE.md](RELEASE.md).
+A local arm64 build may use a development or ad-hoc signature; neither is suitable for public distribution. Public releases need an Apple Developer ID certificate, notarization credentials, and the GitHub release environment; see [RELEASE.md](RELEASE.md).
 
 ## Privacy
 
-Text conversion runs locally. The release checker contacts GitHub only to retrieve version metadata and the selected release asset; typed text and profile data are not included in update requests.
+Text conversion runs locally. The release checker contacts GitHub to retrieve version metadata and the selected release asset; typed text and profile data are not included in update requests. Optional crash reports are disabled until the user explicitly opts in, and are available only in builds configured with the reporting service. Read [Privacy](PRIVACY.md), [Security reporting](SECURITY.md), and [Release readiness](RELEASE.md) before installing.
+
+## Feedback
+
+Use the repository's bug-report and feature-request forms. Bug reports request synthetic examples and warn against publishing private text or raw logs. The redacted diagnostic preview is editable; choosing to share copies the reviewed report and opens the GitHub issue form. It is never submitted automatically.
 
 ## Source and license
 

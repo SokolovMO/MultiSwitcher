@@ -109,18 +109,43 @@ public enum LearningOrigin: String, Codable, Sendable {
 /// An imported Punto history count is pending evidence, never an active exclusion.
 public struct LearningEntry: Codable, Equatable, Sendable {
     public var word: String
+    /// Count of fresh, locally confirmed automatic undo operations. Imported Punto
+    /// history is kept separately so it can never satisfy the learning threshold.
     public var cancellationCount: Int
     public var isExcluded: Bool
     public var origin: LearningOrigin
     public var updatedAt: Date?
+    /// Historical Punto count, retained for display and migration only.
+    public var importedCancellationCount: Int?
+    /// Complete manual Option round trips. These create a review candidate, never
+    /// an active exception without an explicit user confirmation.
+    public var manualRoundTripCount: Int?
+    /// Bounded idempotency keys for confirmed automatic undo operations.
+    public var recentAutomaticOperationIDs: [String]?
 
     public init(word: String, cancellationCount: Int, isExcluded: Bool = false,
-                origin: LearningOrigin, updatedAt: Date? = nil) {
+                origin: LearningOrigin, updatedAt: Date? = nil,
+                importedCancellationCount: Int? = nil,
+                manualRoundTripCount: Int? = nil,
+                recentAutomaticOperationIDs: [String]? = nil) {
         self.word = word
         self.cancellationCount = cancellationCount
         self.isExcluded = isExcluded
         self.origin = origin
         self.updatedAt = updatedAt
+        self.importedCancellationCount = importedCancellationCount
+        self.manualRoundTripCount = manualRoundTripCount
+        self.recentAutomaticOperationIDs = recentAutomaticOperationIDs
+    }
+
+    mutating func migrateToCurrentSchema() {
+        // Schema 1 combined imported Punto history and local cancellation evidence.
+        // Punto-origin rows are unambiguously historical, so move their count out of
+        // the threshold used by automatic learning.
+        if origin == .punto, importedCancellationCount == nil {
+            importedCancellationCount = max(0, cancellationCount)
+            cancellationCount = 0
+        }
     }
 }
 
@@ -144,7 +169,7 @@ public struct PuntoImportMetadata: Codable, Equatable, Sendable {
 }
 
 public struct MultiSwitcherProfile: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public var schemaVersion: Int
     public var legacyDefaultsMigrated: Bool
@@ -172,6 +197,14 @@ public struct MultiSwitcherProfile: Codable, Equatable, Sendable {
         self.importedPuntoRules = importedPuntoRules
         self.lastPuntoImport = lastPuntoImport
     }
+
+    mutating func migrateToCurrentSchema() {
+        guard schemaVersion < Self.currentSchemaVersion else { return }
+        for index in learning.indices {
+            learning[index].migrateToCurrentSchema()
+        }
+        schemaVersion = Self.currentSchemaVersion
+    }
 }
 
 public enum LearningOutcome: Equatable, Sendable {
@@ -179,6 +212,7 @@ public enum LearningOutcome: Equatable, Sendable {
     case ineligible
     case pending(cancellations: Int)
     case excluded(word: String)
+    case manualCandidate(roundTrips: Int)
     case alreadyExcluded
 }
 

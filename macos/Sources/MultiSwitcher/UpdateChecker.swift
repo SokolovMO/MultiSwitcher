@@ -1,5 +1,7 @@
+#if !canImport(Sparkle)
 import AppKit
 import Foundation
+import MultiSwitcherCore
 
 /// Проверяет наличие обновлений через GitHub
 @MainActor
@@ -10,17 +12,20 @@ enum UpdateChecker {
     private static let updateDefaults = UserDefaults.standard
 
     static var isConfigured: Bool {
-        guard let feed = configuredURL("MSUpdateFeedURL"),
+        guard let repository = Bundle.main.object(forInfoDictionaryKey: "MSGitHubRepository") as? String,
+              repository.range(of: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", options: .regularExpression) != nil,
               let releaseBase = configuredURL("MSReleaseBaseURL"),
+              let releasesURL = configuredURL("MSReleasesURL"),
               let teamID = Bundle.main.object(forInfoDictionaryKey: "MSDeveloperTeamID") as? String,
               teamID.range(of: "^[A-Z0-9]{10}$", options: .regularExpression) != nil else { return false }
-        return feed.path.hasSuffix("/releases/latest/download/version.json")
-            && releaseBase.path.hasSuffix("/releases/download")
+        return releaseBase.absoluteString == "https://github.com/\(repository)/releases/download"
+            && releasesURL.absoluteString == "https://github.com/\(repository)/releases"
     }
 
     private static func configuredURL(_ key: String) -> URL? {
         guard let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String,
-              let url = URL(string: raw), url.scheme == "https", url.host == "github.com" else { return nil }
+              let url = URL(string: raw), url.scheme == "https", url.host == "github.com",
+              url.user == nil, url.password == nil, url.query == nil, url.fragment == nil else { return nil }
         return url
     }
 
@@ -36,9 +41,43 @@ enum UpdateChecker {
     /// Структура JSON версии
     private struct VersionInfo: Decodable {
         let version: String
+        let buildNumber: String?
+        let tag: String?
+        let channel: String?
         let url: String?
         let notes: String?
         let sha256: String?
+
+        var releaseChannel: UpdateChannel { UpdateChannel(rawValue: channel ?? "stable") ?? .stable }
+        var updateIdentifier: String { "\(releaseChannel.rawValue)#\(version)#\(buildNumber ?? "")" }
+    }
+
+    private struct GitHubRelease: Decodable {
+        struct Asset: Decodable {
+            let name: String
+            let browserDownloadURL: String
+
+            enum CodingKeys: String, CodingKey {
+                case name
+                case browserDownloadURL = "browser_download_url"
+            }
+        }
+
+        let tagName: String
+        let draft: Bool
+        let prerelease: Bool
+        let publishedAt: String?
+        let createdAt: String
+        let assets: [Asset]
+
+        enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+            case draft
+            case prerelease
+            case publishedAt = "published_at"
+            case createdAt = "created_at"
+            case assets
+        }
     }
 
     /// Проверить при запуске (с задержкой 5 сек, не чаще раза в сутки).
@@ -71,20 +110,33 @@ enum UpdateChecker {
         Task { await check(silent: false) }
     }
 
+    /// The setting is already persisted by SettingsManager; keep the release
+    /// and local-build updater implementations behind the same UI contract.
+    static func automaticChecksDidChange(_ enabled: Bool) {
+        updateDefaults.set(enabled, forKey: autoCheckKey)
+    }
+
+    static func channelDidChange() {
+        updateDefaults.removeObject(forKey: lastCheckKey)
+        updateDefaults.removeObject(forKey: skippedVersionKey)
+        checkNow()
+    }
+
     private static func check(silent: Bool) async {
         guard let info = await fetchApplicableInfo() else {
-            // The stable feed could not be reached (for example, a network error).
-            rslog("UpdateChecker: stable feed unreachable")
+            rslog("UpdateChecker: GitHub Releases lookup unavailable")
             if !silent { await showErrorAlert() }
             return
         }
 
         updateDefaults.set(Date(), forKey: lastCheckKey)
 
-        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        let currentInfo = Bundle.main.infoDictionary ?? [:]
+        let currentVersion = currentInfo["CFBundleShortVersionString"] as? String ?? "0"
+        let currentBuild = currentInfo["CFBundleVersion"] as? String ?? "0"
 
-        if compareVersions(info.version, isNewerThan: currentVersion) {
-            if updateDefaults.string(forKey: skippedVersionKey) == info.version && silent {
+        if isNewer(info, thanVersion: currentVersion, build: currentBuild) {
+            if updateDefaults.string(forKey: skippedVersionKey) == info.updateIdentifier && silent {
                 return // Пользователь пропустил эту версию
             }
             await showUpdateAlert(info: info)
@@ -95,11 +147,75 @@ enum UpdateChecker {
 
     /// Загружает только HTTPS-фид, зашитый в подписанное приложение.
     private static func fetchApplicableInfo() async -> VersionInfo? {
-        guard isConfigured, let feed = configuredURL("MSUpdateFeedURL") else { return nil }
-        return await fetchInfo(from: feed.absoluteString)
+        guard isConfigured,
+              let repository = Bundle.main.object(forInfoDictionaryKey: "MSGitHubRepository") as? String else { return nil }
+        let requestedChannel = SettingsManager.shared.updateChannel
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.github.com"
+        components.path = "/repos/\(repository)/releases"
+        if requestedChannel == .stable {
+            components.path += "/latest"
+        } else {
+            components.queryItems = [URLQueryItem(name: "per_page", value: "100")]
+        }
+        guard let releasesURL = components.url else { return nil }
+
+        do {
+            var request = URLRequest(url: releasesURL)
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            request.setValue("MultiSwitcher/\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")",
+                             forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await updateSession.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  data.count <= 2 * 1024 * 1024 else { return nil }
+            let releases: [GitHubRelease]
+            if requestedChannel == .stable {
+                releases = [try JSONDecoder().decode(GitHubRelease.self, from: data)]
+            } else {
+                releases = try JSONDecoder().decode([GitHubRelease].self, from: data)
+            }
+            guard let candidate = UpdateChannelPolicy.select(
+                releases.compactMap(policyRelease), channel: requestedChannel
+            ),
+                  let release = releases.first(where: { $0.tagName == candidate.tag }),
+                  let asset = release.assets.first(where: { $0.name == "version.json" }),
+                  isExpectedGitHubAsset(asset.browserDownloadURL, repository: repository,
+                                        tag: release.tagName, name: "version.json") else { return nil }
+            guard let info = await fetchInfo(from: asset.browserDownloadURL),
+                  info.tag == release.tagName,
+                  info.releaseChannel == (release.prerelease ? .beta : .stable),
+                  info.url == "https://github.com/\(repository)/releases/download/\(release.tagName)/MultiSwitcher-\(info.version)-arm64.dmg" else { return nil }
+            return info
+        } catch {
+            rslog("UpdateChecker GitHub release lookup failed: \(error.localizedDescription)")
+            return nil
+        }
     }
 
-    /// Скачивает и декодирует VersionInfo из стабильного фида.
+    private static func policyRelease(_ release: GitHubRelease) -> PublishedRelease? {
+        let channel: UpdateChannel = release.prerelease ? .beta : .stable
+        guard UpdateChannelPolicy.isValidTag(release.tagName, channel: channel) else { return nil }
+        let prefix = channel == .beta ? "beta-v" : "v"
+        let value = String(release.tagName.dropFirst(prefix.count))
+        guard let marker = value.range(of: "-build") else { return nil }
+        let version = String(value[..<marker.lowerBound])
+        let build = String(value[marker.upperBound...])
+        return PublishedRelease(tag: release.tagName, version: version, buildNumber: build,
+                                isDraft: release.draft, isPrerelease: release.prerelease,
+                                publishedAt: release.publishedAt ?? release.createdAt)
+    }
+
+    private static func isExpectedGitHubAsset(_ rawURL: String, repository: String,
+                                               tag: String, name: String) -> Bool {
+        guard let url = URL(string: rawURL), url.scheme == "https", url.host == "github.com" else {
+            return false
+        }
+        return url.path == "/\(repository)/releases/download/\(tag)/\(name)"
+    }
+
+    /// Скачивает и проверяет метаданные выбранного канала.
     private static func fetchInfo(from urlString: String) async -> VersionInfo? {
         guard let url = URL(string: urlString), url.scheme == "https", url.host == "github.com" else { return nil }
         do {
@@ -108,11 +224,17 @@ enum UpdateChecker {
                   data.count <= 128 * 1024 else { return nil }
             let info = try JSONDecoder().decode(VersionInfo.self, from: data)
             guard info.version.range(of: "^[0-9]+(\\.[0-9]+){1,3}$", options: .regularExpression) != nil,
+                  let buildNumber = info.buildNumber,
+                  buildNumber.range(of: "^[0-9]+(\\.[0-9]+)*$", options: .regularExpression) != nil,
+                  let channel = UpdateChannel(rawValue: info.channel ?? "stable"),
+                  let tag = info.tag,
+                  UpdateChannelPolicy.isValidTag(tag, channel: channel),
+                  tag == "\(channel == .beta ? "beta-v" : "v")\(info.version)-build\(buildNumber)",
                   let sha = info.sha256,
                   sha.range(of: "^[0-9a-fA-F]{64}$", options: .regularExpression) != nil else { return nil }
             return info
         } catch {
-            rslog("UpdateChecker fetch \(urlString): \(error)")
+            rslog("UpdateChecker manifest fetch failed: \(error.localizedDescription)")
             return nil
         }
     }
@@ -121,7 +243,9 @@ enum UpdateChecker {
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = L10n.updateAvailable
-        alert.informativeText = "\(L10n.updateNewVersion) \(info.version)\n\(info.notes ?? "")"
+        let buildLine = info.buildNumber.map { " (build \($0))" } ?? ""
+        let channelLine = info.releaseChannel == .beta ? "\n\(L10n.updateBetaChannel)" : ""
+        alert.informativeText = "\(L10n.updateNewVersion) \(info.version)\(buildLine)\(channelLine)\n\(info.notes ?? "")"
         alert.addButton(withTitle: L10n.updateInstallRestart)  // 1st
         alert.addButton(withTitle: L10n.updateDownload)         // 2nd
         alert.addButton(withTitle: L10n.updateSkip)             // 3rd
@@ -132,9 +256,9 @@ enum UpdateChecker {
         case .alertFirstButtonReturn:
             await installAndRestart(info: info)
         case .alertSecondButtonReturn:
-            openReleasePage()
+            openReleasePage(tag: info.tag)
         case .alertThirdButtonReturn:
-            updateDefaults.set(info.version, forKey: skippedVersionKey)
+            updateDefaults.set(info.updateIdentifier, forKey: skippedVersionKey)
         default:
             break
         }
@@ -165,7 +289,7 @@ enum UpdateChecker {
             return
         }
 
-        guard let dmgURL = releaseDMGURL(version: version) else {
+        guard let dmgURL = releaseDMGURL(info: info) else {
             await showInstallError(L10n.updateDownloadFailed)
             return
         }
@@ -270,6 +394,7 @@ enum UpdateChecker {
         }
         let mountedID = mountedInfo?["CFBundleIdentifier"] as? String
         let mountedVersion = mountedInfo?["CFBundleShortVersionString"] as? String
+        let mountedBuild = mountedInfo?["CFBundleVersion"] as? String
         guard mountedID == Bundle.main.bundleIdentifier else {
             rslog("Update: bundle id mismatch (\(mountedID ?? "nil"))")
             await showInstallError(L10n.updateIntegrityFailed)
@@ -280,23 +405,44 @@ enum UpdateChecker {
             await showInstallError(L10n.updateIntegrityFailed)
             return
         }
+        if let expectedBuild = info.buildNumber, mountedBuild != expectedBuild {
+            rslog("Update: bundle build mismatch — announced \(expectedBuild), contains \(mountedBuild ?? "nil")")
+            await showInstallError(L10n.updateIntegrityFailed)
+            return
+        }
 
-        // 6. Скопировать .app с read-only тома DMG на тот же том, что и текущее
-        //    приложение. replaceItemAt НЕ умеет переносить элемент напрямую с
-        //    read-only тома DMG — именно это давало «Ошибку установки».
-        let stagingDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("MultiSwitcher-update-staging-\(UUID().uuidString)", isDirectory: true)
-        try? fm.removeItem(at: stagingDir)
+        // Save a recoverable profile snapshot before touching the installed bundle.
+        // The profile backup is separate from the app staging directory and persists
+        // if the process exits or installation fails.
+        do {
+            _ = try ProfileStore.shared.createBackupSnapshot(label: "before-update")
+        } catch {
+            rslog("Update: profile backup failed; refusing to replace the app")
+            await showInstallError(L10n.updateInstallFailed)
+            return
+        }
+
+        // 6. Stage both the incoming app and an exact rollback copy beside the
+        //    installed app. This guarantees a same-volume replacement and leaves the
+        //    running app untouched if there is not enough space or copying fails.
+        let stagingDir = currentApp.deletingLastPathComponent()
+            .appendingPathComponent(".MultiSwitcher-update-\(UUID().uuidString)", isDirectory: true)
         let stagedApp = stagingDir.appendingPathComponent(appName)
+        let rollbackApp = stagingDir.appendingPathComponent("Previous-MultiSwitcher.app")
+        var preserveRecoveryBackup = false
         do {
             try fm.createDirectory(at: stagingDir, withIntermediateDirectories: true)
             try fm.copyItem(at: sourceApp, to: stagedApp)
+            try fm.copyItem(at: currentApp, to: rollbackApp)
         } catch {
             rslog("Update: staging copy failed — \(error)")
+            try? fm.removeItem(at: stagingDir)
             await showInstallError(error.localizedDescription)
             return
         }
-        defer { try? fm.removeItem(at: stagingDir) }
+        defer {
+            if !preserveRecoveryBackup { try? fm.removeItem(at: stagingDir) }
+        }
 
         // 7. Атомарно заменить .app из staging-копии (на одном томе — работает)
         do {
@@ -307,6 +453,30 @@ enum UpdateChecker {
             await showInstallError(error.localizedDescription)
             return
         }
+
+        // Validate the actual installed copy, not just the DMG source. If this fails,
+        // restore the retained app bundle before showing an error to the user.
+        guard verifyNotarizedSignature(at: currentApp.path),
+              bundle(at: currentApp, matchesID: Bundle.main.bundleIdentifier ?? "", version: version,
+                     build: info.buildNumber) else {
+            rslog("Update: installed app failed verification; restoring previous bundle")
+            do {
+                try fm.removeItem(at: currentApp)
+                try fm.copyItem(at: rollbackApp, to: currentApp)
+                guard verifyNotarizedSignature(at: currentApp.path) else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                rslog("Update: previous bundle restored after post-copy verification failure")
+            } catch {
+                preserveRecoveryBackup = true
+                rslog("Update: automatic rollback failed; recovery bundle retained at \(stagingDir.path)")
+                await showInstallError(L10n.updateInstallFailed)
+                return
+            }
+            await showInstallError(L10n.updateIntegrityFailed)
+            return
+        }
+        rslog("Update: installed signature and bundle metadata verified")
 
         // 8. Явная уборка ПЕРЕД перезапуском: relaunch завершает процесс через
         //    terminate() → exit(), поэтому defer-блоки НЕ выполняются. Без этого том
@@ -322,14 +492,25 @@ enum UpdateChecker {
         AppRelauncher.relaunch(bundlePath: currentApp.path)
     }
 
-    private static func releaseDMGURL(version: String) -> URL? {
+    private static func releaseDMGURL(info: VersionInfo) -> URL? {
         guard isConfigured, let base = configuredURL("MSReleaseBaseURL") else { return nil }
-        return base.appendingPathComponent("v\(version)")
-            .appendingPathComponent("MultiSwitcher-\(version)-arm64.dmg")
+        guard let tag = info.tag,
+              UpdateChannelPolicy.isValidTag(tag, channel: info.releaseChannel) else { return nil }
+        return base.appendingPathComponent(tag)
+            .appendingPathComponent("MultiSwitcher-\(info.version)-arm64.dmg")
     }
 
-    private static func openReleasePage() {
-        guard let url = configuredURL("MSReleasesURL") else { return }
+    private static func openReleasePage(tag: String? = nil) {
+        guard let releasesURL = configuredURL("MSReleasesURL") else { return }
+        let url: URL
+        if let tag,
+           let repository = Bundle.main.object(forInfoDictionaryKey: "MSGitHubRepository") as? String,
+           UpdateChannelPolicy.isValidTag(tag, channel: tag.hasPrefix("beta-") ? .beta : .stable),
+           let releaseURL = URL(string: "https://github.com/\(repository)/releases/tag/\(tag)") {
+            url = releaseURL
+        } else {
+            url = releasesURL
+        }
         NSWorkspace.shared.open(url)
     }
 
@@ -369,6 +550,19 @@ enum UpdateChecker {
         let requirement = "anchor apple generic and certificate leaf[subject.OU] = \"\(teamID)\""
         guard runTool("/usr/bin/codesign", ["--verify", "--deep", "--strict", "-R=\(requirement)", path]) else { return false }
         return runTool("/usr/sbin/spctl", ["--assess", "--type", "execute", "--verbose=2", path])
+    }
+
+    private static func bundle(at appURL: URL, matchesID expectedID: String,
+                               version expectedVersion: String, build expectedBuild: String?) -> Bool {
+        let plistURL = appURL.appendingPathComponent("Contents/Info.plist")
+        guard let data = try? Data(contentsOf: plistURL),
+              let info = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any],
+              info["CFBundleIdentifier"] as? String == expectedID,
+              info["CFBundleShortVersionString"] as? String == expectedVersion else { return false }
+        if let expectedBuild {
+            return info["CFBundleVersion"] as? String == expectedBuild
+        }
+        return true
     }
 
     private static func sha256OfFile(at path: String) -> String? {
@@ -436,6 +630,26 @@ enum UpdateChecker {
         semverCompare(v1, v2) == .orderedDescending
     }
 
+    private static func isNewer(_ info: VersionInfo, thanVersion version: String, build: String) -> Bool {
+        let versionOrder = semverCompare(info.version, version)
+        if versionOrder != .orderedSame { return versionOrder == .orderedDescending }
+        guard let candidateBuild = info.buildNumber else { return false }
+        return compareBuildNumbers(candidateBuild, build) == .orderedDescending
+    }
+
+    private static func compareBuildNumbers(_ lhs: String, _ rhs: String) -> ComparisonResult {
+        let left = lhs.split(separator: ".").compactMap { Int($0) }
+        let right = rhs.split(separator: ".").compactMap { Int($0) }
+        guard left.count == lhs.split(separator: ".").count,
+              right.count == rhs.split(separator: ".").count else { return .orderedSame }
+        for index in 0..<max(left.count, right.count) {
+            let a = index < left.count ? left[index] : 0
+            let b = index < right.count ? right[index] : 0
+            if a != b { return a < b ? .orderedAscending : .orderedDescending }
+        }
+        return .orderedSame
+    }
+
     /// Разбирает версию на числовое ядро и необязательную букву-пред-релиз.
     private static func parseVersion(_ v: String) -> (core: [Int], pre: String) {
         var s = Substring(v)
@@ -463,3 +677,4 @@ enum UpdateChecker {
         return pa < pb ? .orderedAscending : .orderedDescending
     }
 }
+#endif

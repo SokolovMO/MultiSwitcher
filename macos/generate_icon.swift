@@ -37,19 +37,13 @@ guard let sourceImage = NSImage(contentsOf: sourceURL) else {
     fatalError("Cannot load app icon SVG: \(sourceURL.path)")
 }
 
-let assetDirectory = projectDirectory.appendingPathComponent("Assets.xcassets/AppIcon.appiconset", isDirectory: true)
-let iconsetDirectory = projectDirectory.appendingPathComponent("MultiSwitcher.iconset", isDirectory: true)
-try FileManager.default.createDirectory(at: assetDirectory, withIntermediateDirectories: true)
+// iconutil needs a temporary iconset; the source SVG and final ICNS are the
+// only icon artifacts kept in the repository.
+let temporaryDirectory = FileManager.default.temporaryDirectory
+    .appendingPathComponent("MultiSwitcher-icon-\(UUID().uuidString)", isDirectory: true)
+let iconsetDirectory = temporaryDirectory.appendingPathComponent("MultiSwitcher.iconset", isDirectory: true)
 try FileManager.default.createDirectory(at: iconsetDirectory, withIntermediateDirectories: true)
-
-let assetSizes: [(String, Int)] = [
-    ("icon_16.png", 16), ("icon_32.png", 32), ("icon_64.png", 64),
-    ("icon_128.png", 128), ("icon_256.png", 256), ("icon_512.png", 512), ("icon_1024.png", 1024),
-]
-for (name, size) in assetSizes {
-    try renderPNG(image: sourceImage, size: size).write(to: assetDirectory.appendingPathComponent(name))
-}
-try renderPNG(image: sourceImage, size: 1024).write(to: projectDirectory.appendingPathComponent("icon.png"))
+defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
 
 let iconsetSizes: [(String, Int)] = [
     ("icon_16x16.png", 16), ("icon_16x16@2x.png", 32),

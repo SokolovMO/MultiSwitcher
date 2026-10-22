@@ -376,11 +376,12 @@ enum DynamicKeyMapping {
         }
         let layouts = LayoutSwitcher.installedLayouts()
         let currentID = LayoutSwitcher.currentLayoutID()
-        guard let source = layouts.first(where: { LayoutSwitcher.sourceID($0) == currentID }),
-              let sourceData = layoutDataForSource(source) else { return nil }
         var result = ""
         for k in keys {
             if let ch = k.char { result.append(ch); continue }   // пробел-сентинел / проброшенный
+            let sourceID = k.sourceLayoutID ?? currentID
+            guard let source = layouts.first(where: { LayoutSwitcher.sourceID($0) == sourceID }),
+                  let sourceData = layoutDataForSource(source) else { return nil }
             // Скептик 3.2.0: dead-key раскладки (U.S. International): dead-key + база = 2 записи
             // буфера, но 1 символ на экране → backspace по числу символов переберёт. Такой буфер
             // ненадёжен для перепечатки — отказываемся (вызывающий падает на последнее слово).

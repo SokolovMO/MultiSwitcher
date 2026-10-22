@@ -47,16 +47,30 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     private let matchModes: [ProfileRuleMatch] = [.exact, .prefix, .contains, .regularExpression]
     private let actions: [ProfileRuleAction] = [.neverConvert, .alwaysConvert, .replace]
 
+    func setCompactMode(_ compact: Bool) {
+        table.rowHeight = compact ? 27 : 34
+        table.intercellSpacing = NSSize(width: 0, height: compact ? 1 : 3)
+    }
+
     func makeContainer(frame: NSRect) -> NSView {
         let root = NSView(frame: frame)
-        searchField.frame = NSRect(x: 0, y: frame.height - 28, width: frame.width, height: 24)
+        searchField.translatesAutoresizingMaskIntoConstraints = false
         searchField.placeholderString = L10n.userRulesSearch
         searchField.sendsSearchStringImmediately = true
         searchField.target = self
         searchField.action = #selector(searchChanged)
         root.addSubview(searchField)
 
-        let scroll = NSScrollView(frame: NSRect(x: 0, y: 76, width: frame.width, height: frame.height - 180))
+        let hint = NSTextField(wrappingLabelWithString: L10n.userRulesHint)
+        hint.translatesAutoresizingMaskIntoConstraints = false
+        hint.font = SystemTypography.font(.footnote)
+        hint.textColor = .secondaryLabelColor
+        hint.maximumNumberOfLines = 0
+        hint.cell?.lineBreakMode = .byWordWrapping
+        root.addSubview(hint)
+
+        let scroll = NSScrollView(frame: .zero)
+        scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.hasVerticalScroller = true
         scroll.hasHorizontalScroller = false
         scroll.autohidesScrollers = true
@@ -70,7 +84,10 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         addColumn(L10n.userRulesColumnReplacement, identifier: Column.replacement, width: columnWidths[2])
         addColumn(L10n.userRulesColumnSource, identifier: Column.source, width: columnWidths[3])
         table.rowHeight = 34
-        table.columnAutoresizingStyle = .noColumnAutoresizing
+        table.autoresizingMask = [.width]
+        // Let the pattern column use spare width so long rules stay readable; source
+        // labels keep a stable width instead of stretching or being clipped.
+        table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         table.usesAlternatingRowBackgroundColors = true
         table.gridStyleMask = [.solidHorizontalGridLineMask]
         table.gridColor = .separatorColor
@@ -88,54 +105,86 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         scroll.documentView = table
         root.addSubview(scroll)
 
-        let hint = NSTextField(wrappingLabelWithString: L10n.userRulesHint)
-        hint.frame = NSRect(x: 0, y: frame.height - 68, width: frame.width, height: 34)
-        hint.font = SystemTypography.font(.footnote)
-        hint.textColor = .secondaryLabelColor
-        root.addSubview(hint)
+        let addButton = makeActionButton(L10n.userRulesAdd, symbol: "plus", action: #selector(addTapped))
+        let edit = makeActionButton(L10n.userRulesEdit, symbol: "pencil", action: #selector(editTapped))
+        let delete = makeActionButton(L10n.userRulesDelete, symbol: "trash", action: #selector(deleteTapped))
+        let importButton = makeActionButton(L10n.userRulesImport, symbol: "square.and.arrow.down",
+                                            action: #selector(importTapped))
+        let exportButton = makeActionButton(L10n.userRulesExport, symbol: "square.and.arrow.up",
+                                            action: #selector(exportTapped))
+        let restore = makeActionButton(L10n.userRulesRestorePunto, symbol: "arrow.uturn.backward",
+                                       action: #selector(restorePuntoTapped))
+        editButton = edit
+        deleteButton = delete
+        restorePuntoButton = restore
 
-        let buttons: [(String, Selector, String?, CGFloat)] = [
-            (L10n.userRulesAdd, #selector(addTapped), "plus", 34),
-            (L10n.userRulesEdit, #selector(editTapped), "pencil", 34),
-            (L10n.userRulesDelete, #selector(deleteTapped), "trash", 34),
-            (L10n.userRulesImport, #selector(importTapped), "square.and.arrow.down", 2),
-            (L10n.userRulesExport, #selector(exportTapped), "square.and.arrow.up", 2),
-            (L10n.userRulesRestorePunto, #selector(restorePuntoTapped), "arrow.uturn.backward", 2),
-        ]
-        var rowX: [CGFloat] = [0, 0]
-        for (title, action, symbol, rowY) in buttons {
-            let button = NSButton(title: title, target: self, action: action)
-            let textWidth = ceil((title as NSString).size(withAttributes: [.font: SystemTypography.font(.body)]).width)
-            let width = textWidth + (symbol == nil ? 20 : 40)
-            let row = rowY == 34 ? 0 : 1
-            let x = rowX[row]
-            button.frame = NSRect(x: x, y: rowY, width: width, height: 30)
-            button.bezelStyle = .rounded
-            if let symbol, let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) {
-                button.image = image
-                button.imagePosition = .imageLeading
-            }
-            root.addSubview(button)
-            if action == #selector(editTapped) { editButton = button }
-            if action == #selector(deleteTapped) { deleteButton = button }
-            if action == #selector(restorePuntoTapped) { restorePuntoButton = button }
-            rowX[row] += width + 4
+        let primaryActions = horizontalActionRow([addButton, edit, delete])
+        let importActions = horizontalActionRow([importButton, exportButton])
+        let toolbar = NSStackView(views: [primaryActions, importActions, restore])
+        toolbar.orientation = .vertical
+        toolbar.alignment = .leading
+        toolbar.distribution = .fill
+        toolbar.spacing = 6
+        toolbar.translatesAutoresizingMaskIntoConstraints = false
+        [primaryActions, importActions, restore].forEach {
+            $0.widthAnchor.constraint(equalTo: toolbar.widthAnchor).isActive = true
         }
+        root.addSubview(toolbar)
+
         editButton?.isEnabled = false
         deleteButton?.isEnabled = false
         deleteButton?.toolTip = L10n.userRulesDeleteHint
         restorePuntoButton?.isEnabled = SettingsManager.shared.removedPuntoRuleCount > 0
+
+        NSLayoutConstraint.activate([
+            searchField.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            searchField.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            searchField.topAnchor.constraint(equalTo: root.topAnchor),
+            hint.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            hint.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            hint.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
+            toolbar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            toolbar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            toolbar.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            scroll.topAnchor.constraint(equalTo: hint.bottomAnchor, constant: 8),
+            scroll.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -8),
+        ])
+
         reloadFromStore()
         return root
+    }
+
+    private func makeActionButton(_ title: String, symbol: String, action: Selector) -> NSButton {
+        let button = NSButton(title: title, target: self, action: action)
+        button.bezelStyle = .rounded
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        button.imagePosition = .imageLeading
+        button.setAccessibilityLabel(title)
+        button.toolTip = title
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 30).isActive = true
+        return button
+    }
+
+    private func horizontalActionRow(_ buttons: [NSButton]) -> NSStackView {
+        let row = NSStackView(views: buttons)
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fillEqually
+        row.spacing = 6
+        row.translatesAutoresizingMaskIntoConstraints = false
+        return row
     }
 
     private func addColumn(_ title: String, identifier: NSUserInterfaceItemIdentifier, width: CGFloat) {
         let column = NSTableColumn(identifier: identifier)
         column.title = title
         column.width = width
-        column.minWidth = width
-        column.maxWidth = width
-        column.resizingMask = .userResizingMask
+        column.minWidth = identifier == Column.source ? max(width, 140) : max(72, min(width, 96))
+        column.maxWidth = .greatestFiniteMagnitude
+        column.resizingMask = [.userResizingMask, .autoresizingMask]
         table.addTableColumn(column)
     }
 
@@ -170,7 +219,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
             indicator.image = NSImage(systemSymbolName: rule.enabled ? "checkmark.circle.fill" : "pause.circle",
                                       accessibilityDescription: rule.enabled ? L10n.userRulesEnabled : L10n.userRulesDisabled)
             indicator.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
-            indicator.contentTintColor = rule.enabled ? .systemGreen : .tertiaryLabelColor
+            indicator.contentTintColor = rule.enabled ? .labelColor : .tertiaryLabelColor
             indicator.translatesAutoresizingMaskIntoConstraints = false
             cell.addSubview(indicator)
             let sourceLabel = NSTextField(labelWithString: sourceTitle(rule.origin))
@@ -295,27 +344,91 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     @objc private func importTapped() {
         let panel = NSOpenPanel()
         panel.title = L10n.userRulesImport
-        panel.allowedContentTypes = [.json]
+        panel.allowedContentTypes = [.json, .plainText, .commaSeparatedText,
+                                     UTType(filenameExtension: "tsv") ?? .plainText,
+                                     .propertyList]
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            let imported = try UserRuleFileCodec.decode(Data(contentsOf: url))
+            let fileExtension = url.pathExtension.lowercased()
+            if fileExtension == "plist" {
+                let report = try SettingsManager.shared.importPuntoProfile(from: url)
+                reloadFromStore()
+                onRulesChanged?()
+
+                let alert = NSAlert()
+                alert.alertStyle = .informational
+                alert.messageText = L10n.settingsImportPuntoSuccess
+                alert.informativeText = L10n.settingsImportPuntoAppliedDetails(
+                    report.rulesImported,
+                    report.unverifiedRules,
+                    report.learningImported,
+                    report.learningDiscardedByReview,
+                    report.snapshotName
+                )
+                alert.addButton(withTitle: L10n.commonOkay)
+                alert.runModal()
+                return
+            }
+            let intent = fileExtension == "txt" ? chooseTextImportIntent() : nil
+            if fileExtension == "txt", intent == nil { return }
+            let preview = try UserRuleFileCodec.previewImport(
+                Data(contentsOf: url), fileExtension: fileExtension, textIntent: intent
+            )
             var local = SettingsManager.shared.userRules
-            var added = 0
-            for var rule in imported where !local.contains(where: { equivalent($0, rule) }) {
+            var additions: [ProfileRule] = []
+            var alreadyPresent = 0
+            var conflicts = 0
+            for var rule in preview.rules {
+                if local.contains(where: { equivalent($0, rule) }) {
+                    alreadyPresent += 1
+                    continue
+                }
+                if local.contains(where: { sameRuleTarget($0, rule) }) {
+                    conflicts += 1
+                    continue
+                }
                 if local.contains(where: { $0.id == rule.id }) { rule.id = UUID().uuidString }
                 local.append(rule)
-                added += 1
+                additions.append(rule)
             }
-            try SettingsManager.shared.replaceUserRules(local)
-            reloadFromStore()
-            onRulesChanged?()
+            let skippedDuplicates = preview.duplicateRowCount + alreadyPresent
+            let message = L10n.userRulesImportPreview(
+                preview.sourceRowCount, additions.count, skippedDuplicates, conflicts
+            )
+            let confirmation = NSAlert()
+            confirmation.alertStyle = .informational
+            confirmation.messageText = L10n.userRulesImportPreviewTitle
+            confirmation.informativeText = message
+            confirmation.addButton(withTitle: L10n.userRulesImport)
+            confirmation.addButton(withTitle: L10n.commonCancel)
+            guard confirmation.runModal() == .alertFirstButtonReturn else { return }
+
+            if !additions.isEmpty {
+                try SettingsManager.shared.replaceUserRules(local)
+                reloadFromStore()
+                onRulesChanged?()
+            }
             showAlert(title: L10n.userRulesImportSuccess,
-                      message: String(format: L10n.userRulesImportAdded, added), style: .informational)
+                      message: String(format: L10n.userRulesImportAdded, additions.count), style: .informational)
         } catch {
             showAlert(title: L10n.userRulesImportFailure, message: error.localizedDescription, style: .warning)
+        }
+    }
+
+    private func chooseTextImportIntent() -> UserRuleTextIntent? {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = L10n.userRulesImportTextIntentTitle
+        alert.addButton(withTitle: L10n.userRulesActionNever)
+        alert.addButton(withTitle: L10n.userRulesActionAlways)
+        alert.addButton(withTitle: L10n.commonCancel)
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: return .neverConvert
+        case .alertSecondButtonReturn: return .alwaysConvert
+        default: return nil
         }
     }
 
@@ -367,6 +480,12 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     private func equivalent(_ lhs: ProfileRule, _ rhs: ProfileRule) -> Bool {
         lhs.pattern == rhs.pattern && lhs.replacement == rhs.replacement && lhs.match == rhs.match
             && lhs.action == rhs.action && lhs.enabled == rhs.enabled && lhs.caseSensitive == rhs.caseSensitive
+    }
+
+    private func sameRuleTarget(_ lhs: ProfileRule, _ rhs: ProfileRule) -> Bool {
+        lhs.match == rhs.match
+            && lhs.pattern.precomposedStringWithCanonicalMapping.lowercased()
+                == rhs.pattern.precomposedStringWithCanonicalMapping.lowercased()
     }
 
     private func presentRuleEditor(existing: ProfileRule?) -> ProfileRule? {

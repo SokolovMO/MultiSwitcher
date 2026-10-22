@@ -10,7 +10,7 @@ let kMultiSwitcherEventMarker: Int64 = 0x52555300
 /// (char == nil). Для ввода, проброшенного через удалённый стол, Apple Screen Sharing
 /// шлёт keyCode 0 + сам символ — тогда char != nil, и конверсия идёт по символу,
 /// а не по бесполезному keyCode 0 (именно keyCode 0 рождал «фффффф»).
-struct TypedKey: Sendable {
+struct TypedKey: Equatable, Sendable {
     let keyCode: UInt16
     let shift: Bool
     let caps: Bool
@@ -23,42 +23,109 @@ struct WordBoundarySnapshot: Sendable {
     let keys: [TypedKey]
     let boundaryCount: Int
     let bundleIdentifier: String?
+    let processIdentifier: pid_t?
     let inputGeneration: UInt64
+    let textContextGeneration: UInt64
     let lineKeys: [TypedKey]
+    let languageSwitchWordThreshold: Int
 }
 
-/// Выделенная очередь для файлового I/O лога — чтобы запись на диск не блокировала
-/// поток обработки событий (event tap висит на главном run loop, а лог пишется
-/// для каждого нажатия при включённом debug).
-private let rsLogQueue = DispatchQueue(label: "com.multiswitcher.log")
+private struct AppendedInputEvent: Sendable {
+    let generation: UInt64
+    let character: Character?
+    let keyBufferRecoverable: Bool
+}
 
-func rslog(_ msg: String) {
-    // Read the profile-backed setting; ProfileStore serializes access off the main thread.
-    guard SettingsManager.shared.debugLogEnabled else { return }
+struct ManualConversionSnapshot: Sendable {
+    let currentWordKeys: [TypedKey]
+    let previousWordKeys: [TypedKey]
+    let boundaryCount: Int
+    let lineKeys: [TypedKey]
+    let inputGeneration: UInt64
+    let textContextGeneration: UInt64
+    let processIdentifier: pid_t?
+    let bundleIdentifier: String?
+}
 
-    let line = "\(Date()): \(msg)\n"
-    rsLogQueue.async {
-        let logDir = NSHomeDirectory() + "/Library/Logs/MultiSwitcher"
-        let path = logDir + "/multiswitcher.log"
+/// Batches diagnostic writes so a debug session does not open and close a file for
+/// every keyboard event. All mutable state is confined to the writer's serial queue.
+private final class RSLogWriter: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "com.multiswitcher.log", qos: .utility)
+    private var pendingLines: [String] = []
+    private var flushTimer: DispatchSourceTimer?
+    private let batchSize = 32
+    private let maximumFileSize: UInt64 = 5_000_000
 
-        // Создаём директорию если нет
-        if !FileManager.default.fileExists(atPath: logDir) {
-            try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
-        }
-
-        if let handle = FileHandle(forWritingAtPath: path) {
-            handle.seekToEndOfFile()
-            // Ротация: если > 5MB — обрезаем
-            if handle.offsetInFile > 5_000_000 {
-                handle.truncateFile(atOffset: 0)
-                handle.write("--- Log rotated ---\n".data(using: .utf8)!)
+    func append(_ message: String) {
+        let line = "\(Date()): \(message)\n"
+        queue.async { [weak self] in
+            guard let self else { return }
+            pendingLines.append(line)
+            if pendingLines.count >= batchSize {
+                flush()
+            } else {
+                scheduleFlushIfNeeded()
             }
-            handle.write(line.data(using: .utf8)!)
-            handle.closeFile()
-        } else {
-            FileManager.default.createFile(atPath: path, contents: line.data(using: .utf8))
         }
     }
+
+    private func scheduleFlushIfNeeded() {
+        guard flushTimer == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + .seconds(1), repeating: .seconds(1))
+        timer.setEventHandler { [weak self] in self?.flush() }
+        flushTimer = timer
+        timer.resume()
+    }
+
+    private func flush() {
+        guard !pendingLines.isEmpty else { return }
+        let directory = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Logs/MultiSwitcher", isDirectory: true)
+        let file = directory.appendingPathComponent("multiswitcher.log")
+        let lines = pendingLines.joined()
+        pendingLines.removeAll(keepingCapacity: true)
+        var data = Data(lines.utf8)
+
+        do {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            let fileExists = FileManager.default.fileExists(atPath: file.path)
+            let currentSize = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+                .map(UInt64.init) ?? 0
+            if fileExists, currentSize + UInt64(data.count) > maximumFileSize {
+                data.insert(contentsOf: Data("--- Log rotated ---\n".utf8), at: 0)
+                try data.write(to: file, options: .atomic)
+                try FileManager.default.setAttributes(
+                    [.posixPermissions: 0o600], ofItemAtPath: file.path
+                )
+                return
+            }
+
+            if fileExists, let handle = try? FileHandle(forWritingTo: file) {
+                try handle.seekToEnd()
+                try handle.write(contentsOf: data)
+                try handle.close()
+            } else {
+                try data.write(to: file, options: .atomic)
+                try FileManager.default.setAttributes(
+                    [.posixPermissions: 0o600], ofItemAtPath: file.path
+                )
+            }
+        } catch {
+            // Diagnostics must never block or interrupt keyboard input.
+        }
+    }
+}
+
+private let rsLogWriter = RSLogWriter()
+
+func rslog(_ msg: String) {
+    guard SettingsManager.shared.debugLogEnabled else { return }
+    rsLogWriter.append(msg)
 }
 
 /// Конфигурация клавиши-триггера (читается из настроек, кэшируется в KeyboardMonitor).
@@ -157,12 +224,23 @@ final class KeyboardMonitor: @unchecked Sendable {
     /// issue #7: взводится при смене раскладки → на первой букве играем звук раскладки.
     var soundArmed = false
 
-    private var onAltTap: (() -> Void)?
-    private var onAltReconvert: (() -> Void)?
+    private var onAltTap: ((ManualConversionSnapshot) -> Void)?
+    private var onAltReconvert: ((ManualConversionSnapshot) -> Void)?
     /// Авто-конвертация: вызывается (async) на границе слова, когда включён autoConvert.
     var onWordBoundary: ((WordBoundarySnapshot) -> Void)?
     private let inputLock = NSRecursiveLock()
     private var inputGeneration: UInt64 = 0
+    /// Invalidated only when focus/caret/selection may have moved. Ordinary typing
+    /// after a boundary keeps the context stable so AX replacement can target the
+    /// captured word without touching newer input.
+    private var textContextGeneration: UInt64 = 0
+    /// Exact printable keystrokes after recent word boundaries. This lets a delayed
+    /// correction preserve an empty suffix, punctuation, and later text without guessing
+    /// from the current word buffer. The history is deliberately bounded.
+    private var appendedInputEvents: [AppendedInputEvent] = []
+    private var appendedInputDiscardedThroughGeneration: UInt64 = 0
+    private let appendedInputHistoryLimit = 128
+    private var workspaceActivationObserver: NSObjectProtocol?
     /// issue #10: любой ввод/клик пользователя — чтобы спрятать флаг у каретки во время печати.
     var onUserInput: (() -> Void)?
     /// issue #10: включена ли фича флага-у-каретки. Гейтит диспатч onUserInput на горячем пути,
@@ -200,8 +278,8 @@ final class KeyboardMonitor: @unchecked Sendable {
     private let comboTapWindow: TimeInterval = 2.0
 
     func start(
-        onAltTap: @escaping () -> Void,
-        onAltReconvert: @escaping () -> Void
+        onAltTap: @escaping (ManualConversionSnapshot) -> Void,
+        onAltReconvert: @escaping (ManualConversionSnapshot) -> Void
     ) -> Bool {
         self.onAltTap = onAltTap
         self.onAltReconvert = onAltReconvert
@@ -209,9 +287,10 @@ final class KeyboardMonitor: @unchecked Sendable {
         let precheck = CGPreflightListenEventAccess()
         rslog("Preflight check = \(precheck)")
         if !precheck {
-            rslog("Requesting access...")
-            CGRequestListenEventAccess()
+            rslog("Input Monitoring is not authorized; event tap will not be created")
+            return false
         }
+        observeApplicationActivation()
 
         triggerConfig = TriggerConfig.current()
         switchConfig = TriggerConfig.switchHotkey()
@@ -265,6 +344,17 @@ final class KeyboardMonitor: @unchecked Sendable {
         runLoopSource = nil
     }
 
+    private func observeApplicationActivation() {
+        guard workspaceActivationObserver == nil else { return }
+        workspaceActivationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.resetBuffersForApplicationActivation()
+        }
+    }
+
     /// Перезапускает tap с актуальным конфигом триггера. Нужен при смене настройки —
     /// особенно при переключении на/с Caps Lock, т.к. меняется режим tap (consume).
     @discardableResult
@@ -276,6 +366,48 @@ final class KeyboardMonitor: @unchecked Sendable {
     }
 
     func markConverted() {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        clearConvertedBuffers()
+        textContextGeneration &+= 1
+    }
+
+    /// Complete an older boundary replacement without discarding a newer word the
+    /// user began typing while Accessibility was validating the captured field.
+    @discardableResult
+    func markConverted(boundaryInputGeneration expected: UInt64,
+                       preservingTypedSuffixKeyCount suffixKeyCount: Int = 0) -> UInt64 {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        guard inputGeneration != expected else {
+            clearConvertedBuffers()
+            textContextGeneration &+= 1
+            return textContextGeneration
+        }
+
+        wordBeforeBoundaryLength = 0
+        boundaryCount = 0
+        prevWordKeys = []
+        prevWordBundleID = nil
+        // Letters already reinserted by a boundary replacement belong to that same
+        // conversion. A later physical key will set this back to true in handleKeyDown.
+        keysTypedSinceConversion = currentWordLength > suffixKeyCount
+        return textContextGeneration
+    }
+
+    func isInputGenerationCurrent(_ expected: UInt64) -> Bool {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        return inputGeneration == expected
+    }
+
+    var currentInputGeneration: UInt64 {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        return inputGeneration
+    }
+
+    private func clearConvertedBuffers() {
         currentWordLength = 0
         wordBeforeBoundaryLength = 0
         boundaryCount = 0
@@ -284,10 +416,35 @@ final class KeyboardMonitor: @unchecked Sendable {
         prevWordBundleID = nil
         lineKeys = []
         keysTypedSinceConversion = false
+        clearAppendedInputHistory()
+    }
+
+    func isTextContextCurrent(_ expected: UInt64) -> Bool {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        return textContextGeneration == expected
+    }
+
+    /// An app switch invalidates the word snapshot even if macOS did not deliver a
+    /// mouse or keyboard event through our tap (for example, a window was activated
+    /// by another process). This also prevents a queued replacement crossing fields.
+    func resetBuffersForApplicationActivation() {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        inputGeneration &+= 1
+        fullReset()
+    }
+
+    var currentTextContextGeneration: UInt64 {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+        return textContextGeneration
     }
 
     /// Drop input and pending hotkeys while an all-actions application is focused.
     func ignoreEventsForExcludedApp() {
+        inputLock.lock()
+        defer { inputLock.unlock() }
         triggerArmed = false; triggerPressTime = nil; lastTapTime = nil
         switchArmed = false; switchPressTime = nil; switchLastTapTime = nil
         caseArmed = false; casePressTime = nil; caseLastTapTime = nil
@@ -296,6 +453,7 @@ final class KeyboardMonitor: @unchecked Sendable {
     }
 
     private func fullReset() {
+        textContextGeneration &+= 1
         currentWordLength = 0
         wordBeforeBoundaryLength = 0
         boundaryCount = 0
@@ -303,6 +461,104 @@ final class KeyboardMonitor: @unchecked Sendable {
         prevWordKeys = []
         prevWordBundleID = nil
         lineKeys = []
+        clearAppendedInputHistory()
+    }
+
+    private func clearAppendedInputHistory() {
+        appendedInputEvents.removeAll(keepingCapacity: true)
+        appendedInputDiscardedThroughGeneration = inputGeneration
+    }
+
+    private func recordAppendedInput(_ character: Character?, keyBufferRecoverable: Bool = true) {
+        if appendedInputEvents.count >= appendedInputHistoryLimit {
+            let removeCount = 32
+            let removed = appendedInputEvents.prefix(removeCount)
+            if let last = removed.last {
+                appendedInputDiscardedThroughGeneration = last.generation
+            }
+            appendedInputEvents.removeFirst(removed.count)
+        }
+        appendedInputEvents.append(AppendedInputEvent(
+            generation: inputGeneration,
+            character: character,
+            keyBufferRecoverable: keyBufferRecoverable
+        ))
+    }
+
+    /// Literal punctuation and digits end token tracking, but they do not move the caret.
+    /// Keep an earlier boundary snapshot valid so it can preserve this exact suffix.
+    private func resetWordTrackingPreservingAppendHistory() {
+        currentWordLength = 0
+        wordBeforeBoundaryLength = 0
+        boundaryCount = 0
+        currentWordKeys = []
+        prevWordKeys = []
+        prevWordBundleID = nil
+        lineKeys = []
+        keysTypedSinceConversion = true
+    }
+
+    /// Context is useful only for a bounded recent suffix. Resetting at the limit keeps
+    /// a long document from retaining every typed key for the lifetime of the line.
+    private func appendLineKey(_ key: TypedKey) {
+        if lineKeys.count >= 2048 { lineKeys.removeAll(keepingCapacity: true) }
+        lineKeys.append(key)
+    }
+
+    /// After a verified replacement, keep the bounded in-memory line buffer aligned
+    /// with what the user actually sees. Later language-transition decisions must use
+    /// committed output (for example `руддщ` → `hello`), not stale physical key text.
+    /// Only edits the captured prefix when the field generation and all key identities
+    /// still match; unsupported length changes simply leave the context conservative.
+    @discardableResult
+    func reconcileVisibleLine(
+        snapshot: WordBoundarySnapshot,
+        range: Range<Int>,
+        with visibleText: String
+    ) -> Bool {
+        inputLock.lock()
+        defer { inputLock.unlock() }
+
+        guard textContextGeneration == snapshot.textContextGeneration,
+              lineKeys.count >= snapshot.lineKeys.count,
+              range.lowerBound >= 0,
+              range.upperBound <= snapshot.lineKeys.count else { return false }
+
+        let capturedPrefix = lineKeys.prefix(snapshot.lineKeys.count)
+        let prefixIsUnchanged = zip(capturedPrefix, snapshot.lineKeys).allSatisfy { pair in
+            let (current, captured) = pair
+            return current.keyCode == captured.keyCode
+                && current.shift == captured.shift
+                && current.caps == captured.caps
+                && current.char == captured.char
+                && current.sourceLayoutID == captured.sourceLayoutID
+        }
+        guard prefixIsUnchanged else { return false }
+
+        let characters = Array(visibleText)
+        guard characters.count == range.count else { return false }
+        for (offset, character) in characters.enumerated() {
+            lineKeys[range.lowerBound + offset].char = character
+        }
+        return true
+    }
+
+    /// Keep internal hyphens inside a tracked token. The surrounding letters
+    /// are required so ordinary punctuation never becomes a deletion/conversion range.
+    /// A repeated hyphen stays in the same token, where the decision policy rejects it;
+    /// resetting here could otherwise convert only the suffix after `--`.
+    @discardableResult
+    private func appendInternalHyphen(_ key: TypedKey) -> Bool {
+        guard currentWordLength > 0,
+              HyphenatedTokenPolicy.shouldTrackHyphen(after: currentWordKeys.last?.char) else { return false }
+        recordAppendedInput(key.char)
+        currentWordKeys.append(key)
+        appendLineKey(key)
+        currentWordLength += 1
+        wordBeforeBoundaryLength = 0
+        boundaryCount = 0
+        prevWordKeys = []
+        return true
     }
 
     /// Завершилось слово на пробеле — если включён autoConvert, дёргаем авто-путь
@@ -314,8 +570,11 @@ final class KeyboardMonitor: @unchecked Sendable {
             keys: prevWordKeys,
             boundaryCount: boundaryCount,
             bundleIdentifier: prevWordBundleID,
+            processIdentifier: NSWorkspace.shared.frontmostApplication?.processIdentifier,
             inputGeneration: inputGeneration,
-            lineKeys: lineKeys
+            textContextGeneration: textContextGeneration,
+            lineKeys: lineKeys,
+            languageSwitchWordThreshold: SettingsManager.shared.languageSwitchWordThreshold
         )
         DispatchQueue.main.async { cb?(snapshot) }
     }
@@ -327,6 +586,87 @@ final class KeyboardMonitor: @unchecked Sendable {
         guard inputGeneration == expected else { return false }
         operation()
         return true
+    }
+
+    /// Preserves exact printable text typed after the captured Space boundary. An
+    /// empty suffix is valid; deletion, navigation, shortcuts, stale history, or
+    /// unsupported composed input safely cancels the replacement.
+    func performIfWordBoundaryIsCurrent(
+        _ snapshot: WordBoundarySnapshot,
+        operationID: String? = nil,
+        operation: @Sendable (_ typedSuffix: String) -> Void
+    ) -> String? {
+        let lockRequestedAt = DispatchTime.now().uptimeNanoseconds
+        inputLock.lock()
+        let lockAcquiredAt = DispatchTime.now().uptimeNanoseconds
+
+        guard textContextGeneration == snapshot.textContextGeneration else {
+            inputLock.unlock()
+            let operationTag = operationID.map { " op=\($0)" } ?? ""
+            rslog("auto replacement cancelled:\(operationTag) reason=context-changed")
+            return nil
+        }
+        let suffixEvents = appendedInputEvents.filter { $0.generation > snapshot.inputGeneration }
+        let suffix: String? = suffixEvents.reduce(into: Optional(String())) { result, event in
+            guard result != nil, let character = event.character else {
+                result = nil
+                return
+            }
+            result?.append(character)
+        }
+        let decision = AppendedInputPolicy.decide(
+            generationDelta: inputGeneration &- snapshot.inputGeneration,
+            trackedKeyCount: suffixEvents.count,
+            suffix: suffix,
+            historyAvailable: snapshot.inputGeneration >= appendedInputDiscardedThroughGeneration
+        )
+        let typedSuffix: String
+        switch decision {
+        case .preserve(let suffix):
+            typedSuffix = suffix
+        case .reject(let reason):
+            let canRecoverFromKeyBuffer = reason == .missingCharacter
+                || reason == .suffixCountMismatch
+                || reason == .unsupportedCharacter
+            guard canRecoverFromKeyBuffer,
+                  snapshot.lineKeys.count <= lineKeys.count,
+                  lineKeys.starts(with: snapshot.lineKeys) else {
+                inputLock.unlock()
+                let operationTag = operationID.map { " op=\($0)" } ?? ""
+                rslog("auto replacement cancelled:\(operationTag) reason=\(reason.rawValue) key-buffer-prefix=unavailable")
+                return nil
+            }
+
+            let suffixKeys = Array(lineKeys.dropFirst(snapshot.lineKeys.count))
+            let recovered = DynamicKeyMapping.lineString(from: suffixKeys)
+            guard AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+                generationDelta: inputGeneration &- snapshot.inputGeneration,
+                recoveredKeyCount: suffixKeys.count,
+                suffix: recovered,
+                capturedPrefixMatches: true,
+                allKeyEventsAreRecoverable: suffixEvents.allSatisfy(\.keyBufferRecoverable)
+            ), let recovered else {
+                inputLock.unlock()
+                let operationTag = operationID.map { " op=\($0)" } ?? ""
+                rslog("auto replacement cancelled:\(operationTag) reason=\(reason.rawValue) key-buffer-recovery=unavailable")
+                return nil
+            }
+            typedSuffix = recovered
+            let operationTag = operationID.map { " op=\($0)" } ?? ""
+            rslog("auto replacement suffix recovered:\(operationTag) reason=\(reason.rawValue) " +
+                  "key-count=\(suffixKeys.count) character-count=\(recovered.count)")
+        }
+
+        operation(typedSuffix)
+        let lockReleasedAt = DispatchTime.now().uptimeNanoseconds
+        inputLock.unlock()
+        let lockWaitMS = (lockAcquiredAt &- lockRequestedAt) / 1_000_000
+        let lockHoldMS = (lockReleasedAt &- lockAcquiredAt) / 1_000_000
+        if lockWaitMS >= 4 || lockHoldMS >= 4 {
+            let operationTag = operationID.map { " op=\($0)" } ?? ""
+            rslog("auto replacement lock timing:\(operationTag) wait-ms=\(lockWaitMS) hold-ms=\(lockHoldMS)")
+        }
+        return typedSuffix
     }
 
     /// Сброс буфера при клике мышью — иначе backspace перепечатки сотрёт не то
@@ -347,7 +687,13 @@ final class KeyboardMonitor: @unchecked Sendable {
 
     // MARK: - Event Handling
 
-    fileprivate func handleKeyDown(keyCode: UInt16, flags: CGEventFlags, char: Character? = nil) {
+    fileprivate func handleKeyDown(
+        keyCode: UInt16,
+        flags: CGEventFlags,
+        char: Character? = nil,
+        suffixKeyBufferRecoverable: Bool = true,
+        textEventRepresentable: Bool = true
+    ) {
         inputLock.lock()
         defer { inputLock.unlock() }
         inputGeneration &+= 1
@@ -358,6 +704,18 @@ final class KeyboardMonitor: @unchecked Sendable {
         switchLastTapTime = nil
         keysTypedSinceConversion = true
         if caretFlagEnabled { DispatchQueue.main.async { [weak self] in self?.onUserInput?() } }   // issue #10: спрятать флаг при печати
+
+        // The event tap tracks one grapheme per key. Input methods can commit
+        // multiple/composed characters from a single event; physical keycodes do
+        // not describe that text. Invalidate pending snapshots before any code can
+        // auto-convert or later reconstruct this word from keycodes.
+        guard textEventRepresentable else {
+            if SettingsManager.shared.debugLogEnabled {
+                rslog("input tracking reset: unrepresentable Unicode event")
+            }
+            fullReset()
+            return
+        }
 
         // Удалёнка: Screen Sharing шлёт проброшенные символы как keyCode 0 + юникод. Перехватываем
         // ТОЛЬКО в режиме удалённого стола. КРИТИЧНО: локально keyCode 0 — это обычная клавиша
@@ -396,19 +754,20 @@ final class KeyboardMonitor: @unchecked Sendable {
             case .wordBoundary:
                 break
             }
+            recordAppendedInput(" ")
             if currentWordLength > 0 {
                 wordBeforeBoundaryLength = currentWordLength
                 boundaryCount = 1
                 prevWordKeys = currentWordKeys
                 prevWordBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
                 if !lineKeys.isEmpty {
-                    lineKeys.append(TypedKey(keyCode: KC.space, shift: false, caps: false, char: " "))
+                    appendLineKey(TypedKey(keyCode: KC.space, shift: false, caps: false, char: " "))
                 }
                 fireWordBoundary()
             } else {
                 boundaryCount += 1
                 if !lineKeys.isEmpty {
-                    lineKeys.append(TypedKey(keyCode: KC.space, shift: false, caps: false, char: " "))
+                    appendLineKey(TypedKey(keyCode: KC.space, shift: false, caps: false, char: " "))
                 }
             }
             currentWordLength = 0
@@ -430,12 +789,24 @@ final class KeyboardMonitor: @unchecked Sendable {
 
         // Backspace
         if keyCode == KC.backspace {
-            if currentWordLength > 0 {
-                currentWordLength -= 1
-                if !currentWordKeys.isEmpty { currentWordKeys.removeLast() }
-                if !lineKeys.isEmpty { lineKeys.removeLast() }   // #24: синхронно с буфером строки
-            } else {
-                fullReset()   // стирание через границу слова — буфер строки ненадёжен, сброс
+            let disposition = KeyboardBufferEditPolicy.backspaceDisposition(
+                command: flags.contains(.maskCommand),
+                option: flags.contains(.maskAlternate),
+                control: flags.contains(.maskControl)
+            )
+            switch disposition {
+            case .removePreviousCharacter:
+                if currentWordLength > 0 {
+                    currentWordLength -= 1
+                    if !currentWordKeys.isEmpty { currentWordKeys.removeLast() }
+                    if !lineKeys.isEmpty { lineKeys.removeLast() }   // #24: синхронно с буфером строки
+                } else {
+                    fullReset()   // стирание через границу слова — буфер строки ненадёжен, сброс
+                }
+            case .invalidateTrackedText:
+                // Option/Command/Control-Backspace can remove more than one character.
+                // The event tap cannot infer the actual range, so never reuse a stale count.
+                fullReset()
             }
             return
         }
@@ -447,19 +818,34 @@ final class KeyboardMonitor: @unchecked Sendable {
             return
         }
 
+        if keyCode == KC.hyphen, !flags.contains(.maskShift), char == "-",
+           appendInternalHyphen(TypedKey(
+            keyCode: keyCode, shift: false, caps: flags.contains(.maskAlphaShift),
+            char: char, sourceLayoutID: LayoutSwitcher.currentLayoutID()
+           )) {
+            return
+        }
+
         if DynamicKeyMapping.isLetterKeycode(keyCode) {
             let tk = TypedKey(keyCode: keyCode, shift: flags.contains(.maskShift), caps: flags.contains(.maskAlphaShift),
                               char: char, sourceLayoutID: LayoutSwitcher.currentLayoutID())
+            recordAppendedInput(char, keyBufferRecoverable: suffixKeyBufferRecoverable)
             currentWordKeys.append(tk)
-            lineKeys.append(tk)   // #24: буква в буфер строки
+            appendLineKey(tk)   // #24: буква в буфер строки
             currentWordLength += 1
             wordBeforeBoundaryLength = 0
             boundaryCount = 0
             prevWordKeys = []
             playLayoutSoundIfArmed()
         } else {
-            // Esc, F-клавиши, и т.д. — полный сброс
-            fullReset()
+            // Literal punctuation and digits should be preserved if an earlier
+            // conversion is still pending. Unknown/control input remains a hard reset.
+            if let char, AppendedInputPolicy.isSafePrintableCharacter(char) {
+                recordAppendedInput(char, keyBufferRecoverable: suffixKeyBufferRecoverable)
+                resetWordTrackingPreservingAppendHistory()
+            } else {
+                fullReset()
+            }
         }
     }
 
@@ -469,19 +855,20 @@ final class KeyboardMonitor: @unchecked Sendable {
     private func handleForwardedChar(_ ch: Character) {
         // Пробел — граница слова (как локальный keyCode space)
         if ch == " " {
+            recordAppendedInput(ch)
             if currentWordLength > 0 {
                 wordBeforeBoundaryLength = currentWordLength
                 boundaryCount = 1
                 prevWordKeys = currentWordKeys
                 prevWordBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
                 if !lineKeys.isEmpty {
-                    lineKeys.append(TypedKey(keyCode: KC.space, shift: false, caps: false, char: " "))
+                    appendLineKey(TypedKey(keyCode: KC.space, shift: false, caps: false, char: " "))
                 }
                 fireWordBoundary()
             } else {
                 boundaryCount += 1
                 if !lineKeys.isEmpty {
-                    lineKeys.append(TypedKey(keyCode: KC.space, shift: false, caps: false, char: " "))
+                    appendLineKey(TypedKey(keyCode: KC.space, shift: false, caps: false, char: " "))
                 }
             }
             currentWordLength = 0
@@ -505,10 +892,16 @@ final class KeyboardMonitor: @unchecked Sendable {
             return
         }
         // Буква — кладём реальный символ (keyCode 0 = «проброшено»). shift несём из регистра.
+        if ch == "-", appendInternalHyphen(TypedKey(
+            keyCode: KC.hyphen, shift: false, caps: false, char: ch
+        )) {
+            return
+        }
         if ch.isLetter {
             let tk = TypedKey(keyCode: 0, shift: ch.isUppercase, caps: false, char: ch)
+            recordAppendedInput(ch)
             currentWordKeys.append(tk)
-            lineKeys.append(tk)   // #24
+            appendLineKey(tk)   // #24
             currentWordLength += 1
             wordBeforeBoundaryLength = 0
             boundaryCount = 0
@@ -516,11 +909,14 @@ final class KeyboardMonitor: @unchecked Sendable {
             playLayoutSoundIfArmed()
             return
         }
-        // Цифры/пунктуация/прочее: в буфер не копим, НО и слово «живым» не оставляем —
-        // иначе счёт стирания разъезжается с полем и конверсия портит текст (ревью-находка:
-        // «ghbdtn,» по удалёнке = 6 букв в буфере при 7 символах в поле → стёрся бы лишний).
-        // Консервативно сбрасываем: слово с пунктуацией по удалёнке просто не авто-конвертится.
-        fullReset()
+        // Digits and punctuation terminate token tracking, but remain an exact suffix
+        // for any earlier pending conversion. Controls and composed text are rejected.
+        if AppendedInputPolicy.isSafePrintableCharacter(ch) {
+            recordAppendedInput(ch)
+            resetWordTrackingPreservingAppendHistory()
+        } else {
+            fullReset()
+        }
     }
 
     /// issue #7: на первой букве после смены раскладки даём короткий звук, зависящий от
@@ -740,12 +1136,27 @@ final class KeyboardMonitor: @unchecked Sendable {
     }
 
     private func fireConversion() {
+        let snapshot: ManualConversionSnapshot
+        inputLock.lock()
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        snapshot = ManualConversionSnapshot(
+            currentWordKeys: currentWordKeys,
+            previousWordKeys: prevWordKeys,
+            boundaryCount: boundaryCount,
+            lineKeys: lineKeys,
+            inputGeneration: inputGeneration,
+            textContextGeneration: textContextGeneration,
+            processIdentifier: frontmost?.processIdentifier,
+            bundleIdentifier: frontmost?.bundleIdentifier
+        )
+        inputLock.unlock()
+
         if !keysTypedSinceConversion {
             rslog("trigger: RECONVERT")
-            DispatchQueue.main.async { [weak self] in self?.onAltReconvert?() }
+            DispatchQueue.main.async { [weak self] in self?.onAltReconvert?(snapshot) }
         } else {
             rslog("trigger: CONVERT")
-            DispatchQueue.main.async { [weak self] in self?.onAltTap?() }
+            DispatchQueue.main.async { [weak self] in self?.onAltTap?(snapshot) }
         }
     }
 }
@@ -758,6 +1169,8 @@ private func keyboardCallback(
     event: CGEvent,
     userInfo: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
+    // Core Graphics owns the incoming event and documents returning that same event
+    // without transferring ownership. passRetained here leaked one retain per key event.
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
         if let userInfo {
             let monitor = Unmanaged<KeyboardMonitor>.fromOpaque(userInfo).takeUnretainedValue()
@@ -765,23 +1178,30 @@ private func keyboardCallback(
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
         }
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
 
     // Игнорируем собственные симулированные события по маркеру
     if event.getIntegerValueField(.eventSourceUserData) == kMultiSwitcherEventMarker {
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
 
     guard let userInfo else {
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
 
     let monitor = Unmanaged<KeyboardMonitor>.fromOpaque(userInfo).takeUnretainedValue()
 
+    // Secure fields must not enter the key buffer at all. Check before reading the
+    // event's Unicode string so no typed characters can reach conversion or learning.
+    if AutoSwitchPolicy.secureInputActive {
+        monitor.ignoreEventsForExcludedApp()
+        return Unmanaged.passUnretained(event)
+    }
+
     if AutoSwitchPolicy.areAllActionsDisabled(NSWorkspace.shared.frontmostApplication?.bundleIdentifier) {
         monitor.ignoreEventsForExcludedApp()
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
 
     if type == .keyDown {
@@ -790,33 +1210,53 @@ private func keyboardCallback(
         // Удалёнка: игнорируем авто-повтор клавиш — латентность Screen Sharing рождает
         // ложные повторы (тот самый «фффффф»), засоряющие буфер конверсии.
         if event.getIntegerValueField(.keyboardEventAutorepeat) != 0, remote {
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
         // Сохраняем фактически введённый символ для локальной клавиатуры тоже.
         // Кейкод остаётся для перевода в соседнюю раскладку, символ — для точного оригинала.
-        var forwardedChar: Character? = nil
-        if remote, keyCode == 0 {
-            var buf = [UniChar](repeating: 0, count: 4)
-            var len = 0
-            event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &len, unicodeString: &buf)
-            if len >= 1 {
-                let value = String(utf16CodeUnits: buf, count: len)
-                forwardedChar = value.first
-                if SettingsManager.shared.debugLogEnabled {
-                    // Приватность: НЕ логируем сам символ/кодпоинт — иначе получается посимвольный
-                    // лог удалённой сессии. Фиксируем только факт проброса.
-                    rslog("remote: forwarded char")
-                }
-            }
-        } else {
-            var buf = [UniChar](repeating: 0, count: 4)
-            var len = 0
-            event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &len, unicodeString: &buf)
-            if len >= 1 {
-                forwardedChar = String(utf16CodeUnits: buf, count: len).first
-            }
+        var unicodeText: String? = nil
+        var unicodeBuffer = [UniChar](repeating: 0, count: 4)
+        var unicodeLength = 0
+        event.keyboardGetUnicodeString(
+            maxStringLength: unicodeBuffer.count,
+            actualStringLength: &unicodeLength,
+            unicodeString: &unicodeBuffer
+        )
+        let unicodeWasTruncated = unicodeLength < 0 || unicodeLength > unicodeBuffer.count
+        if unicodeLength > 0, !unicodeWasTruncated {
+            unicodeText = String(utf16CodeUnits: unicodeBuffer, count: unicodeLength)
         }
-        monitor.handleKeyDown(keyCode: keyCode, flags: event.flags, char: forwardedChar)
+        let disposition = AppendedInputPolicy.classifyUnicodeEvent(
+            text: unicodeText,
+            wasTruncated: unicodeWasTruncated
+        )
+        let forwardedChar: Character?
+        switch disposition {
+        case .keyCodeOnly:
+            forwardedChar = nil
+        case .character(let character):
+            forwardedChar = character
+            if remote, keyCode == 0, SettingsManager.shared.debugLogEnabled {
+                // Privacy: never log the character or code point, only that the
+                // remote keyboard supplied Unicode input.
+                rslog("remote: forwarded char")
+            }
+        case .invalidate:
+            // The event payload cannot be represented by one physical key. Clear
+            // the tracked word and cancel pending conversions without editing text.
+            monitor.handleKeyDown(
+                keyCode: keyCode,
+                flags: event.flags,
+                suffixKeyBufferRecoverable: false,
+                textEventRepresentable: false
+            )
+            return Unmanaged.passUnretained(event)
+        }
+        monitor.handleKeyDown(
+            keyCode: keyCode,
+            flags: event.flags,
+            char: forwardedChar
+        )
     } else if type == .flagsChanged {
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
         if monitor.handleFlagsChanged(flags: event.flags, keyCode: keyCode) {
@@ -826,5 +1266,5 @@ private func keyboardCallback(
         monitor.resetBuffersOnClick()
     }
 
-    return Unmanaged.passRetained(event)
+    return Unmanaged.passUnretained(event)
 }
