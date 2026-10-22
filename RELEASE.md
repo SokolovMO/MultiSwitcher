@@ -8,6 +8,8 @@ Last verified locally: 2026-10-23. This document describes source preparation, n
 
 Release infrastructure was checked on 2026-10-22: the local keychain has **zero valid code-signing identities**, the repository has **no `multiswitcher-release` GitHub environment**, and the GitHub Pages API returns 404, so the public site is not enabled. The signed-release workflow therefore cannot produce a public build yet. No signing, notarization, Sparkle, or Sentry secret values were inspected or exposed. Trusted Developer ID signing and notarization, a protected release environment, Sparkle keys, and Pages setup remain prerequisites.
 
+A release-workflow audit found that crash-symbol upload used the new Sentry CLI 0.42.2 even though that CLI does not implement native dSYM upload. The workflow now installs the compatible `@sentry/cli-darwin` 2.58.6 archive from the npm registry, verifies its pinned SHA-512 integrity, and checks the `debug-files upload` command before the Developer ID keychain is imported. The local archive integrity, version, and command checks passed. An authenticated upload and Sentry-side symbolication remain unverified because no Sentry release credentials are configured locally.
+
 Required hands-on checks on **each macOS 15, 26, and 27** before alpha publication:
 
 - Install, present the new optional permission guide, open permissions only after an explicit user action, remove/regrant permissions manually, launch at login, sleep/wake, and quit.
@@ -86,6 +88,7 @@ In addition to the alpha checks, 1.0 requires a public support page and tested u
 ## Current source revision: 0.3.11 (52), installed for local validation; hosted CI passes
 
 - Build 52 fixes the Learning page card clipping by explicitly measuring top-aligned content and fitting its table/help region within the card. Rules retains a measured 12 pt vertical inset. Six layout-policy regressions raise the Core suite to 306 passing checks.
+- The signed-release workflow now uses the compatible native-symbol Sentry CLI 2.58.6 package with a pinned SHA-512 check; the CLI is installed before importing the signing key and receives no Sentry token until its separate dSYM-upload step. Local package-integrity, version, and command checks pass. The authenticated Sentry upload is not verified.
 - The fresh Finder launch confirms the installed bundle is Build 52; the About page reports 0.3.11. Learning and Rules were inspected at the current large full-screen size. One physical TextEdit test confirmed automatic and selected-text conversion. Minimum-size, manual resize, light/dark appearance, and Reduce Motion remain unverified.
 - Build 52 was compiled ad-hoc and installed at `/Applications/MultiSwitcher.app`. Hosted CI run 39850867325 passed on macOS 15, macOS 26, and Xcode 27, including the Sparkle updater branch.
 
