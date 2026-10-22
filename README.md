@@ -4,7 +4,7 @@ A native macOS menu-bar utility for correcting text typed in the wrong keyboard 
 
 ## Status
 
-MultiSwitcher is preparing its first public alpha. Review candidate 0.3.8 (44), arm64, builds and passes bundle-integrity checks with an ad-hoc signature; it is not a trusted public-release build. Live input, hands-on compatibility on macOS 15/26/27, Developer ID signing, notarization, and update recovery remain release gates. See [Release readiness](RELEASE.md).
+MultiSwitcher is preparing its first public alpha. Review candidate 0.3.8 (45), arm64, builds and passes bundle-integrity checks with an ad-hoc signature; it is not a trusted public-release build. Live input, hands-on compatibility on macOS 15/26/27, Developer ID signing, notarization, and update recovery remain release gates. See [Release readiness](RELEASE.md).
 
 ## Requirements
 
@@ -14,9 +14,9 @@ MultiSwitcher is preparing its first public alpha. Review candidate 0.3.8 (44), 
 
 ## macOS permissions
 
-On first launch, MultiSwitcher explains the permissions used for keyboard conversion and offers **Open Settings** or **Later**. It does not request or change macOS privacy permissions in the background. You can keep either permission off; the app and its settings remain available, while global keyboard conversion stays paused. To review them later, use **Check Permissions…** in the menu-bar menu or **Review…** in General settings.
+MultiSwitcher does not interrupt first launch with a permissions dialog or change macOS privacy settings in the background. When keyboard access is missing, **Check Permissions…** appears in the menu-bar menu and a status with **Setup Guide…** appears in General settings. The guide explains each permission before offering to open System Settings; **Later** is the default choice. You can leave either permission off and keep using the app and its settings, but automatic correction and the manual Option shortcut remain paused until both permissions are enabled.
 
-The first path is **System Settings → Privacy & Security → Accessibility → MultiSwitcher** on macOS 15–26, and **System Settings → Privacy & Security → Device Control & Data Access → MultiSwitcher** on macOS 27. The second path is **System Settings → Privacy & Security → Input Monitoring → MultiSwitcher**. MultiSwitcher uses the first permission to work with text in supported fields and Input Monitoring to receive keyboard events for layout detection and shortcuts. You can leave either switch off; global conversion then stays paused. If you enable both after choosing **Open Settings**, MultiSwitcher restarts once to apply keyboard monitoring. macOS remains in control of both switches.
+The first path is **System Settings → Privacy & Security → Accessibility → MultiSwitcher** on macOS 15–26, and **System Settings → Privacy & Security → Device Control & Data Access → MultiSwitcher** on macOS 27. The second path is **System Settings → Privacy & Security → Input Monitoring → MultiSwitcher**. MultiSwitcher uses the first permission to work with text in supported fields and Input Monitoring to receive keyboard events for layout detection and shortcuts. If you enable both after choosing **Open Settings**, MultiSwitcher restarts once to apply keyboard monitoring. macOS remains in control of both switches.
 
 ## Install
 

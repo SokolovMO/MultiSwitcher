@@ -609,12 +609,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             SettingsManager.shared.permissionsWereGranted = false
         }
 
-        // Show the guide once on first launch. Later checks happen only when the user
-        // chooses Check Permissions or Review in Settings.
-        guard interactive || hadPermissionsBefore || !SettingsManager.shared.permissionGuideShown else {
+        // Do not interrupt a first launch with a modal permissions request. Keep the
+        // app and settings usable, show the missing state inline/in the menu, and only
+        // present the guide after the user explicitly chooses Check Permissions.
+        guard interactive else {
+            rebuildMenu()
             return
         }
-        if !interactive { SettingsManager.shared.permissionGuideShown = true }
         showPermissionsGuide(accessibilityGranted: acc, inputMonitoringGranted: inp)
     }
 
@@ -643,6 +644,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.informativeText = "\(L10n.permissionsGuideText)\n\n\(steps.joined(separator: "\n\n"))"
         alert.addButton(withTitle: L10n.wizardOpenSettings)
         alert.addButton(withTitle: L10n.wizardLater)
+        // Keep the non-disruptive choice as the default. Opening a privacy pane
+        // always requires the user's explicit selection of Open Settings.
+        alert.buttons.last?.keyEquivalent = "\r"
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
         // TCC permissions are managed by the user. Do not request or toggle them here;
@@ -1779,6 +1783,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         autoConvertItem.target = self
         autoConvertItem.state = SettingsManager.shared.autoConvert ? .on : .off
         menu.addItem(autoConvertItem)
+
+        // Keep the everyday menu compact, but surface the exact next step when
+        // macOS currently prevents keyboard monitoring. This is informational and
+        // never opens System Settings until the user selects it.
+        if !AXIsProcessTrusted() || !CGPreflightListenEventAccess() {
+            let permissionsItem = NSMenuItem(title: L10n.menuCheckPermissions,
+                                             action: #selector(recheckPermissions),
+                                             keyEquivalent: "")
+            permissionsItem.target = self
+            menu.addItem(permissionsItem)
+        }
 
         let pauseItem = NSMenuItem(title: SettingsManager.shared.isPaused ? L10n.menuResume : L10n.menuPause,
                                    action: nil, keyEquivalent: "")

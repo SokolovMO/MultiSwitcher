@@ -1,7 +1,7 @@
 # 001 — Make settings navigation feel immediate
 
-- **Status**: Implemented in source build 41; live visual check pending
-- **Commit**: unavailable; this source folder is not a Git checkout
+- **Status**: Implemented in source build 41; ordinary and zoomed settings views were visually checked on build 45; Reduce Motion feel check pending
+- **Branch**: `codex/multiswitcher-033-reliability`
 - **Severity**: MEDIUM
 - **Category**: Purpose, easing, and frequency
 - **Estimated scope**: 1 file, about 15 lines

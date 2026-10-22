@@ -163,6 +163,8 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
     private var expandedPage = false
     private var selectedPageIndex = 0
     private var minimumDocumentHeight: CGFloat = 0
+    private var baselineDocumentHeight: CGFloat = 0
+    private var adaptivePageLayouts: [(outer: NSView, content: NSView, stack: NSStackView)] = []
     private var sidebarWidth: CGFloat = 206
     private let sidebarDividerWidth: CGFloat = 6
     private var navigationTable: NSTableView?
@@ -356,7 +358,8 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         // Size the document against the window's actual initial viewport. Using the
         // pre-resize content-view height left the scroll view scrolled past the first
         // controls on shorter displays and restored windows.
-        minimumDocumentHeight = max(tallest, desiredHeight)
+        baselineDocumentHeight = tallest
+        minimumDocumentHeight = max(baselineDocumentHeight, desiredHeight)
         tabView.frame.size.height = minimumDocumentHeight
         win.setContentSize(NSSize(width: desiredWidth, height: max(minimumHeight, desiredHeight)))
         win.minSize = NSSize(width: 800, height: minimumHeight)
@@ -520,8 +523,42 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
     private func updateDocumentSize() {
         guard let paneScrollView, let documentView = paneScrollView.documentView else { return }
+        let clipView = paneScrollView.contentView
+        let oldDocumentHeight = documentView.bounds.height
+        let oldTopOffset = documentView.isFlipped
+            ? clipView.bounds.minY
+            : oldDocumentHeight - clipView.bounds.maxY
+        let wasNearTop = oldTopOffset <= 48
+
+        // Width changes can wrap localized labels and grow a card. Re-measure the
+        // constraint-based pages before sizing the scroll document; a fixed initial
+        // height clips the first/last controls after resizing or changing the sidebar.
+        for layout in adaptivePageLayouts {
+            layout.outer.layoutSubtreeIfNeeded()
+            layout.content.layoutSubtreeIfNeeded()
+            layout.stack.layoutSubtreeIfNeeded()
+            let measuredHeight = ceil(layout.stack.fittingSize.height) + 32
+            guard measuredHeight.isFinite, measuredHeight > 32 else { continue }
+            layout.content.setFrameSize(NSSize(width: layout.content.frame.width, height: measuredHeight))
+            layout.outer.setFrameSize(NSSize(width: layout.outer.frame.width, height: measuredHeight))
+        }
+        minimumDocumentHeight = max(
+            baselineDocumentHeight,
+            adaptivePageLayouts.map { $0.outer.frame.height }.max() ?? 0
+        )
         documentView.setFrameSize(NSSize(width: paneScrollView.contentSize.width,
                                          height: max(minimumDocumentHeight, paneScrollView.contentSize.height)))
+        paneScrollView.layoutSubtreeIfNeeded()
+
+        // Preserve the user's place in long pages. If they were already at the top,
+        // keep the top edge anchored when the document grows or the viewport changes.
+        var origin = clipView.bounds.origin
+        let topOffset = wasNearTop ? 0 : max(0, oldTopOffset)
+        origin.y = documentView.isFlipped
+            ? topOffset
+            : max(0, documentView.bounds.height - clipView.bounds.height - topOffset)
+        clipView.scroll(to: origin)
+        paneScrollView.reflectScrolledClipView(clipView)
     }
 
     /// AppKit clip views use a bottom-left origin unless the document is flipped.
@@ -980,7 +1017,9 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         let contentHeight = ceil(stack.fittingSize.height)
         page.setFrameSize(NSSize(width: pageWidth, height: contentHeight + 32))
         page.layoutSubtreeIfNeeded()
-        return topAligned(page)
+        let outer = topAligned(page)
+        adaptivePageLayouts.append((outer: outer, content: page, stack: stack))
+        return outer
     }
 
     private func createGeneralTab() -> NSTabViewItem {
