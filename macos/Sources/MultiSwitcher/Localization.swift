@@ -245,7 +245,7 @@ enum L10n {
         String(format: s("rules.delete.selected.hint"), pattern)
     }
     static var userRulesImport: String { s("rules.import") }
-    static var userRulesExport: String { s("rules.export") }
+    static var userRulesExport: String { languageCode == "ru" ? "экспорт ручных правил…" : "export manual rules…" }
     static var userRulesSourceUser: String { s("rules.source.user") }
     static var userRulesSourcePunto: String { s("rules.source.punto") }
     static var userRulesSourceLearned: String { s("rules.source.learned") }
@@ -2223,4 +2223,24 @@ enum L10n {
             "secure.paused.unknownapp": "სხვა აპი",
         ],
     ]
+}
+
+// Presentation-only copy; user words, paths and application names retain their case.
+extension L10n {
+    static var uiAdd: String { languageCode == "ru" ? "добавить" : "add" }
+    static var uiRemove: String { languageCode == "ru" ? "удалить выбранное" : "remove selected" }
+    static var uiApplications: String { languageCode == "ru" ? "приложений" : "applications" }
+    static var uiWords: String { languageCode == "ru" ? "слов" : "words" }
+    static var uiCandidateState: String { languageCode == "ru" ? "кандидат" : "candidate" }
+    static var uiLogLocation: String { languageCode == "ru" ? "расположение журнала" : "log location" }
+    static var uiShowRule: String { languageCode == "ru" ? "показать правило" : "show rule" }
+    static var uiLearningHint: String { languageCode == "ru" ? "здесь — кандидаты и история обучения. готовые исключения доступны в правилах → из обучения." : "review learning candidates here. confirmed exceptions appear in rules → learned." }
+    static var uiRulesHint: String { languageCode == "ru" ? "ручные правила можно редактировать. исключения из обучения и импорта отмечены источником." : "manual rules can be edited. learned and imported exceptions show their source." }
+    static var uiDiagnostics: String { languageCode == "ru" ? "диагностика" : "diagnostics" }
+    static var uiDebugHint: String { languageCode == "ru" ? "включайте журнал на время проверки. набранный текст не сохраняется." : "enable the log while checking a problem. typed text is not saved." }
+    static var uiAllSources: String { languageCode == "ru" ? "все источники" : "all sources" }
+    static var uiManualSource: String { languageCode == "ru" ? "вручную" : "manual" }
+    static var uiLearnedSource: String { languageCode == "ru" ? "из обучения" : "learned" }
+    static var uiImportedSource: String { languageCode == "ru" ? "импортированные" : "imported" }
+    static var uiRuleSource: String { languageCode == "ru" ? "источник правила" : "rule source" }
 }

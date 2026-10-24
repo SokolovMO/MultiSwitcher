@@ -7,15 +7,18 @@ import MultiSwitcherCore
 
 /// Canonical permanent application artwork. Never reads input-source or theme state.
 @MainActor enum MultiBrandIcon {
-    static let switcher = NSImage(size: NSSize(width: 1024, height: 1024), flipped: false) { rect in
+    static let switcher = render(externalEffects: true)
+    static let embeddedSwitcher = render(externalEffects: false)
+    private static func render(externalEffects: Bool) -> NSImage { NSImage(size: NSSize(width: 1024, height: 1024), flipped: false) { rect in
+        NSColor.clear.setFill(); rect.fill(using: .copy)
         let size = rect.width
         let tile = rect.insetBy(dx: size * 0.075, dy: size * 0.075)
         let shadow = NSShadow(); shadow.shadowColor = NSColor.black.withAlphaComponent(0.16)
         shadow.shadowBlurRadius = size * 0.045; shadow.shadowOffset = NSSize(width: 0, height: -size * 0.015)
-        NSGraphicsContext.saveGraphicsState(); shadow.set()
+        NSGraphicsContext.saveGraphicsState(); if externalEffects { shadow.set() }
         let path = NSBezierPath(roundedRect: tile, xRadius: size * 0.19, yRadius: size * 0.19)
         NSColor(white: 0.985, alpha: 1).setFill(); path.fill(); NSGraphicsContext.restoreGraphicsState()
-        NSColor.black.withAlphaComponent(0.08).setStroke(); path.lineWidth = max(1, size / 512); path.stroke()
+        if externalEffects { NSColor.black.withAlphaComponent(0.08).setStroke(); path.lineWidth = max(1, size / 512); path.stroke() }
         let markSize = size * 0.77
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: markSize * 0.68, weight: .semibold),
@@ -23,7 +26,7 @@ import MultiSwitcherCore
         let text = "AЯ" as NSString; let measured = text.size(withAttributes: attributes)
         text.draw(at: NSPoint(x: rect.midX - measured.width / 2, y: rect.midY - measured.height / 2), withAttributes: attributes)
         return true
-    }
+    } }
 }
 
 @MainActor enum MultiMotion {

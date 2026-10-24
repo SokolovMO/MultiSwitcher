@@ -17,11 +17,12 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
     private let table = GraphiteTableView()
     private let emptyStateLabel = NSTextField(wrappingLabelWithString: "")
     private let removeButton = GraphiteButton()
+    private let countLabel = NSTextField(labelWithString: "")
     /// Кэш имени/иконки по bundle id, чтобы не дёргать NSWorkspace на каждый vend ячейки.
     private var infoCache: [String: (text: String, icon: NSImage?)] = [:]
 
     func setCompactMode(_ compact: Bool) {
-        table.rowHeight = compact ? 18 : 22
+        table.rowHeight = compact ? 26 : 30
     }
 
     init(kind: Kind,
@@ -42,13 +43,13 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
     func makeContainer(frame: NSRect) -> NSView {
         let container = NSView(frame: frame)
         container.autoresizesSubviews = true
-        let stripH: CGFloat = 26
+        let stripH: CGFloat = 38
 
         let scroll = NSScrollView(frame: NSRect(x: 0, y: stripH, width: frame.width, height: frame.height - stripH))
         scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
-        scroll.borderType = .noBorder
+        scroll.borderType = .lineBorder
         scroll.drawsBackground = false
 
         let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("col"))
@@ -60,7 +61,7 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         table.autoresizingMask = [.width]
         table.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
         table.headerView = nil
-        table.rowHeight = 22
+        table.rowHeight = 30
         table.dataSource = self
         table.delegate = self
         scroll.documentView = table
@@ -82,20 +83,36 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
 
         let addBtn = GraphiteButton(frame: NSRect(x: 0, y: 0, width: 28, height: 24))
         addBtn.autoresizingMask = [.maxYMargin]
-        addBtn.title = "+"
-        addBtn.bezelStyle = .smallSquare
+        addBtn.title = ""
+        addBtn.image = NSImage(systemSymbolName: "plus", accessibilityDescription: L10n.uiAdd)
+        addBtn.imagePosition = .imageOnly
+        addBtn.setAccessibilityLabel(L10n.uiAdd)
+        addBtn.toolTip = L10n.uiAdd
+        addBtn.bezelStyle = .rounded
         addBtn.target = self
         addBtn.action = #selector(addTapped)
         container.addSubview(addBtn)
 
         removeButton.frame = NSRect(x: 30, y: 0, width: 28, height: 24)
         removeButton.autoresizingMask = [.maxYMargin]
-        removeButton.title = "−"
-        removeButton.bezelStyle = .smallSquare
+        removeButton.title = ""
+        removeButton.image = NSImage(systemSymbolName: "minus", accessibilityDescription: L10n.uiRemove)
+        removeButton.imagePosition = .imageOnly
+        removeButton.setAccessibilityLabel(L10n.uiRemove)
+        removeButton.toolTip = L10n.uiRemove
+        removeButton.bezelStyle = .rounded
         removeButton.target = self
         removeButton.action = #selector(removeTapped)
         removeButton.isEnabled = false
         container.addSubview(removeButton)
+        let separator = NSBox(frame: NSRect(x: 0, y: 31, width: frame.width, height: 1))
+        separator.boxType = .separator; separator.autoresizingMask = [.width, .maxYMargin]
+        container.addSubview(separator)
+        countLabel.frame = NSRect(x: 74, y: 4, width: max(0, frame.width - 74), height: 18)
+        countLabel.autoresizingMask = [.width, .maxYMargin]
+        countLabel.alignment = .right; countLabel.font = SystemTypography.font(.footnote)
+        countLabel.textColor = .secondaryLabelColor
+        container.addSubview(countLabel)
 
         updateEmptyState()
 
@@ -119,7 +136,7 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
 
         var leading: CGFloat = 4
         if kind == .apps {
-            let iv = NSImageView(image: NSImage(systemSymbolName: "app", accessibilityDescription: nil) ?? NSImage())
+            let iv = NSImageView(image: cellInfo(id).icon ?? NSImage(systemSymbolName: "questionmark.app", accessibilityDescription: nil) ?? NSImage())
             iv.contentTintColor = DesignPalette.secondary
             iv.translatesAutoresizingMaskIntoConstraints = false
             cell.addSubview(iv)
@@ -215,6 +232,7 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
 
     private func updateEmptyState() {
         emptyStateLabel.isHidden = !items.isEmpty
+        countLabel.stringValue = "\(items.count) · \(kind == .apps ? L10n.uiApplications : L10n.uiWords)"
     }
 
     // MARK: - Display helpers

@@ -26,6 +26,8 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
     private let emptyStateLabel = NSTextField(wrappingLabelWithString: "")
     private let forgetButton = GraphiteButton()
     private let confirmButton = GraphiteButton()
+    private let ruleButton = GraphiteButton()
+    var onShowRule: ((String) -> Void)?
     private var entries: [LearningEntry] = []
     private var visibleEntries: [LearningEntry] = []
     private var selectedFilter: Filter = .candidates
@@ -69,7 +71,7 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
-        scroll.borderType = .noBorder
+        scroll.borderType = .lineBorder
         scroll.drawsBackground = false
 
         addColumn(L10n.learningColumnWord, identifier: Column.word, width: frame.width * 0.54)
@@ -98,7 +100,7 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         ])
 
         forgetButton.frame = NSRect(x: 0, y: 0, width: 100, height: 26)
-        forgetButton.autoresizingMask = [.maxYMargin]
+        forgetButton.translatesAutoresizingMaskIntoConstraints = false
         forgetButton.title = L10n.learningForget
         forgetButton.bezelStyle = .rounded
         forgetButton.target = self
@@ -107,13 +109,31 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         root.addSubview(forgetButton)
 
         confirmButton.frame = NSRect(x: 108, y: 0, width: 190, height: 26)
-        confirmButton.autoresizingMask = [.maxYMargin]
+        confirmButton.translatesAutoresizingMaskIntoConstraints = false
         confirmButton.title = L10n.learningConfirmManual
         confirmButton.bezelStyle = .rounded
         confirmButton.target = self
         confirmButton.action = #selector(confirmSelectedCandidate)
         confirmButton.isEnabled = false
         root.addSubview(confirmButton)
+        ruleButton.title = L10n.uiShowRule
+        ruleButton.target = self; ruleButton.action = #selector(showSelectedRule)
+        ruleButton.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(ruleButton)
+        let separator = NSBox(); separator.boxType = .separator
+        separator.translatesAutoresizingMaskIntoConstraints = false; root.addSubview(separator)
+        NSLayoutConstraint.activate([
+            forgetButton.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            forgetButton.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            confirmButton.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            confirmButton.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            confirmButton.leadingAnchor.constraint(greaterThanOrEqualTo: forgetButton.trailingAnchor, constant: 12),
+            ruleButton.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            ruleButton.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            separator.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            separator.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -31),
+        ])
 
         reloadFromStore()
         return root
@@ -162,7 +182,7 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
             }
         case Column.state:
             value = entry.isExcluded ? L10n.learningStateExcluded
-                : isManualCandidate(entry) ? L10n.learningManualCandidateState
+                : isManualCandidate(entry) ? L10n.uiCandidateState
                 : entry.origin == .punto ? L10n.learningStateImportedHistory
                 : L10n.learningStatePending
             tooltip = nil
@@ -280,7 +300,45 @@ final class LearningListEditor: NSObject, NSTableViewDataSource, NSTableViewDele
         reloadFromStore()
     }
 
+    func exerciseForReview() -> Bool {
+        guard ProcessInfo.processInfo.environment["MULTI_ECOSYSTEM_REVIEW"] != nil else { return false }
+        let previous = selectedFilter
+        defer { selectedFilter = previous; filterPopup.selectItem(at: previous.rawValue); applySearchAndFilter() }
+        selectedFilter = .candidates; applySearchAndFilter()
+        var candidatePassed = true
+        if let row = visibleEntries.firstIndex(where: isManualCandidate) {
+            table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false); updateActionButtons()
+            candidatePassed = confirmButton.isEnabled && !confirmButton.isHidden && !forgetButton.isHidden
+        }
+        selectedFilter = .active; applySearchAndFilter()
+        var activePassed = true
+        if !visibleEntries.isEmpty {
+            table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false); updateActionButtons()
+            activePassed = ruleButton.isEnabled && !ruleButton.isHidden && confirmButton.isHidden
+        }
+        return candidatePassed && activePassed
+    }
+    func showLearnedForReview() -> Bool {
+        guard ProcessInfo.processInfo.environment["MULTI_ECOSYSTEM_REVIEW"] != nil else { return false }
+        let previous = selectedFilter
+        defer { selectedFilter = previous; filterPopup.selectItem(at: previous.rawValue); applySearchAndFilter() }
+        selectedFilter = .active; applySearchAndFilter()
+        guard !visibleEntries.isEmpty else { return false }
+        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        showSelectedRule()
+        return true
+    }
+
+    @objc private func showSelectedRule() {
+        guard visibleEntries.indices.contains(table.selectedRow) else { return }
+        onShowRule?(visibleEntries[table.selectedRow].word)
+    }
+
     private func updateActionButtons() {
+        let active = visibleEntries.indices.contains(table.selectedRow) && visibleEntries[table.selectedRow].isExcluded
+        ruleButton.isHidden = !active
+        ruleButton.isEnabled = active
+        confirmButton.isHidden = active
         guard visibleEntries.indices.contains(table.selectedRow) else {
             forgetButton.isEnabled = false
             confirmButton.isEnabled = false

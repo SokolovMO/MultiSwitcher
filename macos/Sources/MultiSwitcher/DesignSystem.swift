@@ -165,68 +165,20 @@ final class GraphiteToggleButton: NSButton {
     }
 }
 
+/// Native AppKit owns title/image centering, focus, disabled states and hit testing.
 @MainActor
 class GraphiteButton: NSButton {
     override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsetsZero }
     override init(frame: NSRect) {
         super.init(frame: frame)
-        font = .systemFont(ofSize: 12, weight: .medium)
+        setButtonType(.momentaryPushIn)
+        bezelStyle = .rounded
+        controlSize = .regular
+        alignment = .center
+        font = .systemFont(ofSize: NSFont.systemFontSize(for: .regular))
+        contentTintColor = DesignPalette.ink
     }
     required init?(coder: NSCoder) { super.init(coder: coder) }
-    private var hover = false
-    private var tracking: NSTrackingArea?
-    override func updateTrackingAreas() {
-        if let tracking { removeTrackingArea(tracking) }
-        tracking = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self)
-        addTrackingArea(tracking!)
-        super.updateTrackingAreas()
-    }
-    override func mouseEntered(with event: NSEvent) { hover = true; needsDisplay = true }
-    override func mouseExited(with event: NSEvent) { hover = false; needsDisplay = true }
-    override func draw(_ dirtyRect: NSRect) {
-        let border = isBordered && bezelStyle != .inline
-        if border || hover || isHighlighted {
-            let fill = isHighlighted ? DesignPalette.selected : (hover ? DesignPalette.inset : DesignPalette.surface)
-            fill.setFill()
-            let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 1.5), xRadius: MultiInterfaceMetrics.Radius.sm, yRadius: MultiInterfaceMetrics.Radius.sm)
-            path.fill()
-            if border { DesignPalette.line.setStroke(); path.lineWidth = 0.8; path.stroke() }
-        }
-        let ink = (isEnabled ? (contentTintColor ?? DesignPalette.ink) : DesignPalette.secondary)
-        let textFont = font ?? NSFont.systemFont(ofSize: 12, weight: .medium)
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = alignment
-        paragraph.lineBreakMode = .byTruncatingTail
-        let imageWidth: CGFloat = image == nil || imagePosition == .noImage ? 0 : 16
-        let gap: CGFloat = imageWidth > 0 && !title.isEmpty ? 7 : 0
-        let textWidth = (title as NSString).size(withAttributes: [.font: textFont]).width
-        let total = min(bounds.width - 12, textWidth + imageWidth + gap)
-        let origin = alignment == .left ? bounds.minX + 6 : bounds.midX - total / 2
-        if let image, imageWidth > 0 {
-            let tinted = image.withSymbolConfiguration(.init(paletteColors: [ink])) ?? image
-            tinted.draw(in: NSRect(x: imagePosition == .imageOnly ? bounds.midX - 8 : origin,
-                                  y: bounds.midY - 8, width: 16, height: 16),
-                        from: .zero, operation: .sourceOver, fraction: isEnabled ? 0.85 : 0.4,
-                        respectFlipped: true, hints: nil)
-        }
-        if window?.firstResponder === self {
-            DesignPalette.ink.withAlphaComponent(0.55).setStroke()
-            let focus = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 2), xRadius: MultiInterfaceMetrics.Radius.sm, yRadius: MultiInterfaceMetrics.Radius.sm)
-            focus.lineWidth = 1.5
-            focus.stroke()
-        }
-        if imagePosition != .imageOnly {
-            let x = origin + imageWidth + gap
-            (title as NSString).draw(in: NSRect(x: x, y: bounds.midY - textFont.pointSize * 0.65,
-                                               width: max(0, bounds.maxX - x - 6), height: textFont.pointSize + 6),
-                                    withAttributes: [.font: textFont, .foregroundColor: ink, .paragraphStyle: paragraph])
-        }
-        if window?.firstResponder === self {
-            DesignPalette.ink.withAlphaComponent(0.45).setStroke()
-            let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: MultiInterfaceMetrics.Radius.sm, yRadius: MultiInterfaceMetrics.Radius.sm)
-            path.lineWidth = 1; path.stroke()
-        }
-    }
 }
 
 @MainActor
@@ -332,8 +284,8 @@ enum DesignStyler {
         }
         if let scroll = view as? NSScrollView, scroll.documentView is NSTableView {
             scroll.wantsLayer = true
-            scroll.layer?.cornerRadius = MultiInterfaceMetrics.Radius.md
-            scroll.layer?.masksToBounds = true
+            scroll.layer?.cornerRadius = scroll.borderType == .noBorder ? MultiInterfaceMetrics.Radius.md : 0
+            scroll.layer?.masksToBounds = scroll.borderType == .noBorder
         }
         if let text = view as? NSTextView {
             text.insertionPointColor = DesignPalette.ink
@@ -422,31 +374,13 @@ final class GraphiteTextField: NSTextField {
     override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsetsZero }
     override init(frame: NSRect) {
         super.init(frame: frame)
-        isBezeled = false
-        drawsBackground = false
-        font = .systemFont(ofSize: 12)
-        focusRingType = .none
+        isBezeled = true
+        bezelStyle = .roundedBezel
+        drawsBackground = true
+        controlSize = .regular
+        font = .systemFont(ofSize: NSFont.systemFontSize(for: .regular))
     }
     required init?(coder: NSCoder) { super.init(coder: coder) }
-    override var intrinsicContentSize: NSSize {
-        NSSize(width: super.intrinsicContentSize.width, height: 28)
-    }
-    override func selectText(_ sender: Any?) {
-        super.selectText(sender)
-        if let editor = currentEditor() as? NSTextView {
-            editor.insertionPointColor = DesignPalette.ink
-            editor.selectedTextAttributes = [.foregroundColor: DesignPalette.ink, .backgroundColor: DesignPalette.selected]
-        }
-        needsDisplay = true
-    }
-    override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: MultiInterfaceMetrics.Radius.xs, yRadius: MultiInterfaceMetrics.Radius.xs)
-        DesignPalette.inset.setFill(); path.fill()
-        (currentEditor() == nil ? DesignPalette.line : DesignPalette.ink.withAlphaComponent(0.55)).setStroke()
-        path.lineWidth = 1
-        path.stroke()
-        super.draw(dirtyRect)
-    }
 }
 
 /// Uses NSAlert's real action routing, keyboard equivalents and modal lifecycle,

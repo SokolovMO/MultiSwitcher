@@ -1,0 +1,17 @@
+{
+  "allCardGuidesAligned" : true,
+  "allRestoreStates" : true,
+  "app" : "multiswitcher",
+  "cycles" : 20,
+  "geometry" : true,
+  "keyboard" : true,
+  "matrixStates" : 84,
+  "nativeMaximumEnforced" : true,
+  "rapidReversals" : 20,
+  "reducedMotion" : true,
+  "sectionCount" : 7,
+  "stableNavigationAndTheme" : true,
+  "systemScreenshots" : 84,
+  "timerStopped" : true,
+  "windowNumber" : 4630
+}

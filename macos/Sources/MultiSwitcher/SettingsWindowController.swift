@@ -1045,22 +1045,22 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         spacing: CGFloat = SettingsCardMetrics.controlSpacing
     ) -> NSStackView {
         views.forEach { $0.removeFromSuperview() }
-        let row = NSStackView(views: views)
+        let row = NSStackView(views: [NSView()] + views)
         row.orientation = .horizontal
         row.alignment = .centerY
-        row.distribution = .fillEqually
+        row.distribution = .fill
         row.spacing = spacing
         row.translatesAutoresizingMaskIntoConstraints = false
         views.forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
-            $0.setContentHuggingPriority(.defaultLow, for: .horizontal)
-            $0.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            $0.setContentHuggingPriority(.required, for: .horizontal)
+            $0.setContentCompressionResistancePriority(.required, for: .horizontal)
         }
         return row
     }
 
-    private func settingsHelp(_ details: NSView) -> NSView {
-        let help = SettingsHelpDisclosure(title: L10n.settingsHelpDetails, details: details)
+    private func settingsHelp(_ details: NSView, title: String? = nil) -> NSView {
+        let help = SettingsHelpDisclosure(title: title ?? L10n.settingsHelpDetails, details: details)
         help.onToggle = { [weak self] in self?.scheduleAdaptiveDocumentLayoutUpdate() }
         return help
     }
@@ -1436,7 +1436,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
             hintLabel.font = SystemTypography.font(.footnote)
             hintLabel.textColor = .secondaryLabelColor
             view.addSubview(hintLabel)
-            let contH: CGFloat = 96
+            let contH: CGFloat = 158
             let cont = editor.makeContainer(frame: NSRect(x: 20, y: y - 47 - contH, width: 420, height: contH))
             cont.heightAnchor.constraint(equalToConstant: contH).isActive = true
             cont.setContentCompressionResistancePriority(.required, for: .vertical)
@@ -1476,6 +1476,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         let editor = UserRuleEditor()
         editor.onRulesChanged = { [weak self] in
             self?.exceptionEditors.forEach { $0.reloadFromStore() }
+            self?.learningListEditor?.reloadFromStore()
         }
         let container = editor.makeContainer(frame: NSRect(x: 36, y: 18, width: 508, height: 626))
         container.autoresizingMask = [.width, .height]
@@ -1494,7 +1495,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         item.label = L10n.settingsTabLearning
 
         let view = NSView(frame: NSRect(x: 0, y: 0, width: 460, height: 520))
-        let hint = NSTextField(wrappingLabelWithString: L10n.learningListHint)
+        let hint = NSTextField(wrappingLabelWithString: L10n.uiLearningHint)
         // Leave room for both the card's 12 pt inner padding and its 16 pt page
         // gutter. The old hint extended six points past the page and clipped the
         // rounded top edge when the tab filled a tall window.
@@ -1504,6 +1505,10 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         view.addSubview(hint)
 
         let editor = LearningListEditor()
+        editor.onShowRule = { [weak self] word in
+            self?.settingsTabView?.selectTabViewItem(at: 3)
+            self?.ruleEditor?.showLearnedRule(word: word)
+        }
         let container = editor.makeContainer(frame: NSRect(x: 20, y: 28, width: 420, height: 418))
         view.addSubview(container)
         editor.reloadFromStore()
@@ -1512,7 +1517,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         buildingPageTitle = item.label
         container.heightAnchor.constraint(equalToConstant: 310).isActive = true
         item.view = settingsCardPage([
-            settingsCard(containing: adaptiveControlsStack([settingsHelp(hint), container]))
+            settingsCard(containing: adaptiveControlsStack([hint, settingsHelp(NSTextField(wrappingLabelWithString: L10n.learningListHint)), container]))
         ])
         return item
     }
@@ -1617,7 +1622,8 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
 
         let aboutControls = view.subviews
         let identity = [titleLabel, versionLabel]
-        let icon = NSImageView(image: DesignIcon.application(dark: NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua, size: 64))
+        let icon = NSImageView(image: MultiBrandIcon.embeddedSwitcher)
+        icon.imageFrameStyle = .none
         icon.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([icon.widthAnchor.constraint(equalToConstant: 48), icon.heightAnchor.constraint(equalToConstant: 48)])
         let identityLabels = adaptiveControlsStack(identity)
@@ -1835,27 +1841,31 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         view.addSubview(quitBtn)
 
         let diagnosticsButtons = adaptiveButtonRow([showLogBtn, sendLogBtn])
-        let debugHint = NSTextField(wrappingLabelWithString: L10n.settingsDebugLogHint)
+        let debugHint = NSTextField(wrappingLabelWithString: L10n.uiDebugHint)
         debugHint.frame = NSRect(x: 40, y: y, width: 400, height: 34)
         debugHint.font = SystemTypography.font(.footnote)
         debugHint.textColor = .secondaryLabelColor
         debugHint.maximumNumberOfLines = 0
         view.addSubview(debugHint)
 
-        let diagnostics = [debugCheckbox, debugHint, diagnosticsButtons, pathLabel, quitBtn] as [NSView]
+        let diagnosticsTitle = NSTextField(labelWithString: L10n.uiDiagnostics)
+        diagnosticsTitle.font = SystemTypography.font(.body, weight: .semibold)
+        let separator = NSBox(); separator.boxType = .separator
+        let diagnostics = [diagnosticsTitle, makeAutomaticExamplePreviewContent(), separator,
+                           debugCheckbox, debugHint, diagnosticsButtons, settingsHelp(pathLabel, title: L10n.uiLogLocation)] as [NSView]
         item.view = settingsCardPage([
             settingsCard(containing: adaptiveControlsStack(conversionControls)),
-            makeAutomaticExamplePreviewCard(),
             settingsCard(containing: adaptiveControlsStack(dictionaryControls)),
             settingsCard(containing: adaptiveControlsStack(behaviorControls)),
             settingsCard(containing: adaptiveControlsStack(diagnostics)),
+            settingsCard(containing: adaptiveButtonRow([quitBtn])),
         ])
         return item
     }
 
     /// A local, non-persistent preview of the automatic word path. It deliberately
     /// calls LayoutDetector rather than the separate smart-selection converter.
-    private func makeAutomaticExamplePreviewCard() -> SettingsCardBackground {
+    private func makeAutomaticExamplePreviewContent() -> NSView {
         let title = NSTextField(labelWithString: L10n.settingsExampleTitle)
         title.font = SystemTypography.font(.body, weight: .semibold)
 
@@ -1879,7 +1889,7 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         word.setAccessibilityLabel(L10n.settingsExampleWord)
         exampleWordField = word
 
-        let layoutPopup = GraphitePopUpButton(frame: .zero, pullsDown: false)
+        let layoutPopup = NSPopUpButton(frame: .zero, pullsDown: false)
         layoutPopup.setAccessibilityLabel(L10n.settingsExampleLayout)
         let choices = configuredPreviewLayouts()
         for choice in choices {
@@ -1924,12 +1934,12 @@ final class SettingsWindowController: NSObject, NSTableViewDataSource, NSTableVi
         let wordRow = settingsFormRow(L10n.settingsExampleWord, control: word)
         let layoutRow = settingsFormRow(L10n.settingsExampleLayout, control: layoutPopup)
         let content = settingsVerticalStack([
-            title, contextRow, wordRow, layoutRow, checkButton,
+            title, contextRow, wordRow, layoutRow, adaptiveButtonRow([checkButton]),
             corrected, nextLayout, reason,
             settingsHelp(settingsVerticalStack([hint, runtimeCaveat], spacing: SettingsCardMetrics.controlSpacing)),
         ], spacing: SettingsCardMetrics.controlSpacing)
         checkButton.isEnabled = choices.count == 2
-        return settingsCard(containing: content)
+        return content
     }
 
     private func configuredPreviewLayouts() -> [PreviewLayoutChoice] {
@@ -2641,6 +2651,16 @@ extension SettingsWindowController {
                 if number % 7 == 3 {
                     let passed = ruleEditor?.exerciseForReview() ?? false
                     NSLog("UI review rules search/selection/keyboard: %@", passed ? "PASS" : "FAIL")
+                }
+                if number % 7 == 4 {
+                    let passed = learningListEditor?.exerciseForReview() ?? false
+                    NSLog("UI review learning candidate/active actions: %@", passed ? "PASS" : "FAIL")
+                    if learningListEditor?.showLearnedForReview() == true, let window {
+                        updateDocumentSize(); window.displayIfNeeded()
+                        Self.captureWindow(window, to: directory + (number < 7 ? "/light" : "/dark") + "-learned-rule-link.png")
+                        ruleEditor?.resetReviewFilters()
+                        transitionToPage(4, animated: false)
+                    }
                 }
                 window?.displayIfNeeded()
                 if let window {

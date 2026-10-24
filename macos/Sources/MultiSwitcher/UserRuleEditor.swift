@@ -59,6 +59,23 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
 
     private let table = RuleTableView()
     private let searchField = GraphiteSearchField()
+    private let sourceFilter = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let sourceKinds: [ProfileRuleOrigin?] = [nil, .user, .learned, .punto]
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(rulesDidChange), name: .multiSwitcherLearningDidChange, object: nil)
+    }
+    @objc private func rulesDidChange() { reloadFromStore() }
+    @objc private func sourceChanged() { applySearch() }
+    func showLearnedRule(word: String) {
+        sourceFilter.selectItem(at: 2)
+        searchField.stringValue = word
+        reloadFromStore()
+        if let row = visibleEntries.firstIndex(where: { $0.origin == .learned && $0.pattern.localizedCaseInsensitiveCompare(word) == .orderedSame }) {
+            table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            table.scrollRowToVisible(row)
+        }
+    }
     private var editButton: NSButton?
     private var deleteButton: NSButton?
     private var restorePuntoButton: NSButton?
@@ -83,8 +100,13 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         searchField.target = self
         searchField.action = #selector(searchChanged)
         root.addSubview(searchField)
+        sourceFilter.addItems(withTitles: [L10n.uiAllSources, L10n.uiManualSource, L10n.uiLearnedSource, L10n.uiImportedSource])
+        sourceFilter.target = self; sourceFilter.action = #selector(sourceChanged)
+        sourceFilter.setAccessibilityLabel(L10n.uiRuleSource)
+        sourceFilter.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(sourceFilter)
 
-        let hint = NSTextField(wrappingLabelWithString: L10n.userRulesHint)
+        let hint = NSTextField(wrappingLabelWithString: L10n.uiRulesHint)
         hint.translatesAutoresizingMaskIntoConstraints = false
         hint.font = SystemTypography.font(.footnote)
         hint.textColor = .secondaryLabelColor
@@ -168,7 +190,9 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
             searchField.topAnchor.constraint(equalTo: root.topAnchor),
             hint.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             hint.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            hint.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
+            sourceFilter.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            sourceFilter.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
+            hint.topAnchor.constraint(equalTo: sourceFilter.bottomAnchor, constant: 8),
             toolbar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             toolbar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             toolbar.bottomAnchor.constraint(equalTo: root.bottomAnchor),
@@ -293,7 +317,9 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
 
     private func applySearch() {
         let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        visibleEntries = query.isEmpty ? entries : entries.filter { rule in
+        let source = sourceKinds[max(0, sourceFilter.indexOfSelectedItem)]
+        let matchingSource = entries.filter { source == nil || $0.origin == source }
+        visibleEntries = query.isEmpty ? matchingSource : matchingSource.filter { rule in
             [rule.pattern, rule.replacement ?? "", rule.match.rawValue, matchTitle(rule.match),
              rule.action.rawValue, actionTitle(rule.action), rule.origin.rawValue]
                 .contains { $0.localizedCaseInsensitiveContains(query) }
@@ -514,8 +540,18 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
                 == rhs.pattern.precomposedStringWithCanonicalMapping.lowercased()
     }
 
+    func resetReviewFilters() { sourceFilter.selectItem(at: 0); searchField.stringValue = ""; applySearch() }
     func exerciseForReview() -> Bool {
-        guard !entries.isEmpty else { return true }
+        let originalSource = sourceFilter.indexOfSelectedItem
+        defer { sourceFilter.selectItem(at: originalSource); searchField.stringValue = ""; applySearch() }
+        var sourcesPassed = true
+        for (index, source) in sourceKinds.enumerated() {
+            sourceFilter.selectItem(at: index); searchField.stringValue = ""; applySearch()
+            sourcesPassed = sourcesPassed && visibleEntries.count == entries.filter { source == nil || $0.origin == source }.count
+            sourcesPassed = sourcesPassed && visibleEntries.allSatisfy { source == nil || $0.origin == source }
+        }
+        sourceFilter.selectItem(at: 0); applySearch()
+        guard !entries.isEmpty else { return sourcesPassed }
         let count = entries.count
         searchField.stringValue = entries[0].pattern
         applySearch()
@@ -531,7 +567,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
             table.keyDown(with: event)
         }
         let keyboardPassed = table.numberOfRows < 2 || table.selectedRow == 1
-        return searchPassed && selectionPassed && keyboardPassed && entries.count == count
+        return sourcesPassed && searchPassed && selectionPassed && keyboardPassed && entries.count == count
     }
     func captureDialogForReview() { _ = presentRuleEditor(existing: nil) }
 
