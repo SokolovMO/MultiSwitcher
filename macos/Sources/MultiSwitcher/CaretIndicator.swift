@@ -1,3 +1,4 @@
+import MultiSwitcherCore
 import AppKit
 import ApplicationServices
 import CoreGraphics
@@ -45,7 +46,7 @@ final class CaretIndicator {
         backdrop.blendingMode = .behindWindow
         backdrop.state = .active
         backdrop.wantsLayer = true
-        backdrop.layer?.cornerRadius = 5
+        backdrop.layer?.cornerRadius = MultiInterfaceMetrics.Radius.xs
         backdrop.layer?.masksToBounds = true
         panel.contentView = backdrop
 
@@ -109,7 +110,7 @@ final class CaretIndicator {
 
     private func fade(to alpha: CGFloat, duration: TimeInterval) {
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = duration
+            ctx.duration = DesignPalette.reducedMotion ? 0 : duration
             panel.animator().alphaValue = alpha
         }
     }

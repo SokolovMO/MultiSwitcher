@@ -1,11 +1,60 @@
 import Foundation
+import CryptoKit
 import MultiSwitcherCore
 
 private func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
+    CheckCounter.total += 1
     guard condition() else {
         fputs("FAIL: \(message)\n", stderr)
         exit(EXIT_FAILURE)
     }
+}
+
+private enum CheckCounter {
+    nonisolated(unsafe) static var total = 0
+}
+
+private func testInterfaceChromeCasingPreservesDataAndKeys() {
+    expect(InterfaceText.chrome("MultiSwitcher НАСТРОЙКИ Option ⌘W iPhone") == "multiswitcher настройки Option ⌘W iPhone",
+           "UI chrome is lowercase while keyboard syntax and correction casing survive")
+    expect(String(format: InterfaceText.chrome("Результат: %@"), "iPhone СЛОВО") == "результат: iPhone СЛОВО",
+           "dynamic user text is interpolated after chrome casing")
+    expect(InterfaceText.chrome("Options Commanded") == "options commanded",
+           "key-name protection does not affect parts of ordinary UI words")
+    expect(InterfaceText.chrome("AZ AЯ ABC") == "AZ AЯ ABC",
+           "technical layout identifiers retain their syntax")
+}
+
+private func testAutomaticLayoutTransitionPolicy() {
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: "ru", currentLayoutID: "ru", targetLayoutID: "en"
+    ) == .select("en"), "the captured source selects its exact paired target")
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: "ru", currentLayoutID: "en", targetLayoutID: "en"
+    ) == .alreadyAtTarget, "a user-selected target is not toggled again")
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: "ru", currentLayoutID: "fr", targetLayoutID: "en"
+    ) == .preserveUserChoice, "a manual layout change while replacement waits is preserved")
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: nil, currentLayoutID: "ru", targetLayoutID: "en"
+    ) == .sourceUnavailable, "unknown captured layout never triggers a blind switch")
+    expect(AutomaticLayoutTransitionPolicy.decide(
+        sourceLayoutID: "ru", currentLayoutID: "ru", targetLayoutID: nil
+    ) == .keep, "no inferred target leaves the current layout unchanged")
+}
+
+private func testTrailingKeyboardPunctuation() {
+    let caret = KeyboardPunctuationPolicy.splitTrailing(from: "utybq^")
+    expect(caret.coreLength == 5 && caret.suffix == "^",
+           "US Shift+6 punctuation is split from a wrong-layout word before dictionary lookup")
+
+    let question = KeyboardPunctuationPolicy.splitTrailing(from: "gthtdtkjcm?")
+    expect(question.coreLength == 10 && question.suffix == "?",
+           "question punctuation remains outside the candidate word")
+
+    let apostropheWord = KeyboardPunctuationPolicy.splitTrailing(from: "'nj")
+    expect(apostropheWord.coreLength == 3 && apostropheWord.suffix.isEmpty,
+           "a leading apostrophe key that can represent a Russian letter stays in the token")
 }
 
 private func propertyListData(_ value: Any) throws -> Data {
@@ -77,19 +126,148 @@ private func testPauseStateExpiry() {
            "an indefinite pause has no automatic expiry")
 }
 
+private func testUpdateChannelSelection() {
+    let releases = [
+        PublishedRelease(tag: "v1.0.0-build2", version: "1.0.0", buildNumber: "2",
+                         isDraft: false, isPrerelease: false, publishedAt: "2026-10-12T10:00:00Z"),
+        PublishedRelease(tag: "beta-v1.1.0-build3", version: "1.1.0", buildNumber: "3",
+                         isDraft: false, isPrerelease: true, publishedAt: "2026-10-18T10:00:00Z"),
+        PublishedRelease(tag: "beta-v1.2.0-build4", version: "1.2.0", buildNumber: "4",
+                         isDraft: true, isPrerelease: true, publishedAt: "2026-10-19T10:00:00Z"),
+        PublishedRelease(tag: "v1.0.0-build9", version: "1.0.0", buildNumber: "9",
+                         isDraft: false, isPrerelease: false, publishedAt: "2026-10-19T10:00:00Z"),
+    ]
+    expect(UpdateChannelPolicy.select(releases, channel: .stable)?.tag == "v1.0.0-build9",
+           "stable channel selects the newest published stable release and ignores prereleases")
+    expect(UpdateChannelPolicy.select(releases, channel: .beta)?.tag == "beta-v1.1.0-build3",
+           "beta channel selects a published beta when it is newer than stable")
+    expect(UpdateChannelPolicy.isValidTag("beta-v0.3.0-build12", channel: .beta),
+           "beta release tags use an explicit beta prefix")
+    expect(!UpdateChannelPolicy.isValidTag("v0.3.0-build12", channel: .beta),
+           "stable tags cannot be misclassified as beta")
+    expect(!UpdateChannelPolicy.isValidTag("v999999999999999999999.0-build1", channel: .stable),
+           "oversized release numbers are rejected before comparison")
+}
+
 private func testAppendedInputPolicy() {
+    expect(AppendedInputPolicy.singleCharacter(in: "x") == "x",
+           "a one-grapheme keyboard event is tracked exactly")
+    expect(AppendedInputPolicy.singleCharacter(in: "ab") == nil,
+           "a multi-character keyboard event cannot be truncated to its first character")
+    expect(AppendedInputPolicy.singleCharacter(in: "🙂") == "🙂",
+           "a single emoji event is preserved as one grapheme and then rejected safely by policy")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: nil) == .keyCodeOnly,
+           "an event without Unicode text can use the physical key mapping")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "") == .keyCodeOnly,
+           "an empty Unicode event can use the physical key mapping")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "a") == .character("a"),
+           "a single safe Unicode scalar is tracked exactly")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "ab") == .invalidate,
+           "multi-character text invalidates the tracked word")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "e\u{301}") == .invalidate,
+           "composed text invalidates the tracked word")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "🙂") == .invalidate,
+           "unsupported multiscalar symbols invalidate the tracked word")
+    expect(AppendedInputPolicy.classifyUnicodeEvent(text: "a", wasTruncated: true) == .invalidate,
+           "a truncated event is never interpreted from its physical key")
     expect(AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 3, trackedKeyCount: 3, suffix: "abc"
     ), "boundary correction can retain ordinary letters typed after the space")
+    expect(AppendedInputPolicy.canPreserveTypedSuffix(
+        generationDelta: 0, trackedKeyCount: 0, suffix: ""
+    ), "a conversion can commit when no new text was typed after its boundary")
     expect(!AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 4, trackedKeyCount: 3, suffix: "abc"
     ), "an untracked key invalidates the captured replacement")
-    expect(!AppendedInputPolicy.canPreserveTypedSuffix(
+    expect(AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 2, trackedKeyCount: 2, suffix: "a "
-    ), "a second boundary is not treated as typed text")
+    ), "a later word boundary is preserved as literal text")
+    expect(AppendedInputPolicy.canPreserveTypedSuffix(
+        generationDelta: 3, trackedKeyCount: 3, suffix: "!? "
+    ), "punctuation and spaces are preserved exactly")
     expect(!AppendedInputPolicy.canPreserveTypedSuffix(
         generationDelta: 1, trackedKeyCount: 1, suffix: "🙂"
-    ), "emoji and multi-scalar suffixes are rejected safely")
+    ), "emoji suffixes are rejected safely")
+    expect(AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 3, recoveredKeyCount: 3, suffix: "abc", capturedPrefixMatches: true
+    ), "a complete matching key-buffer suffix can recover an incomplete keyboard event")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 3, recoveredKeyCount: 2, suffix: "ab", capturedPrefixMatches: true
+    ), "key-buffer recovery rejects an untracked key event")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 2, recoveredKeyCount: 2, suffix: "ab", capturedPrefixMatches: false
+    ), "key-buffer recovery rejects a changed captured prefix")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 2, recoveredKeyCount: 2, suffix: "e\u{301}", capturedPrefixMatches: true
+    ), "key-buffer recovery rejects composed text that cannot be safely deleted by key count")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 1, recoveredKeyCount: 1, suffix: "a", capturedPrefixMatches: true,
+        allKeyEventsAreRecoverable: false
+    ), "key-buffer recovery rejects a composed event that cannot be reconstructed from physical keys")
+    expect(!AppendedInputPolicy.canPreserveRecoveredTypedSuffix(
+        generationDelta: 65, recoveredKeyCount: 65, suffix: String(repeating: "a", count: 65),
+        capturedPrefixMatches: true
+    ), "key-buffer recovery remains bounded for fast or stale input")
+    if case .reject(.historyExpired) = AppendedInputPolicy.decide(
+        generationDelta: 1, trackedKeyCount: 1, suffix: "a", historyAvailable: false
+    ) {
+        expect(true, "an expired suffix history returns a distinct privacy-safe reason")
+    } else {
+        expect(false, "an expired suffix history returns a distinct privacy-safe reason")
+    }
+    if case .reject(.unsupportedCharacter) = AppendedInputPolicy.decide(
+        generationDelta: 1, trackedKeyCount: 1, suffix: "e\u{301}"
+    ) {
+        expect(true, "composed multi-scalar suffixes are rejected instead of truncated")
+    } else {
+        expect(false, "composed multi-scalar suffixes are rejected instead of truncated")
+    }
+}
+
+private func testSettingsCardLayoutPolicy() {
+    expect(SettingsCardLayoutPolicy.topAlignedOriginY(containerHeight: 760, contentHeight: 520) == 240,
+           "a settings page stays attached to the same top edge when its container grows")
+    expect(SettingsCardLayoutPolicy.topAlignedOriginY(containerHeight: 520, contentHeight: 760) == 0,
+           "a taller settings page starts at the container's top without a negative offset")
+    let insetFill = SettingsCardLayoutPolicy.insetFillFrame(containerHeight: 700, inset: 12)
+    expect(insetFill.originY == 12 && insetFill.height == 676,
+           "full-height settings pages keep an equal 12-point top and bottom inset")
+    let compactInsetFill = SettingsCardLayoutPolicy.insetFillFrame(containerHeight: 18, inset: 12)
+    expect(compactInsetFill.originY == 9 && compactInsetFill.height == 0,
+           "inset settings pages clamp their margins when the available area is short")
+    expect(SettingsCardLayoutPolicy.downwardShiftToFitTop(containerHeight: 520, contentMaxY: 526) == 6,
+           "a card whose controls overflow the top edge is moved back inside its page")
+    expect(SettingsCardLayoutPolicy.downwardShiftToFitTop(containerHeight: 520, contentMaxY: 514) == 0,
+           "a card that fits the page keeps its current position")
+    expect(SettingsCardLayoutPolicy.documentHeight(
+        viewportHeight: 700, baselineHeight: 620, pageHeights: [560, 680]
+    ) == 700, "the settings document always covers its visible viewport")
+    expect(SettingsCardLayoutPolicy.documentHeight(
+        viewportHeight: 700, baselineHeight: 620, pageHeights: [760, 680]
+    ) == 760, "a dynamically expanded localized page grows the scroll document")
+
+    let newCard = SettingsCardFrame(x: 6, y: 197, width: 448, height: 82)
+    let previousCard = SettingsCardFrame(x: 6, y: 271, width: 448, height: 215)
+    let shift = SettingsCardLayoutPolicy.downwardShift(
+        for: newCard, existingFrames: [previousCard], gutter: 10
+    )
+    expect(shift == 18, "an 8 pt overlap is moved down to leave the shared 10 pt gutter")
+    let correctedMaxY = newCard.maxY - shift
+    expect(previousCard.y - correctedMaxY == 10,
+           "the corrected cards do not overlap and have the exact shared gutter")
+    expect(SettingsCardLayoutPolicy.downwardShift(
+        for: SettingsCardFrame(x: 500, y: 197, width: 100, height: 82),
+        existingFrames: [previousCard], gutter: 10
+    ) == 0, "cards in separate columns do not move each other")
+
+    let lowerNeighbor = SettingsCardFrame(x: 10, y: 150, width: 220, height: 80)
+    let upperNeighbor = SettingsCardFrame(x: 10, y: 320, width: 220, height: 80)
+    let tallCard = SettingsCardFrame(x: 10, y: 100, width: 220, height: 100)
+    let multiCardShift = SettingsCardLayoutPolicy.downwardShift(
+        for: tallCard, existingFrames: [upperNeighbor, lowerNeighbor], gutter: 12
+    )
+    expect(tallCard.maxY - multiCardShift == lowerNeighbor.y - 12,
+           "a resized settings card clears the lowest overlapping card and keeps the shared gutter")
 }
 
 private func testAutomaticShortWordPolicy() {
@@ -100,11 +278,58 @@ private func testAutomaticShortWordPolicy() {
         typed: "to", converted: "ещ", currentLanguage: "en", otherLanguage: "ru"
     ) == .keep, "a common English short word is preserved")
     expect(ShortWordPolicy.decide(
+        typed: "yt", converted: "не", currentLanguage: "en", otherLanguage: "ru"
+    ) == .convert, "the reported two-letter word maps to a curated common Russian word")
+    expect(ShortWordPolicy.decide(
         typed: "xx", converted: "чч", currentLanguage: "en", otherLanguage: "ru"
     ) == .undecided, "unknown short combinations remain unchanged")
     expect(ShortWordPolicy.decide(
         typed: "lf", converted: "да", currentLanguage: "fr", otherLanguage: "ru"
     ) == .undecided, "unsupported language pairs do not guess")
+}
+
+private func testAutomaticDictionaryDecision() {
+    let available: Set<String> = ["ru", "en"]
+    let valid: Set<String> = ["hello", "want", "привет", "вот"]
+    let decision = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "руддщ", converted: "hello", currentLanguage: "ru", targetLanguage: "en",
+        isLanguageAvailable: { available.contains($0) },
+        isValidWord: { word, _ in valid.contains(word.lowercased()) }
+    )
+    expect(decision == .convert,
+           "a target-dictionary-confirmed `hello` corrects the wrong-layout token `руддщ`")
+
+    let languageDecision = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "дфтпгфпу", converted: "language", currentLanguage: "ru", targetLanguage: "en",
+        isLanguageAvailable: { available.contains($0) },
+        isValidWord: { word, _ in valid.contains(word.lowercased()) || word.lowercased() == "language" }
+    )
+    expect(languageDecision == .convert,
+           "the target-dictionary-confirmed `language` corrects `дфтпгфпу` inside a Russian sentence")
+
+    let keepValidEnglish = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "want", converted: "цфте", currentLanguage: "en", targetLanguage: "ru",
+        isLanguageAvailable: { available.contains($0) },
+        isValidWord: { word, _ in valid.contains(word.lowercased()) }
+    )
+    expect(keepValidEnglish == .keepBecauseTargetIsNotAWord,
+           "a correct English token such as `want` is not flipped into a nonword")
+
+    let bothValid = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "gift", converted: "gift", currentLanguage: "en", targetLanguage: "ru",
+        isLanguageAvailable: { available.contains($0) },
+        isValidWord: { _ , _ in true }
+    )
+    expect(bothValid == .keepBecauseSourceIsAWord,
+           "a valid source-language word remains unchanged when both sides are valid")
+
+    let missingTargetDictionary = LayoutCorrectionEngine.dictionaryDecision(
+        typed: "руддщ", converted: "hello", currentLanguage: "ru", targetLanguage: "en",
+        isLanguageAvailable: { $0 == "ru" },
+        isValidWord: { _, _ in true }
+    )
+    expect(missingTargetDictionary == .undecidedBecauseTargetDictionaryIsUnavailable,
+           "an unavailable target dictionary is reported as undecided, not as an invalid word")
 }
 
 private func testModifiedBackspaceInvalidatesTrackedText() {
@@ -118,11 +343,86 @@ private func testModifiedBackspaceInvalidatesTrackedText() {
            == .invalidateTrackedText, "Control-Backspace invalidates the buffer after a modified delete")
 }
 
+private func testSerialReplacementQueueIsBoundedAndFIFO() {
+    var queue = SerialReplacementQueue<String>(capacity: 2)
+    let acceptedFirst = queue.enqueue("first")
+    let acceptedSecond = queue.enqueue("second")
+    let rejectedOverflow = queue.enqueue("overflow")
+    expect(acceptedFirst && acceptedSecond && !rejectedOverflow,
+           "replacement queue accepts up to its configured waiting capacity")
+
+    let first = queue.beginNext()
+    expect(first == "first" && queue.isActive && queue.pendingCount == 1,
+           "starting a replacement removes the FIFO head and marks one operation active")
+    let concurrentStart = queue.beginNext()
+    expect(concurrentStart == nil,
+           "a second replacement cannot start before the active one finishes")
+
+    let acceptedWhileActive = queue.enqueue("third")
+    let rejectedWhileFull = queue.enqueue("fourth")
+    expect(acceptedWhileActive && !rejectedWhileFull,
+           "queue capacity bounds waiting work while allowing one active operation")
+
+    queue.finishCurrent()
+    let second = queue.beginNext()
+    expect(second == "second", "the second replacement starts after the first completes")
+    queue.finishCurrent()
+    let third = queue.beginNext()
+    expect(third == "third", "newer replacement remains ordered behind earlier work")
+    queue.finishCurrent()
+    let empty = queue.beginNext()
+    expect(empty == nil && !queue.isActive,
+           "an empty queue has no active operation")
+}
+
+private func testDefaultReplacementQueueHandlesRapidToggleBursts() {
+    var queue = SerialReplacementQueue<Int>()
+    let accepted = (0..<32).allSatisfy { queue.enqueue($0) }
+    expect(accepted && queue.pendingCount == 32,
+           "the default replacement queue retains a rapid ten-toggle burst with room to spare")
+    expect(!queue.enqueue(32) && queue.pendingCount == 32,
+           "the default replacement queue remains strictly bounded at 32 waiting operations")
+}
+
+private func testReplacementQueueReportsSafeDiagnosticState() {
+    var queue = SerialReplacementQueue<String>(capacity: 1)
+    expect(queue.enqueueReportingStatus("active") == .accepted(
+        waitingCount: 1, hasActiveOperation: false, capacity: 1
+    ), "queue diagnostics report an accepted request and its bounded depth")
+    expect(queue.beginNext() == "active", "the diagnostic test starts the accepted request")
+    expect(queue.enqueueReportingStatus("waiting") == .accepted(
+        waitingCount: 1, hasActiveOperation: true, capacity: 1
+    ), "queue diagnostics distinguish pending work from the active request")
+    expect(queue.enqueueReportingStatus("overflow") == .full(
+        waitingCount: 1, hasActiveOperation: true, capacity: 1
+    ), "queue saturation reports a precise, text-free refusal state")
+}
+
+private func testBufferReplacementLifecycleTracksExactUndoDirection() {
+    var lifecycle = BufferReplacementLifecycle()
+    expect(lifecycle.toggle() == nil,
+           "an uncommitted buffer replacement cannot produce undo evidence")
+    lifecycle.commit(operationID: "buffer-op-1")
+    expect(lifecycle.isConverted && lifecycle.operationID == "buffer-op-1",
+           "a confirmed replacement starts in converted state with its operation ID")
+    expect(lifecycle.toggle() == "buffer-op-1" && !lifecycle.isConverted,
+           "the reverse toggle restores source text and identifies the undone operation")
+    expect(lifecycle.toggle() == nil && lifecycle.isConverted,
+           "toggling forward cannot be mistaken for another undo")
+    expect(lifecycle.toggle() == "buffer-op-1" && !lifecycle.isConverted,
+           "a later exact return to source keeps the same operation identity")
+    lifecycle.clear()
+    expect(lifecycle.operationID == nil && !lifecycle.isConverted,
+           "clearing replacement state removes stale undo evidence")
+}
+
 private func testBundledWordLexicon() {
-    let lexicon = WordLexicon(wordList: "# sample\nПривет\nAPP\n\nслово\nnot a token\n")
+    let lexicon = WordLexicon(wordList: "# sample\nПривет\nпривет\nAPP\n\nслово\nnot a token\n")
     expect(lexicon.count == 3, "word lists ignore comments, blanks, and non-token lines")
     expect(lexicon.contains("привет") && lexicon.contains("APP"),
            "word-list lookup is case-insensitive and keeps Unicode words")
+    expect(lexicon.contains("слово") && !lexicon.contains("zzzz"),
+           "sorted word-list lookup finds entries across the array and rejects missing words")
     expect(!lexicon.contains("приве"), "word-list lookup does not invent a near match")
 }
 
@@ -223,6 +523,9 @@ private func testPuntoHistoryIsPreservedAndRuleProvenance() throws {
            "user rules survive import")
     expect(destination.learning.contains(where: { $0.word == "local" && $0.origin == .local }),
            "local learning survives import")
+    expect(destination.learning.first(where: { $0.word == "custom-link" })?.cancellationCount == 0
+           && destination.learning.first(where: { $0.word == "custom-link" })?.importedCancellationCount == 2,
+           "Punto history stays visible but does not count as fresh local learning evidence")
     expect(destination.learning.count == 4, "all source history and local history remain present")
     let preserved = Set(destination.learning.map(\.word))
     expect(preserved.contains("custom-history-a") && preserved.contains("custom-history-b")
@@ -257,6 +560,213 @@ private func testLearningNeedsTwoAutomaticUndos() throws {
            "short combinations are ignored")
 }
 
+private func testManualOptionLearningNeedsReview() {
+    var profile = MultiSwitcherProfile()
+    let first = LearningEngine.recordManualOptionRoundTrip(word: "cmd", in: &profile)
+    expect(first == .manualCandidate(roundTrips: 1), "first manual round trip is recorded as a candidate")
+    expect(profile.learning.first?.cancellationCount == 0 && profile.rules.isEmpty,
+           "manual Option does not count as an automatic undo or activate an exception")
+    let second = LearningEngine.recordManualOptionRoundTrip(word: "cmd", in: &profile)
+    expect(second == .manualCandidate(roundTrips: 2), "second complete Option round trip reaches review")
+    expect(profile.rules.isEmpty, "manual candidate still needs explicit confirmation")
+    expect(LearningEngine.confirmManualCandidate(word: "cmd", in: &profile),
+           "review action confirms the manual candidate")
+    expect(profile.rules.contains(where: {
+        $0.pattern == "cmd" && $0.origin == .learned && $0.action == .neverConvert
+    }), "confirmed manual candidate becomes a learned exact exclusion")
+    expect(LearningEngine.recordManualOptionRoundTrip(word: "cmd", in: &profile) == .alreadyExcluded,
+           "active exclusion cannot accumulate another manual candidate")
+    expect(LearningEngine.recordManualOptionRoundTrip(word: "multi word", in: &profile) == .ineligible,
+           "multiword selection cannot become a single-word learning candidate")
+}
+
+private func testLearningCandidatesAppearBeforeImportedHistory() {
+    let entries = [
+        LearningEntry(word: "z-punto", cancellationCount: 0, origin: .punto),
+        LearningEntry(word: "a-pending", cancellationCount: 1, origin: .local),
+        LearningEntry(word: "b-candidate", cancellationCount: 0, origin: .local,
+                      manualRoundTripCount: LearningEngine.requiredManualRoundTrips),
+        LearningEntry(word: "c-excluded", cancellationCount: 0, isExcluded: true, origin: .local),
+    ]
+
+    let ordered = LearningEngine.sortedForReview(entries).map(\.word)
+    expect(ordered == ["b-candidate", "c-excluded", "a-pending", "z-punto"],
+           "actionable manual candidates appear before local evidence and imported Punto history")
+}
+
+private func testManualOptionLearningRequiresExactToggleChain() {
+    var evidence = ManualOptionLearningEvidence(
+        operationID: "manual-1", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 10
+    )
+    let toggledForward = evidence.completeToggle(
+        operationID: "manual-1", undoneOperationID: nil, processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 10,
+        resultingContextGeneration: 11
+    )
+    expect(toggledForward == false, "the conversion toggle advances evidence without learning")
+    let restored = evidence.completeToggle(
+        operationID: "manual-1", undoneOperationID: "manual-1", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 11,
+        resultingContextGeneration: 12
+    )
+    expect(restored == true && evidence.textContextGeneration == 12,
+           "only the exact return toggle in the same field completes a round trip")
+    expect(evidence.completeToggle(
+        operationID: "manual-1", undoneOperationID: "manual-1", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 99,
+        resultingContextGeneration: 100
+    ) == nil, "moving the text context invalidates manual learning evidence")
+
+    var otherField = ManualOptionLearningEvidence(
+        operationID: "manual-2", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 20
+    )
+    expect(otherField.completeToggle(
+        operationID: "manual-2", undoneOperationID: "manual-2", processIdentifier: 43,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 20,
+        resultingContextGeneration: 21
+    ) == nil, "switching applications cannot count toward learning")
+
+    var profile = MultiSwitcherProfile()
+    var cycles = ManualOptionLearningEvidence(
+        operationID: "cmd-toggle", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 30
+    )
+    for cycle in 0..<2 {
+        let generation = UInt64(30 + cycle * 2)
+        let forward = cycles.completeToggle(
+            operationID: "cmd-toggle", undoneOperationID: nil, processIdentifier: 42,
+            bundleIdentifier: "com.example.Editor", textContextGeneration: generation,
+            resultingContextGeneration: generation + 1
+        )
+        if forward == true {
+            _ = LearningEngine.recordManualOptionRoundTrip(word: cycles.word, in: &profile)
+        }
+        let back = cycles.completeToggle(
+            operationID: "cmd-toggle", undoneOperationID: "cmd-toggle", processIdentifier: 42,
+            bundleIdentifier: "com.example.Editor", textContextGeneration: generation + 1,
+            resultingContextGeneration: generation + 2
+        )
+        if back == true {
+            _ = LearningEngine.recordManualOptionRoundTrip(word: cycles.word, in: &profile)
+        }
+    }
+    expect(profile.learning.first(where: { $0.word == "cmd" })?.manualRoundTripCount == 2,
+           "two exact manual Option round trips create a visible review candidate")
+}
+
+private func testQueuedManualOptionToggleCanFollowItsOwnReplacement() {
+    let evidence = ManualOptionLearningEvidence(
+        operationID: "manual-queued", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", inputGeneration: 20,
+        textContextGeneration: 11
+    )
+    expect(evidence.matchesQueuedToggle(
+        snapshotInputGeneration: 20,
+        snapshotTextContextGeneration: 10,
+        currentInputGeneration: 20,
+        currentTextContextGeneration: 11,
+        processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor",
+        operationID: "manual-queued"
+    ), "a queued Option toggle may follow the successful replacement that advanced its own context")
+    expect(!evidence.matchesQueuedToggle(
+        snapshotInputGeneration: 20,
+        snapshotTextContextGeneration: 10,
+        currentInputGeneration: 21,
+        currentTextContextGeneration: 11,
+        processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor",
+        operationID: "manual-queued"
+    ), "typing after the captured Option tap invalidates the queued continuation")
+    expect(!evidence.matchesQueuedToggle(
+        snapshotInputGeneration: 20,
+        snapshotTextContextGeneration: 10,
+        currentInputGeneration: 20,
+        currentTextContextGeneration: 11,
+        processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor",
+        operationID: "different-operation"
+    ), "an unrelated replacement cannot rebase a queued Option toggle")
+
+    var continued = evidence
+    let restored = continued.completeToggle(
+        operationID: "manual-queued",
+        undoneOperationID: "manual-queued",
+        processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor",
+        inputGeneration: 20,
+        textContextGeneration: 11,
+        resultingContextGeneration: 12
+    )
+    expect(restored == true && continued.textContextGeneration == 12,
+           "a rebased queued return toggle can complete the same learning cycle")
+}
+
+private func testTenManualOptionTapsCreateVisibleReviewCandidate() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Manual-Learning-\\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = ProfileStore(rootURL: root)
+    var evidence = ManualOptionLearningEvidence(
+        operationID: "cmd-ten-taps", word: "cmd", processIdentifier: 42,
+        bundleIdentifier: "com.example.Editor", textContextGeneration: 50
+    )
+    var generation: UInt64 = 50
+    var isConverted = true
+
+    for _ in 1...10 {
+        isConverted.toggle()
+        generation += 1
+        let restored = evidence.completeToggle(
+            operationID: "cmd-ten-taps",
+            undoneOperationID: isConverted ? nil : "cmd-ten-taps",
+            processIdentifier: 42,
+            bundleIdentifier: "com.example.Editor",
+            textContextGeneration: generation - 1,
+            resultingContextGeneration: generation
+        )
+        if restored == true {
+            try store.update { profile in
+                _ = LearningEngine.recordManualOptionRoundTrip(word: evidence.word, in: &profile)
+            }
+        }
+    }
+
+    let reloadedStore = ProfileStore(rootURL: root)
+    let reloaded = reloadedStore.current
+    let candidate = LearningEngine.sortedForReview(reloaded.learning).first
+    expect(reloaded.learning.first?.manualRoundTripCount == LearningEngine.requiredManualRoundTrips,
+           "ten consecutive Option toggles persist the required complete round trips")
+    expect(candidate?.word == "cmd", "the completed Option candidate is the first learning row")
+    expect(!reloaded.rules.contains(where: { $0.origin == .learned && $0.pattern == "cmd" }),
+           "manual Option evidence stays a review candidate until the user confirms it")
+}
+
+private func testAutomaticLearningUsesFreshUniqueOperations() {
+    var profile = MultiSwitcherProfile(learning: [
+        LearningEntry(word: "importedword", cancellationCount: 99, origin: .punto)
+    ])
+    let first = LearningEvidence(operationID: "auto-1", word: "importedword",
+                                 processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                                 textContextGeneration: 7)
+    let duplicate = LearningEngine.recordAutomaticCancellation(evidence: first, in: &profile)
+    expect(duplicate == .pending(cancellations: 1), "one operation id contributes at most one cancellation")
+    expect(profile.learning.first?.importedCancellationCount == 99
+           && profile.learning.first?.cancellationCount == 1,
+           "imported history remains separate from fresh cancellation evidence")
+    _ = LearningEngine.recordAutomaticCancellation(evidence: first, in: &profile)
+    expect(profile.learning.first?.cancellationCount == 1,
+           "duplicate completion for the same operation is idempotent")
+    let second = LearningEvidence(operationID: "auto-2", word: "importedword",
+                                  processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                                  textContextGeneration: 8)
+    let result = LearningEngine.recordAutomaticCancellation(evidence: second, in: &profile)
+    expect(result == .excluded(word: "importedword"),
+           "two distinct local undo operations can activate learning despite old imported counts")
+}
+
 private func testLearningEvidenceMustMatchSameOperationContext() {
     let completed = Date(timeIntervalSince1970: 100)
     let evidence = LearningEvidence(operationID: "auto-1", word: "ghbdtn",
@@ -278,10 +788,10 @@ private func testLearningEvidenceMustMatchSameOperationContext() {
                                 textContextGeneration: 8,
                                 at: completed.addingTimeInterval(2)),
            "undo after the focused text context changed cannot teach from the conversion")
-    expect(!evidence.matchesUndo(operationID: "auto-1", processIdentifier: 42, bundleIdentifier: "com.example.Editor",
-                                textContextGeneration: 7,
-                                at: completed.addingTimeInterval(9)),
-           "an old conversion cannot be learned from after the undo window expires")
+    expect(evidence.matchesUndo(operationID: "auto-1", processIdentifier: 42, bundleIdentifier: "com.example.Editor",
+                               textContextGeneration: 7,
+                               at: completed.addingTimeInterval(90)),
+           "the exact operation remains eligible after a delay while its field context is unchanged")
 }
 
 private func testPerAppLayoutMemorySurvivesProfileSerialization() throws {
@@ -376,6 +886,11 @@ private func testTypedRuleMatchingAndProvenance() {
            "contains rules find an internal match")
     expect(ProfileRuleEngine.evaluate(typed: "WR300S", converted: "x", rules: rules) == .neverConvert,
            "user regular expressions match case-insensitively by default")
+    let compiledRules = ProfileRuleEngine.compile(rules)
+    expect(ProfileRuleEngine.evaluate(typed: "WR300S", converted: "x", rules: compiledRules) == .neverConvert,
+           "a cached compiled rule snapshot preserves regex behavior")
+    expect(ProfileRuleEngine.evaluate(typed: "stay-safe", converted: "x", rules: compiledRules) == .neverConvert,
+           "a cached compiled rule snapshot preserves exact rule precedence and contains matching")
     expect(!ProfileRuleEngine.matches(#"(a+)+$"#, in: String(repeating: "a", count: 64) + "!",
                                       mode: .regularExpression, caseSensitive: true),
            "nested quantified regex is refused instead of blocking the keyboard path")
@@ -396,6 +911,23 @@ private func testTypedRuleMatchingAndProvenance() {
                     semanticStatus: .unverifiedPuntoType),
         ProfileRule(pattern: "brand", action: .alwaysConvert, origin: .user),
     ]) == .alwaysConvert, "explicit user rules take precedence over imported Punto rows")
+}
+
+private func testProfileStoreGenerationTracksSnapshots() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Generation-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = ProfileStore(rootURL: root)
+    let initial = store.versionedSnapshot()
+    try store.update { profile in
+        profile.rules.append(ProfileRule(pattern: "fresh", origin: .user))
+    }
+    let updated = store.versionedSnapshot()
+    expect(updated.generation == initial.generation + 1,
+           "profile generation increments after an atomic profile update")
+    expect(updated.profile.rules.contains(where: { $0.pattern == "fresh" }),
+           "a versioned snapshot returns the profile from the same generation")
 }
 
 private func testApplicationExclusionPolicy() {
@@ -635,6 +1167,67 @@ private func testSharedLayoutCorrectionPolicy() {
     expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForTrustedName(
         corrected: "iphone", prefix: "привет, я купил ", currentLanguage: "en"
     ), "an explicit English input source remains authoritative")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true
+    ), "correcting one foreign word inside a Russian sentence keeps the Russian input source")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { word, language in language == "en" && word == "hello" }
+    ), "one corrected English word inside a Russian sentence does not switch the input source")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true, requiredConsecutiveTargetWords: 1,
+        isKnownTargetWord: { word, language in language == "en" && word == "hello" }
+    ), "the optional one-word threshold switches after one confirmed target word")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "language", prefix: "я всего лишь want ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { word, language in
+            language == "en" && ["want", "language"].contains(word.lowercased())
+        }
+    ), "the second confirmed English word in 'я всего лишь want language' switches the input source")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "language", prefix: "я всего лишь want и ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { word, language in
+            language == "en" && ["want", "language"].contains(word.lowercased())
+        }
+    ), "a Russian word between English terms breaks the consecutive-word transition signal")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет hello привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { word, language in language == "en" && word.lowercased() == "hello" }
+    ), "a corrected English word followed by Russian text keeps Russian as the active input layout")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "language", prefix: "привет hello мир there привет ",
+        currentLanguage: "ru", targetLanguage: "en", targetIsConfirmedWord: true,
+        isKnownTargetWord: { _, language in language == "en" }
+    ), "nonconsecutive English words elsewhere in Russian context do not switch the active layout")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет hello there ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { _, language in language == "en" }
+    ), "two consecutive valid English words confirm a language transition")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "hello there ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { _, _ in true }
+    ), "an all-English prefix is not mistaken for Russian sentence context")
+    expect(!LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет hello there ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: true,
+        isKnownTargetWord: { _, _ in true }
+    ), "multiple foreign words can signal a deliberate language transition")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "hello", prefix: "привет ", currentLanguage: "ru", targetLanguage: "en",
+        targetIsConfirmedWord: false
+    ) == false, "an unconfirmed foreign candidate does not alter input-source behavior")
+    expect(LayoutCorrectionEngine.shouldPreserveInputLanguageForContextualWord(
+        corrected: "привет", prefix: "hello ", currentLanguage: "en", targetLanguage: "ru",
+        targetIsConfirmedWord: true
+    ), "the same context policy works from English into a Russian word")
 }
 
 private func testHyphenatedLayoutCorrectionPolicy() {
@@ -761,12 +1354,16 @@ private func testClipboardRestoreRequiresOwnership() {
 }
 
 private func testDiagnosticLogRedaction() {
-    let raw = "path=/Users/example-user/Library/Logs/app.log bundle=com.example.editor query=private words"
+    let fakeCredential = "ghp_" + String(repeating: "A", count: 36)
+    let raw = "path=/Users/example-user/Library/Logs/app.log\nother=/Users/other-person/Documents/private.txt\nbundle=com.example.editor\nquery=private words\nurl=https://example.com/private?token=abc\nopened https://example.org/secret/path\ncontact person@example.com\nremote 192.0.2.4\nremote6 2001:db8::1\ncredential \(fakeCredential)"
     let report = DiagnosticLogRedactor.redact(raw, homeDirectory: "/Users/example-user")
-    expect(report.contains("~/Library/Logs/app.log"), "diagnostic reports do not expose the home directory")
+    expect(report.contains("~/Library/Logs/app.log") && report.contains("[local-path]"),
+           "diagnostic reports redact the home directory and other absolute local paths")
     expect(report.contains("[app-id]"), "diagnostic reports redact third-party bundle identifiers")
-    expect(!report.contains("com.example.editor") && !report.contains("private words"),
-           "sensitive log fields are removed before the user previews a report")
+    expect(!report.contains("com.example.editor") && !report.contains("private words")
+           && !report.contains("example.com/private") && !report.contains("example.org/secret") && !report.contains("person@example.com")
+           && !report.contains("192.0.2.4") && !report.contains("2001:db8::1") && !report.contains(fakeCredential),
+           "diagnostic reports redact message values, URLs, emails, IP addresses, and credentials before preview")
 }
 
 private func testProfileStoreImportIsRepeatableAndSnapshotsSource() throws {
@@ -808,6 +1405,53 @@ private func testProfileStoreImportIsRepeatableAndSnapshotsSource() throws {
         at: store.backupsURL, includingPropertiesForKeys: nil
     )).filter { $0.lastPathComponent.hasPrefix("Punto-") }
     expect(snapshots.count == 2, "each import has its own recoverable source snapshot")
+}
+
+private func testProfileSchemaMigrationSeparatesImportedHistory() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Schema-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+    let legacy = MultiSwitcherProfile(
+        schemaVersion: 1,
+        learning: [LearningEntry(word: "legacy-history", cancellationCount: 97, origin: .punto)]
+    )
+    try JSONEncoder().encode(legacy).write(to: root.appendingPathComponent("profile.json"))
+
+    let store = ProfileStore(rootURL: root)
+    let migrated = store.current
+    expect(migrated.schemaVersion == MultiSwitcherProfile.currentSchemaVersion,
+           "schema 1 profile migrates in memory to the current schema")
+    expect(migrated.learning.first?.cancellationCount == 0
+           && migrated.learning.first?.importedCancellationCount == 97,
+           "migration separates Punto history from fresh automatic undo counts")
+    try store.update { $0.settings["migration-check"] = .bool(true) }
+    let saved = try JSONDecoder().decode(MultiSwitcherProfile.self,
+                                         from: Data(contentsOf: store.profileURL))
+    expect(saved.schemaVersion == MultiSwitcherProfile.currentSchemaVersion,
+           "the next profile write persists the migrated schema")
+}
+
+private func testProfileBackupSnapshotIsPrivateAndVerifiable() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("MultiSwitcher-Backup-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = ProfileStore(rootURL: root.appendingPathComponent("profile", isDirectory: true))
+    _ = try store.update { profile in
+        profile.rules.append(ProfileRule(pattern: "private-rule", origin: .user))
+    }
+    let beforeUpdate = try Data(contentsOf: store.profileURL)
+    let snapshot = try store.createBackupSnapshot(label: "before-update")
+    let copiedProfile = try Data(contentsOf: snapshot.appendingPathComponent("profile.json"))
+    let manifestData = try Data(contentsOf: snapshot.appendingPathComponent("manifest.json"))
+    let manifest = try JSONSerialization.jsonObject(with: manifestData) as? [String: Any]
+    let digest = SHA256.hash(data: copiedProfile).map { String(format: "%02x", $0) }.joined()
+    expect(copiedProfile == beforeUpdate, "pre-update snapshots preserve the exact serialized profile bytes")
+    expect(manifest?["profileSHA256"] as? String == digest,
+           "profile snapshot manifest contains a verifiable SHA-256")
+    let permissions = try FileManager.default.attributesOfItem(atPath: snapshot.path)[.posixPermissions] as? NSNumber
+    expect(permissions?.intValue == 0o700, "profile snapshot directories are private to the user")
 }
 
 private func testProfileStoreRecoveryPreservesDamagedPrimary() throws {
@@ -975,13 +1619,22 @@ if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--cleanup-revi
     exit(EXIT_SUCCESS)
 }
 
+testInterfaceChromeCasingPreservesDataAndKeys()
 testSpotlightTargetClassification()
+testAutomaticLayoutTransitionPolicy()
 testGlobalSpaceShortcutsPreserveOnlyLayoutSwitchWords()
 testPauseStateExpiry()
+testUpdateChannelSelection()
 testAppendedInputPolicy()
+testSettingsCardLayoutPolicy()
 testAutomaticShortWordPolicy()
+testAutomaticDictionaryDecision()
 testHyphenatedLayoutCorrectionPolicy()
 testModifiedBackspaceInvalidatesTrackedText()
+testSerialReplacementQueueIsBoundedAndFIFO()
+testDefaultReplacementQueueHandlesRapidToggleBursts()
+testReplacementQueueReportsSafeDiagnosticState()
+testBufferReplacementLifecycleTracksExactUndoDirection()
 testBundledWordLexicon()
 try testImportsRulesAndSeparatesLearnedHistory()
 try testUnicodeEquivalentWordsAreDeduplicated()
@@ -989,6 +1642,12 @@ try testMalformedRuleRejectsWholeImport()
 try testMissingRulesAreRejected()
 try testPuntoHistoryIsPreservedAndRuleProvenance()
 try testLearningNeedsTwoAutomaticUndos()
+testManualOptionLearningNeedsReview()
+testLearningCandidatesAppearBeforeImportedHistory()
+testManualOptionLearningRequiresExactToggleChain()
+testQueuedManualOptionToggleCanFollowItsOwnReplacement()
+try testTenManualOptionTapsCreateVisibleReviewCandidate()
+testAutomaticLearningUsesFreshUniqueOperations()
 testLearningEvidenceMustMatchSameOperationContext()
 testSpotlightRangePlannerPreservesQueryAndCaret()
 testSharedLayoutCorrectionPolicy()
@@ -997,13 +1656,17 @@ testExactTextUndoTogglesOnlyUnchangedField()
 testTextFieldSnapshotRejectsStaleCaretOrTarget()
 testClipboardRestoreRequiresOwnership()
 testDiagnosticLogRedaction()
+try testProfileBackupSnapshotIsPrivateAndVerifiable()
 testForgettingLearningPreservesImportedAndUserRules()
 try testProfileStoreImportIsRepeatableAndSnapshotsSource()
+try testProfileSchemaMigrationSeparatesImportedHistory()
 try testProfileStoreRecoveryPreservesDamagedPrimary()
 try testImportedRuleRemovalSurvivesReimportAndCanBeRestored()
 try testPerAppLayoutMemorySurvivesProfileSerialization()
 testApplicationExclusionPolicy()
 testTypedRuleMatchingAndProvenance()
+try testProfileStoreGenerationTracksSnapshots()
 try testUserRuleFileRoundTripSanitizesProvenance()
 try testGenericTextRuleImportsAreExplicitAndPreviewable()
-print("MultiSwitcherCoreChecks: 34 checks passed")
+testTrailingKeyboardPunctuation()
+print("MultiSwitcherCoreChecks: \(CheckCounter.total) checks passed")

@@ -62,11 +62,11 @@ enum LayoutSwitcher {
     }
 
     /// Переключает на конкретную раскладку по точному ID
-    static func switchTo(layoutID: String) {
+    @discardableResult
+    static func switchTo(layoutID: String) -> Bool {
         let sources = installedLayouts()
-        if let target = sources.first(where: { sourceID($0) == layoutID }) {
-            select(target)
-        }
+        guard let target = sources.first(where: { sourceID($0) == layoutID }) else { return false }
+        return select(target)
     }
 
     /// issue #19: выбирает источник, вызывая TISEnableInputSource ТОЛЬКО если он
@@ -74,12 +74,13 @@ enum LayoutSwitcher {
     /// enable уже включённого источника даёт системный запрос безопасности на КАЖДОЕ
     /// переключение. Наш `installedLayouts()` через TISCreateInputSourceList(_, false)
     /// и так отдаёт только включённые источники, так что обычно enable не нужен вовсе.
-    private static func select(_ source: TISInputSource) {
+    @discardableResult
+    private static func select(_ source: TISInputSource) -> Bool {
         if let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsEnabled),
            Unmanaged<CFBoolean>.fromOpaque(ptr).takeUnretainedValue() != kCFBooleanTrue {
             TISEnableInputSource(source)
         }
-        TISSelectInputSource(source)
+        return TISSelectInputSource(source) == noErr
     }
 
     /// Все установленные раскладки (кэш; инвалидация по уведомлению TIS)

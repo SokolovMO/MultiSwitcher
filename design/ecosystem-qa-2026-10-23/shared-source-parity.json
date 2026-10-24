@@ -1,0 +1,27 @@
+{
+  "pairs": [
+    {
+      "files": [
+        "/Users/sokolovmo/Documents/MultiSwitcher/macos/Sources/MultiSwitcher/MultiDesignKit.swift",
+        "/Users/sokolovmo/Documents/MultiShift/macos/Sources/MultiDesignKit.swift"
+      ],
+      "sha256": [
+        "fdcf485fd9e4cdf0bf70c3227ddf4c55e3da5e17ec25570a9b77243414395c00",
+        "fdcf485fd9e4cdf0bf70c3227ddf4c55e3da5e17ec25570a9b77243414395c00"
+      ],
+      "identical": true
+    },
+    {
+      "files": [
+        "/Users/sokolovmo/Documents/MultiSwitcher/macos/Sources/MultiSwitcherCore/MultiInterfaceMetrics.swift",
+        "/Users/sokolovmo/Documents/MultiShift/macos/Sources/Core/MultiInterfaceMetrics.swift"
+      ],
+      "sha256": [
+        "a0f42591483ddaccc523100bfc8ac9021f9a2c7b8af2fa86f1ad971b16edb499",
+        "a0f42591483ddaccc523100bfc8ac9021f9a2c7b8af2fa86f1ad971b16edb499"
+      ],
+      "identical": true
+    }
+  ],
+  "identical": true
+}

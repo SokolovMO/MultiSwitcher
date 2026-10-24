@@ -26,7 +26,12 @@ public enum ProfileStoreError: LocalizedError {
 
 /// Local versioned storage with atomic profile replacement and a previous-generation copy.
 public final class ProfileStore: @unchecked Sendable {
-    public static let shared = ProfileStore()
+    public static let shared: ProfileStore = {
+        if let directory = ProcessInfo.processInfo.environment["MULTI_ECOSYSTEM_REVIEW"] {
+            return ProfileStore(rootURL: URL(fileURLWithPath: directory).appendingPathComponent("profile", isDirectory: true))
+        }
+        return ProfileStore()
+    }()
 
     public let rootURL: URL
     public let profileURL: URL
@@ -35,6 +40,8 @@ public final class ProfileStore: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var cached: MultiSwitcherProfile
     private var loadFailure: Error?
+    private var generation: UInt64 = 0
+    private var ruleGeneration: UInt64 = 0
 
     public init(rootURL: URL? = nil) {
         let base = rootURL ?? FileManager.default
@@ -47,10 +54,11 @@ public final class ProfileStore: @unchecked Sendable {
         if FileManager.default.fileExists(atPath: profileURL.path) {
             do {
                 let data = try Data(contentsOf: profileURL)
-                let decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
+                var decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
                 guard decoded.schemaVersion <= MultiSwitcherProfile.currentSchemaVersion else {
                     throw ProfileStoreError.unsupportedSchema(decoded.schemaVersion)
                 }
+                decoded.migrateToCurrentSchema()
                 self.cached = decoded
             } catch {
                 self.cached = MultiSwitcherProfile()
@@ -65,6 +73,49 @@ public final class ProfileStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return cached
+    }
+
+    /// Monotonic in-process revision for read-mostly consumers that cache derived data.
+    public var currentGeneration: UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return generation
+    }
+
+    /// Revision for data that affects compiled conversion rules. Changes to unrelated
+    /// preferences and learning evidence do not force a rebuild on the keyboard path.
+    public var currentRuleGeneration: UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return ruleGeneration
+    }
+
+    /// A coherent profile/revision pair for rebuilding derived snapshots after a write.
+    public func versionedSnapshot() -> (generation: UInt64, profile: MultiSwitcherProfile) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (generation, cached)
+    }
+
+    /// Coherent rule-specific revision/profile pair for derived rule snapshots.
+    public func versionedRuleSnapshot() -> (generation: UInt64, profile: MultiSwitcherProfile) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (ruleGeneration, cached)
+    }
+
+    private func ruleInputsChanged(from old: MultiSwitcherProfile, to new: MultiSwitcherProfile) -> Bool {
+        old.rules != new.rules
+            || old.settings[ProfileRuleMaintenance.deniedWordsSettingKey]
+                != new.settings[ProfileRuleMaintenance.deniedWordsSettingKey]
+            || old.settings[ProfileRuleMaintenance.alwaysConvertWordsSettingKey]
+                != new.settings[ProfileRuleMaintenance.alwaysConvertWordsSettingKey]
+    }
+
+    private func advanceRuleGenerationIfNeeded(from old: MultiSwitcherProfile, to new: MultiSwitcherProfile) {
+        if ruleInputsChanged(from: old, to: new) {
+            ruleGeneration &+= 1
+        }
     }
 
     /// The app stays read-only when the primary profile cannot be decoded. Expose that
@@ -95,12 +146,13 @@ public final class ProfileStore: @unchecked Sendable {
             throw ProfileStoreError.noPreviousProfile
         }
         let data = try Data(contentsOf: previousURL)
-        let decoded: MultiSwitcherProfile
+        var decoded: MultiSwitcherProfile
         do {
             decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
             guard decoded.schemaVersion <= MultiSwitcherProfile.currentSchemaVersion else {
                 throw ProfileStoreError.unsupportedSchema(decoded.schemaVersion)
             }
+            decoded.migrateToCurrentSchema()
         } catch {
             throw ProfileStoreError.invalidPreviousProfile
         }
@@ -116,10 +168,13 @@ public final class ProfileStore: @unchecked Sendable {
             try manager.copyItem(at: profileURL, to: recoveryURL)
             try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: recoveryURL.path)
         }
-        try data.write(to: profileURL, options: .atomic)
+        let restoredData = try JSONEncoder.multiSwitcher.encode(decoded)
+        try restoredData.write(to: profileURL, options: .atomic)
         try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: profileURL.path)
+        advanceRuleGenerationIfNeeded(from: cached, to: decoded)
         cached = decoded
         loadFailure = nil
+        generation &+= 1
         return decoded
     }
 
@@ -129,10 +184,13 @@ public final class ProfileStore: @unchecked Sendable {
         defer { lock.unlock() }
         if loadFailure != nil { throw ProfileStoreError.unreadableProfile }
         var next = cached
+        next.migrateToCurrentSchema()
         try change(&next)
         next.schemaVersion = MultiSwitcherProfile.currentSchemaVersion
         try writeAtomically(next)
+        advanceRuleGenerationIfNeeded(from: cached, to: next)
         cached = next
+        generation &+= 1
         return next
     }
 
@@ -140,18 +198,24 @@ public final class ProfileStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard FileManager.default.fileExists(atPath: profileURL.path) else {
-            cached = MultiSwitcherProfile()
+            let empty = MultiSwitcherProfile()
+            advanceRuleGenerationIfNeeded(from: cached, to: empty)
+            cached = empty
             loadFailure = nil
+            generation &+= 1
             return cached
         }
         do {
             let data = try Data(contentsOf: profileURL)
-            let decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
+            var decoded = try JSONDecoder.multiSwitcher.decode(MultiSwitcherProfile.self, from: data)
             guard decoded.schemaVersion <= MultiSwitcherProfile.currentSchemaVersion else {
                 throw ProfileStoreError.unsupportedSchema(decoded.schemaVersion)
             }
+            decoded.migrateToCurrentSchema()
+            advanceRuleGenerationIfNeeded(from: cached, to: decoded)
             cached = decoded
             loadFailure = nil
+            generation &+= 1
             return decoded
         } catch {
             loadFailure = error
@@ -209,6 +273,67 @@ public final class ProfileStore: @unchecked Sendable {
         try manifestData.write(to: manifestURL, options: .atomic)
         try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: manifestURL.path)
         return (snapshotURL, digest)
+    }
+
+    /// Captures the exact on-disk profile generation before a potentially disruptive
+    /// operation such as an app update. The snapshot is immutable and private to the
+    /// current user; a malformed profile is copied as-is for recovery instead of being
+    /// replaced with defaults.
+    @discardableResult
+    public func createBackupSnapshot(label: String) throws -> URL {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let safeLabel = label.lowercased().replacingOccurrences(
+            of: "[^a-z0-9-]", with: "-", options: .regularExpression
+        ).trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        guard !safeLabel.isEmpty, safeLabel.count <= 48 else {
+            throw ProfileStoreError.invalidSnapshotName
+        }
+
+        let manager = FileManager.default
+        try manager.createDirectory(at: backupsURL, withIntermediateDirectories: true,
+                                    attributes: [.posixPermissions: 0o700])
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let stamp = formatter.string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let folder = backupsURL.appendingPathComponent("Snapshot-\(safeLabel)-\(stamp)-\(UUID().uuidString.prefix(8))",
+                                                       isDirectory: true)
+        try manager.createDirectory(at: folder, withIntermediateDirectories: false,
+                                    attributes: [.posixPermissions: 0o700])
+
+        let profileData: Data
+        if manager.fileExists(atPath: profileURL.path) {
+            profileData = try Data(contentsOf: profileURL)
+        } else {
+            profileData = try JSONEncoder.multiSwitcher.encode(cached)
+        }
+        let snapshotURL = folder.appendingPathComponent("profile.json")
+        try profileData.write(to: snapshotURL, options: .atomic)
+        try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: snapshotURL.path)
+
+        let previousURL = rootURL.appendingPathComponent("profile.json.previous")
+        let includesPrevious = manager.fileExists(atPath: previousURL.path)
+        if includesPrevious {
+            let copy = folder.appendingPathComponent("profile.json.previous")
+            try manager.copyItem(at: previousURL, to: copy)
+            try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: copy.path)
+        }
+
+        let digest = SHA256.hash(data: profileData).map { String(format: "%02x", $0) }.joined()
+        let manifest: [String: Any] = [
+            "snapshotVersion": 1,
+            "label": safeLabel,
+            "createdAt": formatter.string(from: Date()),
+            "profileSHA256": digest,
+            "profileBytes": profileData.count,
+            "includesPreviousProfile": includesPrevious
+        ]
+        let manifestData = try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys])
+        let manifestURL = folder.appendingPathComponent("manifest.json")
+        try manifestData.write(to: manifestURL, options: .atomic)
+        try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: manifestURL.path)
+        return folder
     }
 
     private func writeAtomically(_ profile: MultiSwitcherProfile) throws {

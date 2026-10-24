@@ -2,7 +2,7 @@ import AppKit
 import MultiSwitcherCore
 import UniformTypeIdentifiers
 
-private final class RuleTableView: NSTableView {
+private final class RuleTableView: GraphiteTableView {
     var onDeleteSelection: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
@@ -24,6 +24,29 @@ private final class RuleTableView: NSTableView {
     }
 }
 
+/// The viewport owns column allocation. NSTableView's automatic sizing keeps the
+/// original document width when the scroll view narrows, hiding the source column.
+@MainActor private final class RuleScrollView: NSScrollView {
+    private var sizingColumns = false
+    override func tile() {
+        super.tile()
+        guard !sizingColumns, let table = documentView as? NSTableView,
+              table.tableColumns.count == 4, contentSize.width > 0 else { return }
+        sizingColumns = true
+        defer { sizingColumns = false }
+        let columns = table.tableColumns
+        let minimum = columns.reduce(CGFloat.zero) { $0 + $1.minWidth }
+        let width = max(minimum, contentSize.width)
+        let extra = width - minimum
+        let weights: [CGFloat] = [0.3, 0.25, 0.18, 0.27]
+        for (index, column) in columns.enumerated() {
+            let target = column.minWidth + extra * weights[index]
+            if abs(column.width - target) > 0.1 { column.width = target }
+        }
+        if abs(table.frame.width - width) > 0.1 { table.setFrameSize(NSSize(width: width, height: table.frame.height)) }
+    }
+}
+
 /// Searchable editor for local, imported, and learned rules.
 @MainActor
 final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate {
@@ -35,7 +58,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     }
 
     private let table = RuleTableView()
-    private let searchField = NSSearchField()
+    private let searchField = GraphiteSearchField()
     private var editButton: NSButton?
     private var deleteButton: NSButton?
     private var restorePuntoButton: NSButton?
@@ -48,25 +71,31 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     private let actions: [ProfileRuleAction] = [.neverConvert, .alwaysConvert, .replace]
 
     func setCompactMode(_ compact: Bool) {
-        table.rowHeight = compact ? 27 : 34
+        table.rowHeight = compact ? 26 : 30
         table.intercellSpacing = NSSize(width: 0, height: compact ? 1 : 3)
     }
 
     func makeContainer(frame: NSRect) -> NSView {
         let root = NSView(frame: frame)
-        root.autoresizesSubviews = true
-        searchField.frame = NSRect(x: 0, y: frame.height - 28, width: frame.width, height: 24)
-        searchField.autoresizingMask = [.width, .minYMargin]
+        searchField.translatesAutoresizingMaskIntoConstraints = false
         searchField.placeholderString = L10n.userRulesSearch
         searchField.sendsSearchStringImmediately = true
         searchField.target = self
         searchField.action = #selector(searchChanged)
         root.addSubview(searchField)
 
-        let scroll = NSScrollView(frame: NSRect(x: 0, y: 76, width: frame.width, height: frame.height - 180))
-        scroll.autoresizingMask = [.width, .height]
+        let hint = NSTextField(wrappingLabelWithString: L10n.userRulesHint)
+        hint.translatesAutoresizingMaskIntoConstraints = false
+        hint.font = SystemTypography.font(.footnote)
+        hint.textColor = .secondaryLabelColor
+        hint.maximumNumberOfLines = 0
+        hint.cell?.lineBreakMode = .byWordWrapping
+        root.addSubview(hint)
+
+        let scroll = RuleScrollView(frame: .zero)
+        scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.hasVerticalScroller = true
-        scroll.hasHorizontalScroller = false
+        scroll.hasHorizontalScroller = true
         scroll.autohidesScrollers = true
         scroll.borderType = .noBorder
         scroll.drawsBackground = false
@@ -77,12 +106,12 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         addColumn(L10n.userRulesColumnBehavior, identifier: Column.behavior, width: columnWidths[1])
         addColumn(L10n.userRulesColumnReplacement, identifier: Column.replacement, width: columnWidths[2])
         addColumn(L10n.userRulesColumnSource, identifier: Column.source, width: columnWidths[3])
-        table.rowHeight = 34
+        table.rowHeight = 30
         table.autoresizingMask = [.width]
-        // Let the pattern column use spare width so long rules stay readable; source
-        // labels keep a stable width instead of stretching or being clipped.
-        table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        table.usesAlternatingRowBackgroundColors = true
+        // Every column participates when the viewport narrows. Horizontal scrolling
+        // remains available below the usable column minima.
+        table.columnAutoresizingStyle = .noColumnAutoresizing
+        table.usesAlternatingRowBackgroundColors = false
         table.gridStyleMask = [.solidHorizontalGridLineMask]
         table.gridColor = .separatorColor
         table.backgroundColor = .controlBackgroundColor
@@ -99,54 +128,87 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         scroll.documentView = table
         root.addSubview(scroll)
 
-        let hint = NSTextField(wrappingLabelWithString: L10n.userRulesHint)
-        hint.frame = NSRect(x: 0, y: frame.height - 68, width: frame.width, height: 34)
-        hint.autoresizingMask = [.width, .minYMargin]
-        hint.font = SystemTypography.font(.footnote)
-        hint.textColor = .secondaryLabelColor
-        root.addSubview(hint)
+        let addButton = makeActionButton(L10n.userRulesAdd, symbol: "plus", action: #selector(addTapped))
+        let edit = makeActionButton(L10n.userRulesEdit, symbol: "pencil", action: #selector(editTapped))
+        let delete = makeActionButton(L10n.userRulesDelete, symbol: "trash", action: #selector(deleteTapped))
+        let importButton = makeActionButton(L10n.userRulesImport, symbol: "square.and.arrow.down",
+                                            action: #selector(importTapped))
+        let exportButton = makeActionButton(L10n.userRulesExport, symbol: "square.and.arrow.up",
+                                            action: #selector(exportTapped))
+        let restore = makeActionButton(L10n.userRulesRestorePunto, symbol: "arrow.uturn.backward",
+                                       action: #selector(restorePuntoTapped))
+        editButton = edit
+        deleteButton = delete
+        restorePuntoButton = restore
 
-        let buttons: [(String, Selector, String?, CGFloat)] = [
-            (L10n.userRulesAdd, #selector(addTapped), "plus", 34),
-            (L10n.userRulesEdit, #selector(editTapped), "pencil", 34),
-            (L10n.userRulesDelete, #selector(deleteTapped), "trash", 34),
-            (L10n.userRulesImport, #selector(importTapped), "square.and.arrow.down", 2),
-            (L10n.userRulesExport, #selector(exportTapped), "square.and.arrow.up", 2),
-            (L10n.userRulesRestorePunto, #selector(restorePuntoTapped), "arrow.uturn.backward", 2),
-        ]
-        var rowX: [CGFloat] = [0, 0]
-        for (title, action, symbol, rowY) in buttons {
-            let button = NSButton(title: title, target: self, action: action)
-            let textWidth = ceil((title as NSString).size(withAttributes: [.font: SystemTypography.font(.body)]).width)
-            let width = textWidth + (symbol == nil ? 20 : 40)
-            let row = rowY == 34 ? 0 : 1
-            let x = rowX[row]
-            button.frame = NSRect(x: x, y: rowY, width: width, height: 30)
-            button.autoresizingMask = [.maxYMargin]
-            button.bezelStyle = .rounded
-            if let symbol, let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) {
-                button.image = image
-                button.imagePosition = .imageLeading
-            }
-            root.addSubview(button)
-            if action == #selector(editTapped) { editButton = button }
-            if action == #selector(deleteTapped) { deleteButton = button }
-            if action == #selector(restorePuntoTapped) { restorePuntoButton = button }
-            rowX[row] += width + 4
+        // One compact toolbar; tooltips and accessibility retain the full action names.
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        for button in [edit, delete, importButton, exportButton, restore] {
+            button.imagePosition = .imageOnly
+            button.widthAnchor.constraint(equalToConstant: 28).isActive = true
         }
+        addButton.widthAnchor.constraint(equalToConstant: 108).isActive = true
+        let toolbar = NSStackView(views: [addButton, edit, delete, spacer, importButton, exportButton, restore])
+        toolbar.orientation = .horizontal
+        toolbar.alignment = .centerY
+        toolbar.distribution = .fill
+        toolbar.spacing = 6
+        toolbar.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(toolbar)
+
         editButton?.isEnabled = false
         deleteButton?.isEnabled = false
         deleteButton?.toolTip = L10n.userRulesDeleteHint
         restorePuntoButton?.isEnabled = SettingsManager.shared.removedPuntoRuleCount > 0
+
+        NSLayoutConstraint.activate([
+            searchField.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            searchField.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            searchField.topAnchor.constraint(equalTo: root.topAnchor),
+            hint.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            hint.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            hint.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
+            toolbar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            toolbar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            toolbar.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            scroll.topAnchor.constraint(equalTo: hint.bottomAnchor, constant: 8),
+            scroll.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -8),
+        ])
+
         reloadFromStore()
         return root
+    }
+
+    private func makeActionButton(_ title: String, symbol: String, action: Selector) -> NSButton {
+        let button = GraphiteButton(title: title, target: self, action: action)
+        button.bezelStyle = .rounded
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        button.imagePosition = .imageLeading
+        button.setAccessibilityLabel(title)
+        button.toolTip = title
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        return button
+    }
+
+    private func horizontalActionRow(_ buttons: [NSButton]) -> NSStackView {
+        let row = NSStackView(views: buttons)
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fillEqually
+        row.spacing = 6
+        row.translatesAutoresizingMaskIntoConstraints = false
+        return row
     }
 
     private func addColumn(_ title: String, identifier: NSUserInterfaceItemIdentifier, width: CGFloat) {
         let column = NSTableColumn(identifier: identifier)
         column.title = title
         column.width = width
-        column.minWidth = identifier == Column.source ? max(width, 140) : max(72, min(width, 96))
+        column.minWidth = identifier == Column.source ? 116 : identifier == Column.behavior ? 104 : identifier == Column.pattern ? 88 : 72
         column.maxWidth = .greatestFiniteMagnitude
         column.resizingMask = [.userResizingMask, .autoresizingMask]
         table.addTableColumn(column)
@@ -183,7 +245,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
             indicator.image = NSImage(systemSymbolName: rule.enabled ? "checkmark.circle.fill" : "pause.circle",
                                       accessibilityDescription: rule.enabled ? L10n.userRulesEnabled : L10n.userRulesDisabled)
             indicator.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
-            indicator.contentTintColor = rule.enabled ? .systemGreen : .tertiaryLabelColor
+            indicator.contentTintColor = rule.enabled ? .labelColor : .tertiaryLabelColor
             indicator.translatesAutoresizingMaskIntoConstraints = false
             cell.addSubview(indicator)
             let sourceLabel = NSTextField(labelWithString: sourceTitle(rule.origin))
@@ -277,7 +339,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
 
     @objc private func deleteTapped() {
         guard let selected = selectedRule() else { return }
-        let alert = NSAlert()
+        let alert = GraphiteAlert()
         alert.alertStyle = .warning
         alert.messageText = L10n.userRulesDeleteTitle
         alert.informativeText = L10n.userRulesDeleteMessage(selected.pattern, sourceTitle(selected.origin))
@@ -309,13 +371,33 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         let panel = NSOpenPanel()
         panel.title = L10n.userRulesImport
         panel.allowedContentTypes = [.json, .plainText, .commaSeparatedText,
-                                     UTType(filenameExtension: "tsv") ?? .plainText]
+                                     UTType(filenameExtension: "tsv") ?? .plainText,
+                                     .propertyList]
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let fileExtension = url.pathExtension.lowercased()
+            if fileExtension == "plist" {
+                let report = try SettingsManager.shared.importPuntoProfile(from: url)
+                reloadFromStore()
+                onRulesChanged?()
+
+                let alert = GraphiteAlert()
+                alert.alertStyle = .informational
+                alert.messageText = L10n.settingsImportPuntoSuccess
+                alert.informativeText = L10n.settingsImportPuntoAppliedDetails(
+                    report.rulesImported,
+                    report.unverifiedRules,
+                    report.learningImported,
+                    report.learningDiscardedByReview,
+                    report.snapshotName
+                )
+                alert.addButton(withTitle: L10n.commonOkay)
+                alert.runModal()
+                return
+            }
             let intent = fileExtension == "txt" ? chooseTextImportIntent() : nil
             if fileExtension == "txt", intent == nil { return }
             let preview = try UserRuleFileCodec.previewImport(
@@ -342,7 +424,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
             let message = L10n.userRulesImportPreview(
                 preview.sourceRowCount, additions.count, skippedDuplicates, conflicts
             )
-            let confirmation = NSAlert()
+            let confirmation = GraphiteAlert()
             confirmation.alertStyle = .informational
             confirmation.messageText = L10n.userRulesImportPreviewTitle
             confirmation.informativeText = message
@@ -363,7 +445,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     }
 
     private func chooseTextImportIntent() -> UserRuleTextIntent? {
-        let alert = NSAlert()
+        let alert = GraphiteAlert()
         alert.alertStyle = .informational
         alert.messageText = L10n.userRulesImportTextIntentTitle
         alert.addButton(withTitle: L10n.userRulesActionNever)
@@ -432,8 +514,29 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
                 == rhs.pattern.precomposedStringWithCanonicalMapping.lowercased()
     }
 
+    func exerciseForReview() -> Bool {
+        guard !entries.isEmpty else { return true }
+        let count = entries.count
+        searchField.stringValue = entries[0].pattern
+        applySearch()
+        let searchPassed = !visibleEntries.isEmpty
+        searchField.stringValue = ""
+        applySearch()
+        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        let selectionPassed = deleteButton?.isEnabled == true
+        if table.numberOfRows > 1, let event = NSEvent.keyEvent(with: .keyDown, location: .zero,
+            modifierFlags: [.function], timestamp: 0, windowNumber: table.window?.windowNumber ?? 0,
+            context: nil, characters: "\u{F701}", charactersIgnoringModifiers: "\u{F701}", isARepeat: false, keyCode: 125) {
+            table.window?.makeFirstResponder(table)
+            table.keyDown(with: event)
+        }
+        let keyboardPassed = table.numberOfRows < 2 || table.selectedRow == 1
+        return searchPassed && selectionPassed && keyboardPassed && entries.count == count
+    }
+    func captureDialogForReview() { _ = presentRuleEditor(existing: nil) }
+
     private func presentRuleEditor(existing: ProfileRule?) -> ProfileRule? {
-        let alert = NSAlert()
+        let alert = GraphiteAlert()
         alert.messageText = existing == nil ? L10n.userRulesAddTitle : L10n.userRulesEditTitle
         alert.informativeText = L10n.userRulesDialogHint
         alert.addButton(withTitle: L10n.userRulesSave)
@@ -443,11 +546,11 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         func label(_ title: String, y: CGFloat) {
             let field = NSTextField(labelWithString: title)
             field.frame = NSRect(x: 0, y: y, width: 132, height: 22)
-            field.alignment = .right
+            field.alignment = .left
             accessory.addSubview(field)
         }
         func addPopup(titles: [String], selected: Int, y: CGFloat) -> NSPopUpButton {
-            let popup = NSPopUpButton(frame: NSRect(x: 140, y: y, width: 380, height: 24), pullsDown: false)
+            let popup = GraphitePopUpButton(frame: NSRect(x: 140, y: y, width: 380, height: 24), pullsDown: false)
             for (index, title) in titles.enumerated() {
                 popup.addItem(withTitle: title)
                 popup.item(at: index)?.tag = index
@@ -458,7 +561,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         }
 
         label(L10n.userRulesPattern, y: 207)
-        let pattern = NSTextField(frame: NSRect(x: 140, y: 206, width: 380, height: 24))
+        let pattern = GraphiteTextField(frame: NSRect(x: 140, y: 206, width: 380, height: 24))
         pattern.placeholderString = L10n.userRulesPatternPlaceholder
         pattern.stringValue = existing?.pattern ?? ""
         accessory.addSubview(pattern)
@@ -472,7 +575,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         let actionPopup = addPopup(titles: actions.map(actionTitle), selected: actionIndex, y: 120)
 
         label(L10n.userRulesReplacement, y: 78)
-        let replacement = NSTextField(frame: NSRect(x: 140, y: 77, width: 380, height: 24))
+        let replacement = GraphiteTextField(frame: NSRect(x: 140, y: 77, width: 380, height: 24))
         replacement.stringValue = existing?.replacement ?? ""
         replacement.placeholderString = L10n.userRulesReplacementPlaceholder
         replacement.isEnabled = actions[actionIndex] == .replace
@@ -481,25 +584,32 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
         actionPopup.target = self
         actionPopup.action = #selector(ruleActionChanged(_:))
 
-        let caseCheckbox = NSButton(checkboxWithTitle: L10n.userRulesCaseSensitive, target: nil, action: nil)
+        let caseCheckbox = GraphiteToggleButton(checkboxWithTitle: L10n.userRulesCaseSensitive, target: nil, action: nil)
         caseCheckbox.frame = NSRect(x: 0, y: 30, width: 230, height: 22)
         caseCheckbox.state = existing?.caseSensitive == true ? .on : .off
         accessory.addSubview(caseCheckbox)
-        let enabledCheckbox = NSButton(checkboxWithTitle: L10n.userRulesEnabled, target: nil, action: nil)
+        let enabledCheckbox = GraphiteToggleButton(checkboxWithTitle: L10n.userRulesEnabled, target: nil, action: nil)
         enabledCheckbox.frame = NSRect(x: 250, y: 30, width: 260, height: 22)
         enabledCheckbox.state = existing?.enabled == false ? .off : .on
         accessory.addSubview(enabledCheckbox)
 
-        alert.accessoryView = accessory
-        let editorWindow = alert.window
-        editorWindow.styleMask.insert(.resizable)
-        editorWindow.collectionBehavior = [.managed, .fullScreenPrimary]
-        editorWindow.minSize = NSSize(width: 560, height: 430)
-        editorWindow.setContentSize(NSSize(width: 620, height: 470))
-        editorWindow.standardWindowButton(.zoomButton)?.isEnabled = true
+        let editorWindow = GraphiteDialogPanel(title: alert.messageText, message: alert.informativeText,
+            accessory: accessory, confirm: L10n.userRulesSave, cancel: L10n.commonCancel)
+        editorWindow.collectionBehavior = [.managed, .fullScreenNone]
+        editorWindow.standardWindowButton(.zoomButton)?.isEnabled = false
         editorWindow.initialFirstResponder = pattern
         defer { dialogReplacementField = nil }
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        if let directory = ProcessInfo.processInfo.environment["MULTISWITCHER_UI_REVIEW"] ?? ProcessInfo.processInfo.environment["MULTI_ECOSYSTEM_REVIEW"] {
+            let theme = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? "dark" : "light"
+            let timer = Timer(timeInterval: 0.4, repeats: false) { _ in
+                MainActor.assumeIsolated {
+                    SettingsWindowController.captureWindow(editorWindow, to: directory + "/\(theme)-rule-dialog.png")
+                    editorWindow.cancelForReview()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .modalPanel)
+        }
+        guard editorWindow.runDialog() == .alertFirstButtonReturn else { return nil }
         let text = pattern.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let mode = matchModes[modePopup.indexOfSelectedItem]
         let action = actions[actionPopup.indexOfSelectedItem]
@@ -553,7 +663,7 @@ final class UserRuleEditor: NSObject, NSTableViewDataSource, NSTableViewDelegate
     }
 
     private func showAlert(title: String, message: String, style: NSAlert.Style) {
-        let alert = NSAlert()
+        let alert = GraphiteAlert()
         alert.alertStyle = style
         alert.messageText = title
         alert.informativeText = message

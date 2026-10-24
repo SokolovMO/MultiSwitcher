@@ -10,6 +10,7 @@ appkit
 arm64
 async
 asynchronous
+autocompletion
 backend
 backpressure
 benchmark
@@ -30,8 +31,9 @@ checkout
 checksum
 ci
 cli
-cloud
 closure
+cloud
+cmd
 codable
 codebase
 codec
@@ -48,6 +50,8 @@ crashlog
 css
 daemon
 database
+debounce
+debouncing
 debugger
 dependency
 deployment
@@ -56,9 +60,9 @@ devops
 dictionary
 dns
 docker
-endpoint
 encoding
 encryption
+endpoint
 environment
 eventtap
 exception
@@ -84,6 +88,7 @@ hotkey
 http
 https
 ide
+idempotent
 identifier
 inference
 inputmonitoring
@@ -96,15 +101,17 @@ ipa
 javascript
 json
 kernel
-keycode
+keybinding
+keybindings
 keyboard
 keychain
+keycode
 latency
 library
 linker
 linux
-localization
 localhost
+localization
 macos
 malloc
 memory
@@ -174,6 +181,7 @@ terminal
 threadsafe
 timestamp
 token
+tokenizer
 toolchain
 typescript
 ui
@@ -189,6 +197,7 @@ versioning
 virtualization
 webhook
 websocket
+webview
 widget
 workflow
 xml

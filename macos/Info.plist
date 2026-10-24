@@ -5,29 +5,27 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ru</string>
 	<key>CFBundleDisplayName</key>
-	<string>MultiSwitcher</string>
+	<string>multiswitcher</string>
 	<key>CFBundleExecutable</key>
 	<string>MultiSwitcher</string>
 	<key>CFBundleIconFile</key>
 	<string>MultiSwitcher</string>
-	<key>CFBundleIconName</key>
-	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.multiswitcher.app</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>MultiSwitcher</string>
+	<string>multiswitcher</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.0</string>
+	<string>0.4.0</string>
 	<key>CFBundleSupportedPlatforms</key>
 	<array>
 		<string>MacOSX</string>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>8</string>
+	<string>54</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
@@ -40,5 +38,7 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 MultiSwitcher.</string>
+	<key>NSAccentColorName</key>
+	<string>AccentColor</string>
 </dict>
 </plist>

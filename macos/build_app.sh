@@ -57,6 +57,32 @@ BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO_PLIST"
 ENABLE_UPDATES="${MULTISWITCHER_ENABLE_UPDATES:-0}"
 UPDATE_REPO="${MULTISWITCHER_GITHUB_REPOSITORY:-}"
 DEVELOPER_TEAM_ID="${MULTISWITCHER_DEVELOPER_TEAM_ID:-}"
+UPDATE_CHANNEL="${MULTISWITCHER_UPDATE_CHANNEL:-stable}"
+SPARKLE_PUBLIC_KEY="${MULTISWITCHER_SPARKLE_PUBLIC_KEY:-}"
+ENABLE_CRASH_REPORTING="${MULTISWITCHER_ENABLE_CRASH_REPORTING:-0}"
+CRASH_REPORT_DSN="${MULTISWITCHER_SENTRY_DSN:-}"
+SWIFT_BUILD_SYSTEM="${MULTISWITCHER_SWIFT_BUILD_SYSTEM:-}"
+SWIFT_DEBUG_INFO_FORMAT="${MULTISWITCHER_DEBUG_INFO_FORMAT:-dwarf}"
+[[ "$UPDATE_CHANNEL" == "stable" || "$UPDATE_CHANNEL" == "beta" ]] || {
+    echo "MULTISWITCHER_UPDATE_CHANNEL must be stable or beta." >&2
+    exit 1
+}
+[[ "$ENABLE_CRASH_REPORTING" == "0" || "$ENABLE_CRASH_REPORTING" == "1" ]] || {
+    echo "MULTISWITCHER_ENABLE_CRASH_REPORTING must be 0 or 1." >&2
+    exit 1
+}
+if [[ -n "$CRASH_REPORT_DSN" && ! "$CRASH_REPORT_DSN" =~ ^https://[^/@]+@[^/]+/[0-9]+$ ]]; then
+    echo "MULTISWITCHER_SENTRY_DSN must be an HTTPS Sentry project DSN." >&2
+    exit 1
+fi
+[[ "$SWIFT_DEBUG_INFO_FORMAT" == "dwarf" || "$SWIFT_DEBUG_INFO_FORMAT" == "none" ]] || {
+    echo "MULTISWITCHER_DEBUG_INFO_FORMAT must be dwarf or none." >&2
+    exit 1
+}
+if [[ "$ENABLE_CRASH_REPORTING" == "1" && "$SWIFT_DEBUG_INFO_FORMAT" != "dwarf" ]]; then
+    echo "Crash-report builds require DWARF symbols for symbolication." >&2
+    exit 1
+fi
 if [[ "$ENABLE_UPDATES" == "1" ]]; then
     [[ "$UPDATE_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || {
         echo "Set MULTISWITCHER_GITHUB_REPOSITORY to owner/repository for release builds." >&2
@@ -66,28 +92,56 @@ if [[ "$ENABLE_UPDATES" == "1" ]]; then
         echo "Set MULTISWITCHER_DEVELOPER_TEAM_ID to the 10-character Apple Developer Team ID." >&2
         exit 1
     }
+    python3 -c 'import base64,sys; value=base64.b64decode(sys.argv[1], validate=True); sys.exit(0 if len(value)==32 else 1)' "$SPARKLE_PUBLIC_KEY" || {
+        echo "Set MULTISWITCHER_SPARKLE_PUBLIC_KEY to the base64 Sparkle EdDSA public key (32 decoded bytes)." >&2
+        exit 1
+    }
 fi
 echo "Building $APP_NAME $VERSION ($BUILD_NUMBER) for arm64"
 echo "Staging directory: $BUILD_ROOT"
+export MULTISWITCHER_ENABLE_CRASH_REPORTING="$ENABLE_CRASH_REPORTING"
+export MULTISWITCHER_ENABLE_UPDATES="$ENABLE_UPDATES"
 
 mkdir -p "$BUILD_ROOT/module-cache"
 export CLANG_MODULE_CACHE_PATH="$BUILD_ROOT/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$BUILD_ROOT/module-cache"
 
+# Resolve the Swift package graph in an isolated staging copy. Package.resolved
+# may contain release-only Sparkle pins, while the local verification build has
+# those features disabled. Keeping that lock file out of the no-updates build
+# prevents SwiftPM from fetching release dependencies unnecessarily.
+PACKAGE_BUILD_DIR="$BUILD_ROOT/package"
+mkdir -p "$PACKAGE_BUILD_DIR"
+cp "$PROJECT_DIR/Package.swift" "$PACKAGE_BUILD_DIR/Package.swift"
+cp -R "$PROJECT_DIR/Sources" "$PACKAGE_BUILD_DIR/Sources"
+cp -R "$PROJECT_DIR/Tests" "$PACKAGE_BUILD_DIR/Tests"
+if [[ "$ENABLE_UPDATES" == "1" || "$ENABLE_CRASH_REPORTING" == "1" ]]; then
+    if [[ -f "$PROJECT_DIR/Package.resolved" ]]; then
+        cp "$PROJECT_DIR/Package.resolved" "$PACKAGE_BUILD_DIR/Package.resolved"
+    fi
+fi
+
 SWIFT_OPTIONS=(
-    --package-path "$PROJECT_DIR"
+    --package-path "$PACKAGE_BUILD_DIR"
     --scratch-path "$BUILD_ROOT/swiftpm"
     --cache-path "$BUILD_ROOT/cache"
     --config-path "$BUILD_ROOT/config"
     --security-path "$BUILD_ROOT/security"
     --disable-sandbox
     --disable-dependency-cache
-    --manifest-cache local
+    # Package.swift enables release-only dependencies from environment flags.
+    # Do not reuse a manifest compiled for a different flag set (for example,
+    # Sparkle-enabled release builds during a local no-updates verification).
+    --manifest-cache none
     -Xswiftc -module-cache-path
     -Xswiftc "$BUILD_ROOT/module-cache"
     -c release
     --arch arm64
+    -debug-info-format "$SWIFT_DEBUG_INFO_FORMAT"
 )
+if [[ -n "$SWIFT_BUILD_SYSTEM" ]]; then
+    SWIFT_OPTIONS+=(--build-system "$SWIFT_BUILD_SYSTEM")
+fi
 
 swift build "${SWIFT_OPTIONS[@]}" --product "$APP_NAME"
 BIN_DIR="$(swift build "${SWIFT_OPTIONS[@]}" --show-bin-path)"
@@ -102,18 +156,81 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources/Licenses" 
 cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 cp "$INFO_PLIST" "$APP_BUNDLE/Contents/Info.plist"
 if [[ "$ENABLE_UPDATES" == "1" ]]; then
+    SPARKLE_FRAMEWORK="$(find "$BUILD_ROOT/swiftpm/artifacts" -type d -path '*/macos-*/Sparkle.framework' -print -quit)"
+    [[ -n "$SPARKLE_FRAMEWORK" && -d "$SPARKLE_FRAMEWORK" ]] || {
+        echo "Sparkle.framework for macOS is missing from the resolved package artifacts." >&2
+        exit 1
+    }
+    SPARKLE_BINARY="$SPARKLE_FRAMEWORK/Versions/Current/Sparkle"
+    [[ -e "$SPARKLE_BINARY" ]] || {
+        echo "Sparkle.framework has no executable at $SPARKLE_BINARY." >&2
+        exit 1
+    }
+    /usr/bin/lipo -archs "$SPARKLE_BINARY" | /usr/bin/tr ' ' '\n' | /usr/bin/grep -Fxq arm64 || {
+        echo "Resolved Sparkle.framework does not contain arm64." >&2
+        exit 1
+    }
+    mkdir -p "$APP_BUNDLE/Contents/Frameworks"
+    /usr/bin/ditto "$SPARKLE_FRAMEWORK" "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
+    /usr/bin/otool -L "$APP_BUNDLE/Contents/MacOS/$APP_NAME" | /usr/bin/grep -Fq '@rpath/Sparkle.framework/' || {
+        echo "The app executable is not linked to Sparkle through @rpath." >&2
+        exit 1
+    }
+    if ! /usr/bin/otool -l "$APP_BUNDLE/Contents/MacOS/$APP_NAME" | /usr/bin/grep -A2 -F 'cmd LC_RPATH' | /usr/bin/grep -Fq '@executable_path/../Frameworks'; then
+        /usr/bin/install_name_tool -add_rpath '@executable_path/../Frameworks' "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+    fi
+    SPARKLE_LICENSE="$(find "$BUILD_ROOT/swiftpm/checkouts/Sparkle" -maxdepth 2 -type f \( -name LICENSE -o -name LICENSE.md \) -print -quit)"
+    [[ -n "$SPARKLE_LICENSE" ]] || {
+        echo "Sparkle license is missing from the resolved package checkout." >&2
+        exit 1
+    }
+    cp "$SPARKLE_LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/Sparkle-License.txt"
+fi
+if [[ "$ENABLE_CRASH_REPORTING" == "1" ]]; then
+    DSYM_BUNDLE="$BUILD_ROOT/$APP_NAME.app.dSYM"
+    /usr/bin/xcrun dsymutil "$APP_BUNDLE/Contents/MacOS/$APP_NAME" --out "$DSYM_BUNDLE"
+    [[ -s "$DSYM_BUNDLE/Contents/Resources/DWARF/$APP_NAME" ]] || {
+        echo "Sentry debug symbols are missing from the generated dSYM." >&2
+        exit 1
+    }
+    /usr/bin/dwarfdump --uuid "$DSYM_BUNDLE" | /usr/bin/grep -Fq "$APP_NAME"
+fi
+if [[ "$ENABLE_UPDATES" == "1" ]]; then
     INFO="$APP_BUNDLE/Contents/Info.plist"
-    /usr/libexec/PlistBuddy -c "Add :MSUpdateFeedURL string https://github.com/$UPDATE_REPO/releases/latest/download/version.json" "$INFO"
-    /usr/libexec/PlistBuddy -c "Add :MSReleaseBaseURL string https://github.com/$UPDATE_REPO/releases/download" "$INFO"
-    /usr/libexec/PlistBuddy -c "Add :MSReleasesURL string https://github.com/$UPDATE_REPO/releases" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :MSGitHubRepository string $UPDATE_REPO" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :MSUpdateChannel string $UPDATE_CHANNEL" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :MSDeveloperTeamID string $DEVELOPER_TEAM_ID" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :SUFeedURL string https://sokolovmo.github.io/MultiSwitcher/appcast.xml" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_KEY" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :SUEnableAutomaticChecks bool true" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :SUAutomaticallyUpdate bool false" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :SUAllowsAutomaticUpdates bool false" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :SUVerifyUpdateBeforeExtraction bool true" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :SURequireSignedFeed bool true" "$INFO"
+fi
+if [[ -n "$CRASH_REPORT_DSN" ]]; then
+    /usr/libexec/PlistBuddy -c "Add :MSCrashReportDSN string $CRASH_REPORT_DSN" "$APP_BUNDLE/Contents/Info.plist"
 fi
 cp "$PROJECT_DIR/MultiSwitcher.icns" "$APP_BUNDLE/Contents/Resources/MultiSwitcher.icns"
+cp "$PROJECT_DIR/MultiSwitcher-dark.icns" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-dark.icns"
+if xcrun --find actool >/dev/null 2>&1; then
+    xcrun actool --compile "$APP_BUNDLE/Contents/Resources" --platform macosx \
+        --minimum-deployment-target 15.0 --app-icon AppIcon --output-partial-info-plist "$BUILD_ROOT/asset-info.plist" --output-format human-readable-text "$PROJECT_DIR/Assets.xcassets"
+else
+    # Command Line Tools can compile the app but do not include the asset compiler.
+    # Local review uses the existing .icns and the drawn graphite controls. Releases
+    # must include the full catalog, including the native accent color and AppIcon.
+    if [[ "$ENABLE_UPDATES" == "1" || "$ENABLE_CRASH_REPORTING" == "1" ]]; then
+        echo "Release packaging requires full Xcode with actool." >&2
+        exit 1
+    fi
+    echo "Local review: actool unavailable; using .icns without Assets.car."
+    /usr/libexec/PlistBuddy -c 'Delete :NSAccentColorName' "$APP_BUNDLE/Contents/Info.plist"
+fi
+
 cp "$PROJECT_DIR/icons/layout-ru.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-Layout-RU.svg"
 cp "$PROJECT_DIR/icons/layout-us.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-Layout-US.svg"
 cp "$PROJECT_DIR/icons/layout-disabled.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-Layout-Disabled.svg"
-cp "$PROJECT_DIR/icons/app-icon-az.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-AppIcon-AZ.svg"
-cp "$PROJECT_DIR/icons/app-icon-disabled.svg" "$APP_BUNDLE/Contents/Resources/MultiSwitcher-AppIcon-Disabled.svg"
 cp "$REPO_DIR/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/RuSwitcher-MIT.txt"
 cp "$REPO_DIR/TRADEMARKS.md" "$APP_BUNDLE/Contents/Resources/Licenses/RuSwitcher-Attribution.md"
 python3 "$REPO_DIR/scripts/unpack_dict_packs.py" "$REPO_DIR/dicts" \
@@ -122,6 +239,13 @@ cp "$REPO_DIR/dicts/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/FrequencyW
 python3 "$REPO_DIR/scripts/prepare_thematic_lexicons.py" "$REPO_DIR/dicts/themes" \
     "$APP_BUNDLE/Contents/Resources/Lexicons/Themes"
 cp "$REPO_DIR/dicts/themes/LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/MultiSwitcher-Thematic-Lexicons-MIT.txt"
+cp "$REPO_DIR/dicts/themes/UPSTREAMS.md" \
+    "$APP_BUNDLE/Contents/Resources/Licenses/MultiSwitcher-Thematic-Lexicons-Sources.md"
+if [[ "$ENABLE_CRASH_REPORTING" == "1" ]]; then
+    SENTRY_LICENSE="$BUILD_ROOT/swiftpm/checkouts/sentry-apple-binaries/LICENSE.md"
+    [[ -f "$SENTRY_LICENSE" ]] || { echo "Sentry license is missing from the resolved package: $SENTRY_LICENSE" >&2; exit 1; }
+    cp "$SENTRY_LICENSE" "$APP_BUNDLE/Contents/Resources/Licenses/Sentry-MIT.txt"
+fi
 printf 'APPL????' > "$APP_BUNDLE/Contents/PkgInfo"
 
 ARCHS="$(lipo -archs "$APP_BUNDLE/Contents/MacOS/$APP_NAME")"
@@ -137,6 +261,15 @@ xattr -cr "$APP_BUNDLE"
 SIGN_TIMESTAMP_ARGS=(--timestamp=none)
 if [[ "${MULTISWITCHER_CODESIGN_TIMESTAMP:-0}" == "1" ]]; then
     SIGN_TIMESTAMP_ARGS=(--timestamp)
+fi
+if [[ "$ENABLE_UPDATES" == "1" ]]; then
+    # Mirror Xcode's Embed & Sign behavior for SwiftPM's binary framework,
+    # including Sparkle's nested updater/XPC helpers and their entitlements.
+    codesign --force --deep --sign "$SIGN_IDENTITY" "${SIGN_TIMESTAMP_ARGS[@]}" \
+        --options runtime --preserve-metadata=identifier,entitlements,requirements,flags \
+        "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
+    codesign --verify --deep --strict --verbose=2 \
+        "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
 fi
 codesign --force --sign "$SIGN_IDENTITY" "${SIGN_TIMESTAMP_ARGS[@]}" \
     --entitlements "$PROJECT_DIR/MultiSwitcher.entitlements" \

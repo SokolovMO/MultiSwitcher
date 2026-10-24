@@ -8,18 +8,45 @@ import ServiceManagement
 final class SettingsManager: @unchecked Sendable {
     static let shared = SettingsManager()
 
-    private let defaults = UserDefaults.standard
+    private struct LegacyRuleDefaults: Equatable {
+        let deniedWords: [String]?
+        let alwaysConvertWords: [String]?
+    }
+
+    private struct RuleSnapshot {
+        let generation: UInt64
+        let rules: [ProfileRule]
+        let compiled: CompiledProfileRules
+    }
+
+    static var interfaceDefaults: UserDefaults {
+        ProcessInfo.processInfo.environment["MULTI_ECOSYSTEM_REVIEW"] == nil
+            ? .standard : UserDefaults(suiteName: "com.multiswitcher.app.layout-review")!
+    }
+    private let defaults = SettingsManager.interfaceDefaults
     private let profileStore = ProfileStore.shared
+    private let debugLogPreferenceLock = NSLock()
+    private var cachedDebugLogPreference: Bool?
+    private let ruleSnapshotLock = NSLock()
+    private let legacyRuleDefaultsLock = NSLock()
+    private var cachedRuleSnapshot: RuleSnapshot?
+    private var automaticRulePreparationInFlight = false
+    private var automaticRulePreparationWaiters: [@MainActor @Sendable (Int) -> Void] = []
+    private var defaultsRuleObserver: NSObjectProtocol?
+    private var observedLegacyRuleDefaults: LegacyRuleDefaults?
 
     private enum Keys {
         static let autoSwitch = "com.multiswitcher.autoSwitch"
         static let layout1ID = "com.multiswitcher.layout1ID"
         static let layout2ID = "com.multiswitcher.layout2ID"
         static let debugLog = "com.multiswitcher.debugLog"
+        static let languageSwitchWordThreshold = "com.multiswitcher.languageSwitchWordThreshold"
         static let checkUpdatesEnabled = "com.multiswitcher.checkUpdatesEnabled"
+        static let updateChannel = "com.multiswitcher.updateChannel"
         static let launchAtLogin = "com.multiswitcher.launchAtLogin"
         static let interfaceLanguage = "com.multiswitcher.interfaceLanguage"
         static let permissionsWereGranted = "com.multiswitcher.permissionsWereGranted"
+        static let permissionGuideShown = "com.multiswitcher.permissionGuideShown"
         static let launchAtLoginAsked = "com.multiswitcher.launchAtLoginAsked"
         static let perAppLayout = "com.multiswitcher.perAppLayout"
         static let triggerKey = "com.multiswitcher.triggerKey"
@@ -42,12 +69,11 @@ final class SettingsManager: @unchecked Sendable {
         static let caretFlag = "com.multiswitcher.caretFlag"
         static let secureInputNotice = "com.multiswitcher.secureInputNotice"
         static let hideMenuBarIcon = "com.multiswitcher.hideMenuBarIcon"
-        static let monochromeIcon = "com.multiswitcher.monochromeIcon"
         static let deniedAppsAdded = "com.multiswitcher.deniedAppsAdded"
         static let deniedAppsRemoved = "com.multiswitcher.deniedAppsRemoved"
         static let allActionsDeniedApps = "com.multiswitcher.allActionsDeniedApps"
-        static let deniedWords = "com.multiswitcher.deniedWords"
-        static let alwaysConvertWords = "com.multiswitcher.alwaysConvertWords"
+        static let deniedWords = ProfileRuleMaintenance.deniedWordsSettingKey
+        static let alwaysConvertWords = ProfileRuleMaintenance.alwaysConvertWordsSettingKey
         static let learningEnabled = "com.multiswitcher.learningEnabled"
         static let paused = "com.multiswitcher.paused"
         static let pauseUntil = "com.multiswitcher.pauseUntil"
@@ -57,10 +83,110 @@ final class SettingsManager: @unchecked Sendable {
     }
 
     private init() {
+        observedLegacyRuleDefaults = legacyRuleDefaultsFromDefaults()
+        defaultsRuleObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: defaults,
+            queue: nil
+        ) { [weak self] _ in
+            self?.refreshLegacyRuleDefaultsIfNeeded()
+        }
         migrateLegacyDefaults()
     }
 
+    deinit {
+        if let defaultsRuleObserver {
+            NotificationCenter.default.removeObserver(defaultsRuleObserver)
+        }
+    }
+
+    private func invalidateRuleSnapshot() {
+        ruleSnapshotLock.lock()
+        cachedRuleSnapshot = nil
+        ruleSnapshotLock.unlock()
+    }
+
+    private func legacyRuleDefaultsFromDefaults() -> LegacyRuleDefaults {
+        LegacyRuleDefaults(
+            deniedWords: defaults.stringArray(forKey: Keys.deniedWords),
+            alwaysConvertWords: defaults.stringArray(forKey: Keys.alwaysConvertWords)
+        )
+    }
+
+    private func refreshLegacyRuleDefaultsIfNeeded() {
+        let current = legacyRuleDefaultsFromDefaults()
+        legacyRuleDefaultsLock.lock()
+        let changed = observedLegacyRuleDefaults != current
+        observedLegacyRuleDefaults = current
+        legacyRuleDefaultsLock.unlock()
+        if changed {
+            invalidateRuleSnapshot()
+            prepareAutomaticRules { _ in }
+        }
+    }
+
+    /// Keep the compiled snapshot warm before monitoring starts and after rule edits,
+    /// so a cold or changed ruleset does not compile on a word-boundary callback.
+    var automaticRulesReady: Bool {
+        let generation = profileStore.currentRuleGeneration
+        ruleSnapshotLock.lock()
+        let ready = cachedRuleSnapshot?.generation == generation
+        ruleSnapshotLock.unlock()
+        return ready
+    }
+
+    func prepareAutomaticRules(completion: @escaping @MainActor @Sendable (Int) -> Void = { _ in }) {
+        let generation = profileStore.currentRuleGeneration
+        ruleSnapshotLock.lock()
+        if let cachedRuleSnapshot, cachedRuleSnapshot.generation == generation {
+            let count = cachedRuleSnapshot.rules.count
+            ruleSnapshotLock.unlock()
+            Task { @MainActor in completion(count) }
+            return
+        }
+        automaticRulePreparationWaiters.append(completion)
+        guard !automaticRulePreparationInFlight else {
+            ruleSnapshotLock.unlock()
+            return
+        }
+        automaticRulePreparationInFlight = true
+        ruleSnapshotLock.unlock()
+        buildAutomaticRuleSnapshotOffInputPath()
+    }
+
+    private func buildAutomaticRuleSnapshotOffInputPath() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            let built = self.currentRuleSnapshot()
+            let latestGeneration = self.profileStore.currentRuleGeneration
+
+            self.ruleSnapshotLock.lock()
+            let ready = built.generation == latestGeneration
+                && self.cachedRuleSnapshot?.generation == latestGeneration
+            let callbacks = ready ? self.automaticRulePreparationWaiters : []
+            if ready {
+                self.automaticRulePreparationWaiters.removeAll(keepingCapacity: true)
+                self.automaticRulePreparationInFlight = false
+            } else {
+                // A profile edit raced the background build. Keep the waiters and
+                // rebuild once the latest generation is visible.
+                self.automaticRulePreparationInFlight = !self.automaticRulePreparationWaiters.isEmpty
+            }
+            let count = self.cachedRuleSnapshot?.rules.count ?? 0
+            self.ruleSnapshotLock.unlock()
+
+            guard ready else {
+                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + .milliseconds(10)) { [weak self] in
+                    self?.buildAutomaticRuleSnapshotOffInputPath()
+                }
+                return
+            }
+            Task { @MainActor in callbacks.forEach { $0(count) } }
+        }
+    }
+
     private func migrateLegacyDefaults() {
+        guard ProcessInfo.processInfo.environment["MULTI_ECOSYSTEM_REVIEW"] == nil else { return }
         guard !profileStore.current.legacyDefaultsMigrated else { return }
         let domainName = Bundle.main.bundleIdentifier ?? "com.multiswitcher.app"
         let legacy = defaults.persistentDomain(forName: domainName) ?? [:]
@@ -124,10 +250,24 @@ final class SettingsManager: @unchecked Sendable {
 
     private func saveSetting(_ value: ProfileSetting, forKey key: String) {
         do {
-            try profileStore.update { $0.settings[key] = value }
+            try updateProfile { $0.settings[key] = value }
         } catch {
             rslog("Profile setting save failed for \(key): \(error.localizedDescription)")
         }
+    }
+
+    /// Rebuild derived rules away from the keyboard path whenever a profile mutation
+    /// changes rule inputs. Non-rule preferences and learning-only writes stay cheap.
+    @discardableResult
+    private func updateProfile(
+        _ change: (inout MultiSwitcherProfile) throws -> Void
+    ) throws -> MultiSwitcherProfile {
+        let previousRuleGeneration = profileStore.currentRuleGeneration
+        let updated = try profileStore.update(change)
+        guard profileStore.currentRuleGeneration != previousRuleGeneration else { return updated }
+        invalidateRuleSnapshot()
+        prepareAutomaticRules { _ in }
+        return updated
     }
 
     // MARK: - Properties
@@ -193,9 +333,7 @@ final class SettingsManager: @unchecked Sendable {
     }
 
     var learningEntries: [LearningEntry] {
-        profileStore.current.learning.sorted {
-            $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending
-        }
+        LearningEngine.sortedForReview(profileStore.current.learning)
     }
 
     var hasLearnedExclusions: Bool {
@@ -213,17 +351,30 @@ final class SettingsManager: @unchecked Sendable {
 
     func forgetLearnedWord(_ word: String) {
         do {
-            try profileStore.update { LearningEngine.forget(word: word, in: &$0) }
+            try updateProfile { LearningEngine.forget(word: word, in: &$0) }
         } catch {
             rslog("Learning profile save failed: \(error.localizedDescription)")
         }
     }
 
     @discardableResult
+    func confirmManualLearningCandidate(_ word: String) -> Bool {
+        var confirmed = false
+        do {
+            try updateProfile { profile in
+                confirmed = LearningEngine.confirmManualCandidate(word: word, in: &profile)
+            }
+        } catch {
+            rslog("Manual learning confirmation failed: \(error.localizedDescription)")
+        }
+        return confirmed
+    }
+
+    @discardableResult
     func undoLearnedExclusion(_ word: String) -> Bool {
         var removed = false
         do {
-            try profileStore.update { removed = LearningEngine.undoLearnedExclusion(word: word, in: &$0) }
+            try updateProfile { removed = LearningEngine.undoLearnedExclusion(word: word, in: &$0) }
         } catch {
             rslog("Learning profile save failed: \(error.localizedDescription)")
         }
@@ -247,9 +398,43 @@ final class SettingsManager: @unchecked Sendable {
         set { defaults.set(newValue, forKey: Keys.checkUpdatesEnabled) }
     }
 
+    var updateChannel: UpdateChannel {
+        get {
+            let fallback = Bundle.main.object(forInfoDictionaryKey: "MSUpdateChannel") as? String ?? UpdateChannel.stable.rawValue
+            return UpdateChannel(rawValue: readString(Keys.updateChannel, default: fallback)) ?? .stable
+        }
+        set { write(newValue.rawValue, forKey: Keys.updateChannel) }
+    }
+
     var debugLogEnabled: Bool {
-        get { readBool(Keys.debugLog) }
-        set { write(newValue, forKey: Keys.debugLog) }
+        get {
+            debugLogPreferenceLock.lock()
+            if let cached = cachedDebugLogPreference {
+                debugLogPreferenceLock.unlock()
+                return cached
+            }
+            debugLogPreferenceLock.unlock()
+
+            let loaded = readBool(Keys.debugLog)
+            debugLogPreferenceLock.lock()
+            if cachedDebugLogPreference == nil { cachedDebugLogPreference = loaded }
+            let value = cachedDebugLogPreference ?? loaded
+            debugLogPreferenceLock.unlock()
+            return value
+        }
+        set {
+            debugLogPreferenceLock.lock()
+            cachedDebugLogPreference = newValue
+            debugLogPreferenceLock.unlock()
+            write(newValue, forKey: Keys.debugLog)
+        }
+    }
+
+    /// Number of consecutive, dictionary-confirmed words needed before automatic
+    /// input-source switching. Two is the conservative default for mixed-language text.
+    var languageSwitchWordThreshold: Int {
+        get { min(2, max(1, readInt(Keys.languageSwitchWordThreshold, default: 2))) }
+        set { write(min(2, max(1, newValue)), forKey: Keys.languageSwitchWordThreshold) }
     }
 
     var launchAtLogin: Bool {
@@ -264,6 +449,11 @@ final class SettingsManager: @unchecked Sendable {
     }
 
     /// Язык интерфейса (пустая строка = авто-определение по системе)
+    var interfaceTheme: String {
+        get { readString("com.multiswitcher.interfaceTheme", default: "system") }
+        set { write(newValue, forKey: "com.multiswitcher.interfaceTheme") }
+    }
+
     var interfaceLanguage: String {
         get { readString(Keys.interfaceLanguage, default: "") }
         set {
@@ -276,6 +466,12 @@ final class SettingsManager: @unchecked Sendable {
     var permissionsWereGranted: Bool {
         get { readBool(Keys.permissionsWereGranted) }
         set { write(newValue, forKey: Keys.permissionsWereGranted) }
+    }
+
+    /// Avoid repeating the first-run permission explanation after the user chooses Later.
+    var permissionGuideShown: Bool {
+        get { readBool(Keys.permissionGuideShown) }
+        set { write(newValue, forKey: Keys.permissionGuideShown) }
     }
 
     var launchAtLoginAsked: Bool {
@@ -454,13 +650,6 @@ final class SettingsManager: @unchecked Sendable {
         set { write(newValue, forKey: Keys.keySound) }
     }
 
-    /// Иконка меню-бара в системном стиле: монохромная плашка вместо символического значка.
-    /// По умолчанию OFF.
-    var monochromeIcon: Bool {
-        get { readBool(Keys.monochromeIcon) }
-        set { write(newValue, forKey: Keys.monochromeIcon) }
-    }
-
     /// Приложения, где авто-конверсия выключена. Эффективный список = дефолты минус
     /// явно удалённые пользователем плюс явно добавленные. Так новые дефолты из будущих
     /// версий подхватываются автоматически, а правки пользователя сохраняются.
@@ -489,27 +678,80 @@ final class SettingsManager: @unchecked Sendable {
     }
 
     var allRules: [ProfileRule] {
-        var rules = profileStore.current.rules
-        for word in readStrings(Keys.deniedWords) where !rules.contains(where: {
-            $0.action == .neverConvert && $0.match == .exact
-                && normalizedWordKey($0.pattern) == normalizedWordKey(word)
-        }) {
+        currentRuleSnapshot().rules
+    }
+
+    private func currentRuleSnapshot() -> RuleSnapshot {
+        let generation = profileStore.currentRuleGeneration
+        ruleSnapshotLock.lock()
+        if let cachedRuleSnapshot, cachedRuleSnapshot.generation == generation {
+            ruleSnapshotLock.unlock()
+            return cachedRuleSnapshot
+        }
+        ruleSnapshotLock.unlock()
+
+        let profileSnapshot = profileStore.versionedRuleSnapshot()
+        ruleSnapshotLock.lock()
+        if let cachedRuleSnapshot, cachedRuleSnapshot.generation == profileSnapshot.generation {
+            ruleSnapshotLock.unlock()
+            return cachedRuleSnapshot
+        }
+        ruleSnapshotLock.unlock()
+
+        var rules = profileSnapshot.profile.rules
+        var neverConvertKeys = Set(rules.lazy
+            .filter { $0.action == .neverConvert && $0.match == .exact }
+            .map { self.normalizedWordKey($0.pattern) })
+        for word in ruleStrings(Keys.deniedWords, in: profileSnapshot.profile) {
+            let key = normalizedWordKey(word)
+            guard !key.isEmpty, neverConvertKeys.insert(key).inserted else { continue }
             rules.append(ProfileRule(pattern: word, match: .exact, action: .neverConvert, origin: .user))
         }
-        for word in readStrings(Keys.alwaysConvertWords) where !rules.contains(where: {
-            $0.action == .alwaysConvert && $0.match == .exact
-                && normalizedWordKey($0.pattern) == normalizedWordKey(word)
-        }) {
+
+        var alwaysConvertKeys = Set(rules.lazy
+            .filter { $0.action == .alwaysConvert && $0.match == .exact }
+            .map { self.normalizedWordKey($0.pattern) })
+        for word in ruleStrings(Keys.alwaysConvertWords, in: profileSnapshot.profile) {
+            let key = normalizedWordKey(word)
+            guard !key.isEmpty, alwaysConvertKeys.insert(key).inserted else { continue }
             rules.append(ProfileRule(pattern: word, match: .exact, action: .alwaysConvert, origin: .user))
         }
-        return rules
+
+        let built = RuleSnapshot(
+            generation: profileSnapshot.generation,
+            rules: rules,
+            compiled: ProfileRuleEngine.compile(rules)
+        )
+        ruleSnapshotLock.lock()
+        if let cachedRuleSnapshot, cachedRuleSnapshot.generation == built.generation {
+            ruleSnapshotLock.unlock()
+            return cachedRuleSnapshot
+        }
+        cachedRuleSnapshot = built
+        ruleSnapshotLock.unlock()
+        return built
+    }
+
+    /// A cache-only evaluator for the keyboard path. It never reads the profile,
+    /// normalizes legacy lists, or compiles regular expressions on a cache miss.
+    func preparedAutomaticRuleEvaluator() -> PreparedAutomaticRuleEvaluator? {
+        let generation = profileStore.currentRuleGeneration
+        ruleSnapshotLock.lock()
+        defer { ruleSnapshotLock.unlock() }
+        guard let snapshot = cachedRuleSnapshot, snapshot.generation == generation else { return nil }
+        return PreparedAutomaticRuleEvaluator(generation: generation, compiled: snapshot.compiled)
+    }
+
+    private func ruleStrings(_ key: String, in profile: MultiSwitcherProfile) -> [String] {
+        if case .strings(let value) = profile.settings[key] { return value }
+        return defaults.stringArray(forKey: key) ?? []
     }
 
     var userRules: [ProfileRule] { allRules.filter { $0.origin == .user } }
 
     func replaceUserRules(_ rules: [ProfileRule]) throws {
         _ = try UserRuleFileCodec.encode(rules)
-        try profileStore.update { profile in
+        try updateProfile { profile in
             profile.rules.removeAll { $0.origin == .user }
             profile.rules.append(contentsOf: rules)
             profile.settings[Keys.deniedWords] = .strings([])
@@ -527,7 +769,7 @@ final class SettingsManager: @unchecked Sendable {
     @discardableResult
     func deleteRule(_ rule: ProfileRule) throws -> Bool {
         var removed = false
-        try profileStore.update { profile in
+        try updateProfile { profile in
             switch rule.origin {
             case .punto:
                 hydrateImportedPuntoRulesIfNeeded(&profile)
@@ -568,7 +810,7 @@ final class SettingsManager: @unchecked Sendable {
     @discardableResult
     func restoreDeletedPuntoRules() throws -> Int {
         var restored = 0
-        try profileStore.update { profile in
+        try updateProfile { profile in
             hydrateImportedPuntoRulesIfNeeded(&profile)
             restored = PuntoProfileMigration.restoreRemovedRules(in: &profile)
         }
@@ -592,7 +834,7 @@ final class SettingsManager: @unchecked Sendable {
     }
 
     func automaticRuleDecision(typed: String, converted: String) -> ProfileRuleDecision {
-        ProfileRuleEngine.evaluate(typed: typed, converted: converted, rules: automaticRules)
+        ProfileRuleEngine.evaluate(typed: typed, converted: converted, rules: currentRuleSnapshot().compiled)
     }
 
     /// Слова, которые авто-конверсия никогда не трогает.
@@ -611,7 +853,7 @@ final class SettingsManager: @unchecked Sendable {
         set {
             write(newValue, forKey: Keys.deniedWords)
             do {
-                try profileStore.update { profile in
+                try updateProfile { profile in
                     profile.rules.removeAll { $0.origin == .user && $0.action == .neverConvert }
                     profile.rules.append(contentsOf: newValue.map {
                         ProfileRule(pattern: $0, match: .exact, action: .neverConvert,
@@ -663,7 +905,7 @@ final class SettingsManager: @unchecked Sendable {
         set {
             write(newValue, forKey: Keys.alwaysConvertWords)
             do {
-                try profileStore.update { profile in
+                try updateProfile { profile in
                     profile.rules.removeAll { $0.origin == .user && $0.action == .alwaysConvert }
                     profile.rules.append(contentsOf: newValue.map {
                         ProfileRule(pattern: $0, match: .exact, action: .alwaysConvert,
@@ -704,5 +946,19 @@ final class SettingsManager: @unchecked Sendable {
     /// Текущий статус автозапуска (может отличаться от настройки)
     var loginItemStatus: SMAppService.Status {
         SMAppService.mainApp.status
+    }
+}
+
+struct PreparedAutomaticRuleEvaluator: Sendable {
+    let generation: UInt64
+    private let compiled: CompiledProfileRules
+
+    fileprivate init(generation: UInt64, compiled: CompiledProfileRules) {
+        self.generation = generation
+        self.compiled = compiled
+    }
+
+    func decision(typed: String, converted: String) -> ProfileRuleDecision {
+        ProfileRuleEngine.evaluate(typed: typed, converted: converted, rules: compiled)
     }
 }

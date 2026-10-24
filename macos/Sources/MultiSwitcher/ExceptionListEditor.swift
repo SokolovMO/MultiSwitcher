@@ -14,8 +14,9 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
     private let addWordPrompt: String
 
     private var items: [String] = []
-    private let table = NSTableView()
-    private let removeButton = NSButton()
+    private let table = GraphiteTableView()
+    private let emptyStateLabel = NSTextField(wrappingLabelWithString: "")
+    private let removeButton = GraphiteButton()
     /// Кэш имени/иконки по bundle id, чтобы не дёргать NSWorkspace на каждый vend ячейки.
     private var infoCache: [String: (text: String, icon: NSImage?)] = [:]
 
@@ -47,7 +48,8 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
-        scroll.borderType = .bezelBorder
+        scroll.borderType = .noBorder
+        scroll.drawsBackground = false
 
         let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("col"))
         col.width = frame.width - 4
@@ -64,7 +66,21 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         scroll.documentView = table
         container.addSubview(scroll)
 
-        let addBtn = NSButton(frame: NSRect(x: 0, y: 0, width: 28, height: 24))
+        emptyStateLabel.stringValue = kind == .apps ? L10n.exceptionsEmptyApps : L10n.exceptionsEmptyWords
+        emptyStateLabel.alignment = .center
+        emptyStateLabel.textColor = .secondaryLabelColor
+        emptyStateLabel.maximumNumberOfLines = 2
+        emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(emptyStateLabel)
+        NSLayoutConstraint.activate([
+            emptyStateLabel.centerXAnchor.constraint(equalTo: scroll.centerXAnchor),
+            emptyStateLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
+            emptyStateLabel.leadingAnchor.constraint(greaterThanOrEqualTo: scroll.leadingAnchor, constant: 18),
+            emptyStateLabel.trailingAnchor.constraint(lessThanOrEqualTo: scroll.trailingAnchor, constant: -18),
+            emptyStateLabel.widthAnchor.constraint(lessThanOrEqualTo: scroll.widthAnchor, constant: -36)
+        ])
+
+        let addBtn = GraphiteButton(frame: NSRect(x: 0, y: 0, width: 28, height: 24))
         addBtn.autoresizingMask = [.maxYMargin]
         addBtn.title = "+"
         addBtn.bezelStyle = .smallSquare
@@ -80,6 +96,8 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         removeButton.action = #selector(removeTapped)
         removeButton.isEnabled = false
         container.addSubview(removeButton)
+
+        updateEmptyState()
 
         return container
     }
@@ -100,8 +118,9 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
         cell.addSubview(text)
 
         var leading: CGFloat = 4
-        if kind == .apps, let icon = info.icon {
-            let iv = NSImageView(image: icon)
+        if kind == .apps {
+            let iv = NSImageView(image: NSImage(systemSymbolName: "app", accessibilityDescription: nil) ?? NSImage())
+            iv.contentTintColor = DesignPalette.secondary
             iv.translatesAutoresizingMaskIntoConstraints = false
             cell.addSubview(iv)
             NSLayoutConstraint.activate([
@@ -164,9 +183,9 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
     }
 
     private func addWord() {
-        let alert = NSAlert()
+        let alert = GraphiteAlert()
         alert.messageText = addWordPrompt
-        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
+        let field = GraphiteTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
         alert.accessoryView = field
         alert.addButton(withTitle: L10n.commonAdd)
         alert.addButton(withTitle: L10n.commonCancel)
@@ -183,13 +202,19 @@ final class ExceptionListEditor: NSObject, NSTableViewDataSource, NSTableViewDel
     private func persist() {
         setList(items)
         table.reloadData()
+        updateEmptyState()
         updateRemoveButton()
     }
 
     func reloadFromStore() {
         items = getList()
         table.reloadData()
+        updateEmptyState()
         updateRemoveButton()
+    }
+
+    private func updateEmptyState() {
+        emptyStateLabel.isHidden = !items.isEmpty
     }
 
     // MARK: - Display helpers

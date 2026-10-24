@@ -145,15 +145,19 @@ public enum PuntoProfileMigration {
             let key = normalizedKey(item.word)
             guard !key.isEmpty else { continue }
             if var existing = merged[key] {
-                existing.cancellationCount = max(existing.cancellationCount, item.cancellationCount)
+                existing.importedCancellationCount = max(
+                    existing.importedCancellationCount ?? 0,
+                    item.cancellationCount
+                )
                 merged[key] = existing
             } else {
                 merged[key] = LearningEntry(
                     word: item.word,
-                    cancellationCount: item.cancellationCount,
+                    cancellationCount: 0,
                     isExcluded: false,
                     origin: .punto,
-                    updatedAt: nil
+                    updatedAt: nil,
+                    importedCancellationCount: item.cancellationCount
                 )
             }
         }

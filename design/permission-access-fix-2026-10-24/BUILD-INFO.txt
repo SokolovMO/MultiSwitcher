@@ -1,0 +1,7 @@
+Product: MultiSwitcher
+Version: 0.4.0 (54)
+Architecture: arm64
+Bundle identifier: com.multiswitcher.app
+Signing identity: 77F8CFD709BC4DEE5CE7FE7675B6F267C9D4F276
+Updater configured: 0
+Executable SHA-256: 924d908342958c27a114b0d223f750a029a025da22ba59ff2bd679615c19c84a

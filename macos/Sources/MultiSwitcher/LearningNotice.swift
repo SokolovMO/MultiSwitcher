@@ -1,8 +1,10 @@
 import AppKit
+import MultiSwitcherCore
 
 /// Short nonactivating feedback anchored beside the menu-bar status item.
 @MainActor
 final class LearningNotice {
+    var reviewWindow: NSWindow { panel }
     private let panel: NSPanel
     private let titleLabel = NSTextField(labelWithString: "")
     private let bodyLabel = NSTextField(wrappingLabelWithString: "")
@@ -27,18 +29,18 @@ final class LearningNotice {
         panel.isExcludedFromWindowsMenu = true
 
         let backdrop = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: 82))
-        backdrop.material = .hudWindow
+        backdrop.material = .popover
         backdrop.state = .active
         backdrop.blendingMode = .behindWindow
         backdrop.wantsLayer = true
-        backdrop.layer?.cornerRadius = 12
+        backdrop.layer?.cornerRadius = MultiInterfaceMetrics.Radius.lg
         backdrop.layer?.masksToBounds = true
         panel.contentView = backdrop
 
-        titleLabel.font = SystemTypography.font(.headline, weight: .bold)
+        titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         titleLabel.textColor = .labelColor
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        bodyLabel.font = SystemTypography.font(.subheadline)
+        bodyLabel.font = NSFont.systemFont(ofSize: 11)
         bodyLabel.textColor = .secondaryLabelColor
         bodyLabel.preferredMaxLayoutWidth = width - 32
         bodyLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -57,14 +59,14 @@ final class LearningNotice {
     }
 
     func show(title: String, body: String, near button: NSStatusBarButton?) {
-        titleLabel.stringValue = title
+        titleLabel.stringValue = InterfaceText.chrome(title)
         bodyLabel.stringValue = body
         panel.layoutIfNeeded()
         let height = max(72, min(panel.contentView?.fittingSize.height ?? 82, 150))
         panel.setContentSize(NSSize(width: width, height: height))
         position(near: button, height: height)
         panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { $0.duration = 0.12; panel.animator().alphaValue = 1 }
+        NSAnimationContext.runAnimationGroup { $0.duration = DesignPalette.reducedMotion ? 0 : 0.12; panel.animator().alphaValue = 1 }
         hideTimer?.invalidate()
         let timer = Timer(timeInterval: 5, repeats: false) { [weak self] _ in
             Task { @MainActor in self?.hide() }
@@ -89,7 +91,7 @@ final class LearningNotice {
     private func hide() {
         hideTimer?.invalidate()
         hideTimer = nil
-        NSAnimationContext.runAnimationGroup({ $0.duration = 0.15; panel.animator().alphaValue = 0 },
+        NSAnimationContext.runAnimationGroup({ $0.duration = DesignPalette.reducedMotion ? 0 : 0.15; panel.animator().alphaValue = 0 },
                                              completionHandler: { [weak self] in Task { @MainActor in self?.panel.orderOut(nil) } })
     }
 }

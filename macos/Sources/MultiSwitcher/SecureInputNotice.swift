@@ -1,4 +1,5 @@
 import AppKit
+import MultiSwitcherCore
 
 /// issue #27: показывает разовое объяснение «MultiSwitcher на паузе из-за защищённого ввода»
 /// НЕ крадя фокус. Раньше это был `NSAlert.runModal()` — модалка активировала приложение и
@@ -8,6 +9,7 @@ import AppKit
 /// Сама гаснет через несколько секунд; click-through, ничего не перехватывает.
 @MainActor
 final class SecureInputNotice {
+    var reviewWindow: NSWindow { panel }
     private let panel: NSPanel
     private let title: NSTextField
     private let body: NSTextField
@@ -32,21 +34,21 @@ final class SecureInputNotice {
         panel.isExcludedFromWindowsMenu = true
 
         let backdrop = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: 96))
-        backdrop.material = .hudWindow
+        backdrop.material = .popover
         backdrop.state = .active
         backdrop.blendingMode = .behindWindow
         backdrop.wantsLayer = true
-        backdrop.layer?.cornerRadius = 12
+        backdrop.layer?.cornerRadius = MultiInterfaceMetrics.Radius.lg
         backdrop.layer?.masksToBounds = true
         panel.contentView = backdrop
 
         title = NSTextField(labelWithString: "")
-        title.font = SystemTypography.font(.headline, weight: .bold)
+        title.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         title.textColor = .labelColor
         title.translatesAutoresizingMaskIntoConstraints = false
 
         body = NSTextField(wrappingLabelWithString: "")
-        body.font = SystemTypography.font(.subheadline)
+        body.font = NSFont.systemFont(ofSize: 11)
         body.textColor = .secondaryLabelColor
         body.translatesAutoresizingMaskIntoConstraints = false
         body.preferredMaxLayoutWidth = width - 32
@@ -67,7 +69,7 @@ final class SecureInputNotice {
 
     /// Показать плашку (не крадёт фокус). Длительность зависит от объёма текста.
     func show(title titleText: String, body bodyText: String) {
-        title.stringValue = titleText
+        title.stringValue = InterfaceText.chrome(titleText)
         body.stringValue = bodyText
 
         // Подгоняем высоту панели под содержимое, затем позиционируем сверху-по-центру экрана.
@@ -79,7 +81,7 @@ final class SecureInputNotice {
         positionTopCenter(height: h)
 
         panel.orderFrontRegardless()                                // показ БЕЗ активации приложения
-        NSAnimationContext.runAnimationGroup { $0.duration = 0.14; panel.animator().alphaValue = 1 }
+        NSAnimationContext.runAnimationGroup { $0.duration = DesignPalette.reducedMotion ? 0 : 0.14; panel.animator().alphaValue = 1 }
 
         let duration = min(9.0, 4.0 + Double(bodyText.count) / 45.0)  // дольше читать — дольше висит
         hideTimer?.invalidate()
@@ -94,7 +96,7 @@ final class SecureInputNotice {
 
     private func hide() {
         hideTimer?.invalidate(); hideTimer = nil
-        NSAnimationContext.runAnimationGroup({ $0.duration = 0.2; panel.animator().alphaValue = 0 },
+        NSAnimationContext.runAnimationGroup({ $0.duration = DesignPalette.reducedMotion ? 0 : 0.16; panel.animator().alphaValue = 0 },
                                              completionHandler: { [weak self] in Task { @MainActor in self?.panel.orderOut(nil) } })
     }
 
