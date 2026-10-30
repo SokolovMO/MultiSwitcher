@@ -1,0 +1,18 @@
+{
+  "resolved": true,
+  "build": 54,
+  "path": "/Applications/MultiSwitcher.app",
+  "pid": 34014,
+  "sha256": "924d908342958c27a114b0d223f750a029a025da22ba59ff2bd679615c19c84a",
+  "accessibility": true,
+  "inputMonitoring": true,
+  "eventTapStarted": true,
+  "realReplacementsConfirmed": 8,
+  "tccStableCertificateAccepted": true,
+  "automatedIsolatedFixture": "not passed: focus could not be reliably acquired; no test keys sent",
+  "resetServices": [
+    "Accessibility",
+    "ListenEvent"
+  ],
+  "resetBundle": "com.multiswitcher.app"
+}

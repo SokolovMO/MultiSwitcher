@@ -1,0 +1,118 @@
+[
+  {
+    "path": "/private/tmp/multi-final-layout/MultiShift-final/MultiShift.app",
+    "bytes": 119887618
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/MultiShift-reviewed/MultiShift.app",
+    "bytes": 119887618
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/MultiSwitcher-final/MultiSwitcher.app",
+    "bytes": 3961223
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/MultiSwitcher-reviewed/MultiSwitcher.app",
+    "bytes": 3961223
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/deliver-switcher/MultiSwitcher.app",
+    "bytes": 3964071
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/deliver-switcher-quiet/MultiSwitcher.app",
+    "bytes": 3982919
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-1/MultiShift.app",
+    "bytes": 114727363
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-2/MultiShift.app",
+    "bytes": 119662818
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-3/MultiShift.app",
+    "bytes": 119667250
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-accepted-build/MultiShift.app",
+    "bytes": 119686834
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-actor-final/MultiShift.app",
+    "bytes": 114727363
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-bounded/MultiShift.app",
+    "bytes": 119869106
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-delivery/MultiShift.app",
+    "bytes": 119687698
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-diagnostic/MultiShift.app",
+    "bytes": 119868002
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-final/MultiShift.app",
+    "bytes": 119867762
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-final-build/MultiShift.app",
+    "bytes": 119686642
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-final-qa-build/MultiShift.app",
+    "bytes": 119689490
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-mainactor/MultiShift.app",
+    "bytes": 114727363
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-preview/MultiShift.app",
+    "bytes": 119776658
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/shift-verified/MultiShift.app",
+    "bytes": 119843026
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-1/MultiSwitcher.app",
+    "bytes": 3915655
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-2/MultiSwitcher.app",
+    "bytes": 3936215
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-4/MultiSwitcher.app",
+    "bytes": 3936759
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-accepted-build/MultiSwitcher.app",
+    "bytes": 3954007
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-bounded/MultiSwitcher.app",
+    "bytes": 3961415
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-delivery/MultiSwitcher.app",
+    "bytes": 3954711
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-final-build/MultiSwitcher.app",
+    "bytes": 3954007
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-preview/MultiSwitcher.app",
+    "bytes": 3962519
+  },
+  {
+    "path": "/private/tmp/multi-final-layout/switcher-verified/MultiSwitcher.app",
+    "bytes": 3961207
+  }
+]

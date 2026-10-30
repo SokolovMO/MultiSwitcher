@@ -1,0 +1,254 @@
+name: MultiSwitcher signed release
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "beta-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: multiswitcher-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 90
+    environment:
+      name: multiswitcher-release
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Check release configuration and version
+        id: release_config
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
+          SIGNING_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
+          CRASH_REPORT_DSN: ${{ vars.MULTISWITCHER_SENTRY_DSN }}
+          SENTRY_ORG: ${{ vars.MULTISWITCHER_SENTRY_ORG_SLUG }}
+          SENTRY_PROJECT: ${{ vars.MULTISWITCHER_SENTRY_PROJECT_SLUG }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.MULTISWITCHER_SENTRY_AUTH_TOKEN }}
+          SPARKLE_PUBLIC_KEY: ${{ vars.MULTISWITCHER_SPARKLE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          # Release tags must point at reviewed code already merged into main.
+          /usr/bin/git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          release_commit=$(/usr/bin/git rev-parse "$GITHUB_REF^{commit}")
+          main_commit=$(/usr/bin/git rev-parse refs/remotes/origin/main)
+          /usr/bin/git merge-base --is-ancestor "$release_commit" "$main_commit" || {
+            echo "Release tag must point to a commit contained in main." >&2; exit 1;
+          }
+          for name in CERTIFICATE CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD TEAM_ID SIGNING_IDENTITY SPARKLE_PUBLIC_KEY; do
+            if [[ -z "${!name}" ]]; then echo "Missing required GitHub environment secret or variable: $name" >&2; exit 1; fi
+          done
+          crash_values=("$CRASH_REPORT_DSN" "$SENTRY_ORG" "$SENTRY_PROJECT" "$SENTRY_AUTH_TOKEN")
+          configured_crash_values=0
+          for value in "${crash_values[@]}"; do [[ -z "$value" ]] || ((configured_crash_values+=1)); done
+          if [[ "$configured_crash_values" == "0" ]]; then
+            crash_reporting=0
+          elif [[ "$configured_crash_values" == "4" ]]; then
+            [[ "$CRASH_REPORT_DSN" =~ ^https://[^/@]+@[^/]+/[0-9]+$ ]] || { echo "MULTISWITCHER_SENTRY_DSN must be an HTTPS Sentry project DSN." >&2; exit 1; }
+            [[ "$SENTRY_ORG" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || { echo "MULTISWITCHER_SENTRY_ORG_SLUG must be a valid Sentry organization slug." >&2; exit 1; }
+            [[ "$SENTRY_PROJECT" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || { echo "MULTISWITCHER_SENTRY_PROJECT_SLUG must be a valid Sentry project slug." >&2; exit 1; }
+            crash_reporting=1
+          else
+            echo "Crash reporting must be configured completely or left disabled: set all four Sentry values or none." >&2
+            exit 1
+          fi
+          version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
+          build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
+          [[ "$build_number" =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "CFBundleVersion must be numeric." >&2; exit 1; }
+          if [[ "$GITHUB_REF_NAME" == beta-v* ]]; then
+            channel=beta
+            expected_tag="beta-v${version}-build${build_number}"
+          else
+            channel=stable
+            expected_tag="v${version}-build${build_number}"
+          fi
+          [[ "$GITHUB_REF_NAME" == "$expected_tag" ]] || { echo "Expected release tag $expected_tag, got $GITHUB_REF_NAME." >&2; exit 1; }
+          [[ "$TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "Developer Team ID must be 10 uppercase letters or digits." >&2; exit 1; }
+          python3 -c 'import base64,sys; value=base64.b64decode(sys.argv[1], validate=True); sys.exit(0 if len(value)==32 else 1)' "$SPARKLE_PUBLIC_KEY" || {
+            echo "MULTISWITCHER_SPARKLE_PUBLIC_KEY must be a base64 EdDSA public key." >&2; exit 1;
+          }
+          echo "MULTISWITCHER_RELEASE_CHANNEL=$channel" >> "$GITHUB_ENV"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "crash_reporting=$crash_reporting" >> "$GITHUB_OUTPUT"
+
+      - name: Install checksum-pinned Sentry CLI for native dSYM uploads
+        if: steps.release_config.outputs.crash_reporting == '1'
+        run: |
+          set -euo pipefail
+          SENTRY_CLI_VERSION="2.58.6"
+          SENTRY_CLI_SHA512="udAVvcyfNa0R+95GvPz/+43/N3TC0TYKdkQ7D7jhPSzbcMc7l2fxRNN5yB3UpCA5fWFnW4toeaqwDBhb/Wh3LA=="
+          INSTALL_DIR="$RUNNER_TEMP/multiswitcher-sentry-cli"
+          ARCHIVE="$INSTALL_DIR/sentry-cli-darwin-$SENTRY_CLI_VERSION.tgz"
+          SENTRY_CLI="$INSTALL_DIR/sentry-cli"
+          mkdir -m 700 -p "$INSTALL_DIR"
+          curl -fsSL "https://registry.npmjs.org/@sentry/cli-darwin/-/cli-darwin-$SENTRY_CLI_VERSION.tgz" -o "$ARCHIVE"
+          ACTUAL_SHA512="$(/usr/bin/openssl dgst -sha512 -binary "$ARCHIVE" | /usr/bin/base64 | /usr/bin/tr -d '\n')"
+          [[ "$ACTUAL_SHA512" == "$SENTRY_CLI_SHA512" ]] || {
+            echo "Pinned Sentry CLI package integrity check failed." >&2; exit 1;
+          }
+          /usr/bin/tar -xzf "$ARCHIVE" -C "$INSTALL_DIR" package/bin/sentry-cli
+          /bin/mv "$INSTALL_DIR/package/bin/sentry-cli" "$SENTRY_CLI"
+          /bin/chmod 755 "$SENTRY_CLI"
+          cd "$RUNNER_TEMP"
+          [[ "$("$SENTRY_CLI" --version)" == "sentry-cli $SENTRY_CLI_VERSION" ]] || {
+            echo "Unexpected Sentry CLI version." >&2; exit 1;
+          }
+          "$SENTRY_CLI" debug-files upload --help >/dev/null
+          echo "MULTISWITCHER_SENTRY_CLI=$SENTRY_CLI" >> "$GITHUB_ENV"
+          /bin/rm -rf "$INSTALL_DIR/package" "$ARCHIVE"
+
+      - name: Import Developer ID certificate into temporary keychain
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/multiswitcher-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(/usr/bin/openssl rand -base64 24)"
+          echo "$CERTIFICATE" | /usr/bin/base64 -D > "$RUNNER_TEMP/developer-id.p12"
+          /usr/bin/security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          /usr/bin/security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          /usr/bin/security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          /usr/bin/security import "$RUNNER_TEMP/developer-id.p12" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security -k "$KEYCHAIN"
+          /usr/bin/security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          /usr/bin/security list-keychains -d user -s "$KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
+          echo "MULTISWITCHER_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          /bin/rm -f "$RUNNER_TEMP/developer-id.p12"
+
+      - name: Run core checks
+        run: swift run --package-path macos MultiSwitcherCoreTests
+
+      - name: Build Developer ID app
+        env:
+          MULTISWITCHER_ENABLE_UPDATES: "1"
+          MULTISWITCHER_ENABLE_CRASH_REPORTING: ${{ steps.release_config.outputs.crash_reporting }}
+          MULTISWITCHER_GITHUB_REPOSITORY: ${{ github.repository }}
+          MULTISWITCHER_UPDATE_CHANNEL: ${{ steps.release_config.outputs.channel }}
+          MULTISWITCHER_SENTRY_DSN: ${{ vars.MULTISWITCHER_SENTRY_DSN }}
+          MULTISWITCHER_DEVELOPER_TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
+          MULTISWITCHER_SPARKLE_PUBLIC_KEY: ${{ vars.MULTISWITCHER_SPARKLE_PUBLIC_KEY }}
+          MULTISWITCHER_SIGN_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
+          MULTISWITCHER_CODESIGN_TIMESTAMP: "1"
+          MULTISWITCHER_BUILD_ROOT: ${{ runner.temp }}/MultiSwitcher-release-build
+        run: bash macos/build_app.sh
+
+      - name: Upload crash-reporting debug symbols
+        if: steps.release_config.outputs.crash_reporting == '1'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.MULTISWITCHER_SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.MULTISWITCHER_SENTRY_ORG_SLUG }}
+          SENTRY_PROJECT: ${{ vars.MULTISWITCHER_SENTRY_PROJECT_SLUG }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          "$MULTISWITCHER_SENTRY_CLI" debug-files upload \
+            "$RUNNER_TEMP/MultiSwitcher-release-build/MultiSwitcher.app.dSYM" \
+            --type dsym --wait
+
+      - name: Configure notarization credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          /usr/bin/xcrun notarytool store-credentials MultiSwitcher-Notary \
+            --apple-id "$APPLE_ID" --team-id "$TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" --keychain "$MULTISWITCHER_KEYCHAIN"
+
+      - name: Notarize app and disk image
+        env:
+          TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
+          SIGNING_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/MultiSwitcher-release-build/MultiSwitcher.app"
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
+          SIGNATURE=$(/usr/bin/codesign -dv --verbose=4 "$APP" 2>&1)
+          /usr/bin/grep -Fxq "TeamIdentifier=$TEAM_ID" <<<"$SIGNATURE" || {
+            echo "Built app is signed by a different Developer Team." >&2; exit 1;
+          }
+          /usr/bin/grep -Fq 'Authority=Developer ID Application:' <<<"$SIGNATURE" || {
+            echo "Built app does not use a Developer ID Application certificate." >&2; exit 1;
+          }
+          APP_ZIP="$RUNNER_TEMP/MultiSwitcher-$VERSION-app.zip"
+          /usr/bin/ditto -c -k --keepParent "$APP" "$APP_ZIP"
+          /usr/bin/xcrun notarytool submit "$APP_ZIP" --keychain-profile MultiSwitcher-Notary --wait
+          /bin/rm -f "$APP_ZIP"
+          /usr/bin/xcrun stapler staple "$APP"
+          /usr/bin/xcrun stapler validate "$APP"
+          /usr/sbin/spctl --assess --type execute --verbose=2 "$APP"
+          DMG="$RUNNER_TEMP/MultiSwitcher-$VERSION-arm64.dmg"
+          bash macos/package_release_dmg.sh "$APP" "$DMG"
+          /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --timestamp \
+            --identifier com.multiswitcher.dmg "$DMG"
+          /usr/bin/codesign --verify --verbose=2 "$DMG"
+          /usr/bin/xcrun notarytool submit "$DMG" --keychain-profile MultiSwitcher-Notary --wait
+          /usr/bin/xcrun stapler staple "$DMG"
+          /usr/bin/xcrun stapler validate "$DMG"
+          /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
+
+      - name: Generate signed appcast and draft release
+        env:
+          SPARKLE_PRIVATE_KEY_BASE64: ${{ secrets.MULTISWITCHER_SPARKLE_PRIVATE_KEY_BASE64 }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ -n "$SPARKLE_PRIVATE_KEY_BASE64" ]] || { echo "Missing Sparkle private-key export." >&2; exit 1; }
+          printf '%s' "$SPARKLE_PRIVATE_KEY_BASE64" | /usr/bin/base64 -D >/dev/null || {
+            echo "MULTISWITCHER_SPARKLE_PRIVATE_KEY_BASE64 is not valid base64." >&2; exit 1;
+          }
+          private_key_bytes="$(printf '%s' "$SPARKLE_PRIVATE_KEY_BASE64" | /usr/bin/base64 -D | /usr/bin/wc -c | /usr/bin/tr -d ' ')"
+          [[ "$private_key_bytes" -gt 0 ]] || { echo "Sparkle private key export is empty." >&2; exit 1; }
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
+          BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
+          CHANNEL="$MULTISWITCHER_RELEASE_CHANNEL"
+          DMG="$RUNNER_TEMP/MultiSwitcher-$VERSION-arm64.dmg"
+          SPARKLE_BIN="$(find "$RUNNER_TEMP/MultiSwitcher-release-build" -type f -name generate_appcast -print -quit)"
+          [[ -x "$SPARKLE_BIN" ]] || { echo "Sparkle generate_appcast tool is missing from the resolved package." >&2; exit 1; }
+          FEED_DIR="$RUNNER_TEMP/sparkle-feed"
+          mkdir -m 700 -p "$FEED_DIR"
+          FEED_URL="https://sokolovmo.github.io/MultiSwitcher/appcast.xml"
+          HTTP_STATUS="$(curl -sS -L -o "$FEED_DIR/appcast.xml" -w '%{http_code}' "$FEED_URL")"
+          if [[ "$HTTP_STATUS" == "404" ]]; then
+            rm -f "$FEED_DIR/appcast.xml"
+          elif [[ "$HTTP_STATUS" != "200" ]]; then
+            echo "Could not retrieve the existing signed Sparkle feed (HTTP $HTTP_STATUS)." >&2; exit 1
+          fi
+          cp "$DMG" "$FEED_DIR/"
+          APPCAST_ARGS=(--ed-key-file - --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" --link "$FEED_URL")
+          if [[ "$CHANNEL" == "beta" ]]; then APPCAST_ARGS+=(--channel beta); fi
+          printf '%s' "$SPARKLE_PRIVATE_KEY_BASE64" | /usr/bin/base64 -D | \
+            "$SPARKLE_BIN" "${APPCAST_ARGS[@]}" "$FEED_DIR"
+          python3 scripts/validate_sparkle_appcast.py \
+            --appcast "$FEED_DIR/appcast.xml" --version "$VERSION" \
+            --build-number "$BUILD_NUMBER" --tag "$GITHUB_REF_NAME" \
+            --repository "$GITHUB_REPOSITORY" --channel "$CHANNEL"
+          python3 scripts/create_update_manifest.py \
+            --version "$VERSION" --build-number "$BUILD_NUMBER" --tag "$GITHUB_REF_NAME" \
+            --channel "$CHANNEL" \
+            --repository "$GITHUB_REPOSITORY" \
+            --dmg "$DMG" --output "$RUNNER_TEMP/version.json"
+          RELEASE_ARGS=("$GITHUB_REF_NAME" "$DMG" "$RUNNER_TEMP/version.json" "$FEED_DIR/appcast.xml" --verify-tag --draft --title "MultiSwitcher $VERSION ($CHANNEL)" --generate-notes)
+          if [[ "$CHANNEL" == "beta" ]]; then RELEASE_ARGS+=(--prerelease); fi
+          gh release create "${RELEASE_ARGS[@]}"
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          set +e
+          if [[ -n "${MULTISWITCHER_KEYCHAIN:-}" ]]; then /usr/bin/security delete-keychain "$MULTISWITCHER_KEYCHAIN"; fi
+          /bin/rm -f "$RUNNER_TEMP/developer-id.p12"

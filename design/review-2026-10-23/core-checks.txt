@@ -1,0 +1,47 @@
+Building for production...
+[Computing dependencies]
+[Pre-planning 1 / 65]
+[Planning deferred tasks]
+[Starting]
+[1 / 33]
+[22 / 33]
+[23 / 34] MultiSwitcherCore
+[33 / 92]
+[35 / 92]
+[37 / 92]
+[40 / 92]
+[43 / 92]
+[44 / 92]
+[45 / 92]
+[48 / 92]
+[49 / 92]
+[50 / 92]
+[51 / 92]
+[52 / 92]
+[54 / 92]
+[55 / 92]
+[58 / 92]
+[59 / 92]
+[60 / 92]
+[61 / 92]
+[62 / 92]
+[68 / 92]
+[69 / 92]
+[73 / 92]
+[74 / 92]
+[75 / 92]
+[77 / 92]
+[78 / 92]
+[79 / 92]
+[80 / 92]
+[81 / 92]
+[82 / 92] MultiSwitcherCore
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Package.swift: MultiSwitcherCore: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[89 / 93] MultiSwitcherCore
+[89 / 93] MultiSwitcherCoreTests-product
+[91 / 94] MultiSwitcherCoreTests-product
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Package.swift: MultiSwitcherCoreTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Package.swift: MultiSwitcherCoreTests-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[93 / 94] MultiSwitcherCoreTests-product
+Build complete! (149,03 с)
+MultiSwitcherCoreChecks: 310 checks passed

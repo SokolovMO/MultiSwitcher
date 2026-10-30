@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="MultiSwitcher — локальный переключатель раскладки для macOS.">
+  <title>MultiSwitcher — раскладка без лишних движений</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f5f5f7; --card:#fff; --ink:#1d1d1f; --muted:#6e6e73; --line:rgba(0,0,0,.09); --accent:#1769e0; --pill:#e8f1ff; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#111113; --card:#1c1c1e; --ink:#f5f5f7; --muted:#a1a1a6; --line:rgba(255,255,255,.12); --accent:#80b5ff; --pill:#202f46; } }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; letter-spacing:-.01em; }
+    main { width:min(980px,calc(100% - 40px)); margin:0 auto; padding:30px 0 72px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:20px; }
+    .brand { display:flex; gap:12px; align-items:center; font-weight:650; letter-spacing:-.03em; }
+    .mark { width:36px; height:36px; border:1.5px solid currentColor; border-radius:12px; display:grid; place-items:center; font-size:12px; font-weight:750; letter-spacing:-.09em; }
+    nav { display:flex; gap:18px; flex-wrap:wrap; font-size:14px; }
+    a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+    .hero { padding:108px 0 76px; max-width:740px; }
+    .eyebrow { color:var(--muted); font-size:14px; font-weight:600; }
+    h1 { margin:16px 0; font-size:clamp(42px,8vw,76px); line-height:.98; letter-spacing:-.065em; font-weight:700; }
+    .lead { color:var(--muted); font-size:clamp(18px,2.5vw,22px); max-width:620px; }
+    .actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:30px; }
+    .button { display:inline-flex; min-height:48px; align-items:center; justify-content:center; border-radius:999px; padding:0 22px; background:var(--ink); color:var(--bg); font-weight:650; border:0; }
+    .button[aria-disabled="true"] { opacity:.55; cursor:not-allowed; }
+    .subtle { color:var(--muted); font-size:13px; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:8px 0 78px; }
+    .card { padding:22px; border:1px solid var(--line); border-radius:22px; background:var(--card); }
+    .card h2 { margin:0 0 8px; font-size:18px; letter-spacing:-.025em; }
+    .card p { margin:0; color:var(--muted); font-size:14px; }
+    section { padding:25px 0; border-top:1px solid var(--line); }
+    section h2 { font-size:26px; letter-spacing:-.04em; margin:0 0 10px; }
+    section p { color:var(--muted); max-width:720px; }
+    footer { margin-top:50px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    @media(max-width:700px) { .hero { padding:76px 0 55px; } .grid { grid-template-columns:1fr; margin-bottom:50px; } header { align-items:flex-start; flex-direction:column; } }
+    @media(prefers-reduced-motion:no-preference) { .hero { animation:arrive .55s cubic-bezier(.2,.7,.2,1) both; } @keyframes arrive { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <a class="brand" href="#top" aria-label="MultiSwitcher">
+      <span class="mark" aria-hidden="true">AЯ</span><span>MultiSwitcher</span>
+    </a>
+    <nav aria-label="Навигация">
+      <a href="#how">Как работает</a><a href="#privacy">Приватность</a><a href="#support">Поддержка</a>
+      <a href="#" id="language" lang="en">English</a>
+    </nav>
+  </header>
+
+  <div class="hero" id="top">
+    <div class="eyebrow" id="eyebrow">Нативная утилита для macOS · Apple Silicon</div>
+    <h1 id="headline">Печатай.<br>Мы поправим раскладку.</h1>
+    <p class="lead" id="lead">MultiSwitcher помогает исправить текст, набранный не в той раскладке, сохраняя привычный контроль и ваши личные правила.</p>
+    <div class="actions">
+      <a class="button" id="download" href="https://github.com/SokolovMO/MultiSwitcher/releases" aria-disabled="true">Проверяем последний выпуск…</a>
+      <a id="all-releases" href="https://github.com/SokolovMO/MultiSwitcher/releases">Все версии</a>
+    </div>
+    <p class="subtle" id="requirements">Для macOS 15 и новее на Apple Silicon. Публичная альфа может содержать ошибки; перед установкой прочитайте известные ограничения.</p>
+  </div>
+
+  <div class="grid" id="how">
+    <article class="card"><h2 id="feature-one-title">Исправление раскладки</h2><p id="feature-one">`ghbdtn` превращается в «привет» после границы слова. Спорные варианты остаются под вашим контролем.</p></article>
+    <article class="card"><h2 id="feature-two-title">Локальная работа</h2><p id="feature-two">Текст, правила и словари обрабатываются на Mac. Никакой фоновой синхронизации набранных слов.</p></article>
+    <article class="card"><h2 id="feature-three-title">Свои правила</h2><p id="feature-three">Импортируйте Punto-профиль, редактируйте исключения и откатывайте изменения профиля.</p></article>
+  </div>
+
+  <section id="privacy"><h2 id="privacy-title">Приватность и ввод</h2><p id="privacy-copy">Для горячих клавиш и замены текста macOS запрашивает Input Monitoring и Accessibility. Отчёты о сбоях выключены, пока вы отдельно не согласитесь. Текст не отправляется автоматически. Политика описывает, какие данные могут участвовать в диагностике.</p><a href="https://github.com/SokolovMO/MultiSwitcher/blob/main/PRIVACY.md" id="privacy-link">Политика приватности →</a></section>
+  <section><h2 id="limits-title">Перед установкой</h2><p id="limits-copy">Это тестовый выпуск. Совместимость и поведение зависят от конкретного приложения и поля ввода. Не используйте его для паролей или других защищённых данных. Если исправление выглядит неверно, нажмите отмену и сообщите о проблеме с синтетическим примером.</p><a href="https://github.com/SokolovMO/MultiSwitcher/blob/main/RELEASE.md" id="release-link">Статус готовности и ограничения →</a></section>
+  <section id="support"><h2 id="support-title">Нашли ошибку?</h2><p id="support-copy">Создайте issue с версиями MultiSwitcher и macOS, приложением и шагами воспроизведения. Не добавляйте реальные сообщения, приватные URL, пароли или необработанные логи.</p><a href="https://github.com/SokolovMO/MultiSwitcher/issues/new?template=bug_report.yml" id="support-link">Сообщить об ошибке →</a></section>
+
+  <footer><span>© 2026 MultiSwitcher</span><span><a href="https://github.com/SokolovMO/MultiSwitcher">GitHub</a> · <a href="https://github.com/SokolovMO/MultiSwitcher/blob/main/SECURITY.md">Безопасность</a></span></footer>
+</main>
+<script>
+(() => {
+  const en = {
+    title: "MultiSwitcher — switch layouts without the friction", eyebrow: "Native macOS utility · Apple Silicon",
+    headline: "Keep typing.<br>We’ll fix the layout.", lead: "MultiSwitcher helps correct text typed in the wrong keyboard layout while keeping your rules and the final say on your Mac.",
+    download: "Find latest test release…", all: "All releases", requirements: "macOS 15 or later on Apple Silicon. Public alpha builds can contain bugs; read known limitations before installing.",
+    features: [["Layout correction", "`ghbdtn` becomes “привет” at a word boundary. Ambiguous cases stay under your control."], ["Local processing", "Text, rules, and dictionaries are processed on your Mac. No background sync of typed words."], ["Your rules", "Import a Punto profile, edit exclusions, and restore profile backups." ]],
+    privacyTitle: "Privacy and input access", privacy: "macOS requests Input Monitoring and Accessibility for global shortcuts and text replacement. Crash reports stay off unless you opt in. Typed text is never uploaded automatically. The policy explains what may be included in diagnostics.", privacyLink: "Privacy policy →",
+    limitsTitle: "Before installing", limits: "This is a test release. Compatibility depends on the app and input field. Do not use it with passwords or other protected data. If a correction is wrong, undo it and report the issue with a synthetic example.", releaseLink: "Read release status and known limits →",
+    supportTitle: "Found a problem?", support: "Open an issue with MultiSwitcher and macOS versions, the affected app, and reproduction steps. Do not include real messages, private URLs, passwords, or raw logs.", supportLink: "Report a problem →", privacyNav: "Privacy", howNav: "How it works", supportNav: "Support", releases: "All releases", lang: "Русский"
+  };
+  const ru = {
+    title: "MultiSwitcher — раскладка без лишних движений", eyebrow: "Нативная утилита для macOS · Apple Silicon",
+    headline: "Печатай.<br>Мы поправим раскладку.", lead: "MultiSwitcher помогает исправить текст, набранный не в той раскладке, сохраняя привычный контроль и ваши личные правила.",
+    download: "Проверяем последний выпуск…", all: "Все версии", requirements: "Для macOS 15 и новее на Apple Silicon. Публичная альфа может содержать ошибки; перед установкой прочитайте известные ограничения.",
+    features: [["Исправление раскладки", "`ghbdtn` превращается в «привет» после границы слова. Спорные варианты остаются под вашим контролем."], ["Локальная работа", "Текст, правила и словари обрабатываются на Mac. Никакой фоновой синхронизации набранных слов."], ["Свои правила", "Импортируйте Punto-профиль, редактируйте исключения и откатывайте изменения профиля." ]],
+    privacyTitle: "Приватность и ввод", privacy: "Для горячих клавиш и замены текста macOS запрашивает Input Monitoring и Accessibility. Отчёты о сбоях выключены, пока вы отдельно не согласитесь. Текст не отправляется автоматически. Политика описывает, какие данные могут участвовать в диагностике.", privacyLink: "Политика приватности →",
+    limitsTitle: "Перед установкой", limits: "Это тестовый выпуск. Совместимость и поведение зависят от конкретного приложения и поля ввода. Не используйте его для паролей или других защищённых данных. Если исправление выглядит неверно, нажмите отмену и сообщите о проблеме с синтетическим примером.", releaseLink: "Статус готовности и ограничения →",
+    supportTitle: "Нашли ошибку?", support: "Создайте issue с версиями MultiSwitcher и macOS, приложением и шагами воспроизведения. Не добавляйте реальные сообщения, приватные URL, пароли или необработанные логи.", supportLink: "Сообщить об ошибке →", privacyNav: "Приватность", howNav: "Как работает", supportNav: "Поддержка", releases: "Все версии", lang: "English"
+  };
+  const setText = (id, value) => { document.getElementById(id).textContent = value; };
+  let language = "ru";
+  function render() {
+    const d = language === "ru" ? ru : en;
+    document.documentElement.lang = language;
+    document.title = d.title;
+    for (const [id,key] of [["eyebrow","eyebrow"],["lead","lead"],["download","download"],["all-releases","all"],["requirements","requirements"],["privacy-title","privacyTitle"],["privacy-copy","privacy"],["privacy-link","privacyLink"],["limits-title","limitsTitle"],["limits-copy","limits"],["release-link","releaseLink"],["support-title","supportTitle"],["support-copy","support"],["support-link","supportLink"],["language","lang"]]) setText(id,d[key]);
+    document.getElementById("headline").innerHTML = d.headline;
+    document.querySelector("nav a[href='#how']").textContent = d.howNav;
+    document.querySelector("nav a[href='#privacy']").textContent = d.privacyNav;
+    document.querySelector("nav a[href='#support']").textContent = d.supportNav;
+    [1,2,3].forEach((n,i) => { setText(`feature-${["one","two","three"][i]}-title`,d.features[i][0]); setText(`feature-${["one","two","three"][i]}`,d.features[i][1]); });
+  }
+  document.getElementById("language").addEventListener("click", e => { e.preventDefault(); language = language === "ru" ? "en" : "ru"; render(); });
+  render();
+  const button = document.getElementById("download");
+  fetch("https://api.github.com/repos/SokolovMO/MultiSwitcher/releases?per_page=20", {headers:{Accept:"application/vnd.github+json"}})
+    .then(r => { if (!r.ok) throw new Error("release lookup failed"); return r.json(); })
+    .then(releases => {
+      const release = releases.find(r => !r.draft && r.assets.some(a => /^MultiSwitcher-.*-arm64\.dmg$/i.test(a.name)));
+      if (!release) throw new Error("no published release");
+      const asset = release.assets.find(a => /^MultiSwitcher-.*-arm64\.dmg$/i.test(a.name));
+      button.href = asset.browser_download_url;
+      button.removeAttribute("aria-disabled");
+      button.textContent = language === "ru" ? `Скачать ${release.name || release.tag_name}` : `Download ${release.name || release.tag_name}`;
+    })
+    .catch(() => { button.href = "https://github.com/SokolovMO/MultiSwitcher/releases"; button.removeAttribute("aria-disabled"); button.textContent = language === "ru" ? "Релизов пока нет — открыть GitHub" : "No release yet — open GitHub"; });
+})();
+</script>
+</body>
+</html>

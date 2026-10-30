@@ -1,0 +1,41 @@
+.DS_Store
+.build/
+__pycache__/
+*.py[cod]
+
+# Local signing credentials and environment secrets
+*.p12
+*.pfx
+*.key
+*.pem
+*.mobileprovision
+*.provisionprofile
+.env
+.env.*
+!.env.example
+/Packages
+xcuserdata/
+DerivedData/
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.swiftpm/xcode/xcshareddata/
+*.xcodeproj
+*.app
+*.dmg
+*.zip
+.vscode/
+.claude/
+*.certSigningRequest
+_local_backups/
+
+# Local .NET tooling leftovers
+[Bb]in/
+[Oo]bj/
+*.user
+
+# Local-only development notes and agent instructions
+docs/
+!docs/
+docs/*
+!docs/index.html
+.agents/
+*.log
