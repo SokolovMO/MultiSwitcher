@@ -2589,6 +2589,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsController.closeSettingsWindow()
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        keyboardMonitor.stop()
+        perAppLayoutManager.stop()
+        guard textConverter.hasPendingReplacements else {
+            textConverter.flushPendingClipboardRestore()
+            return .terminateNow
+        }
+        Task { @MainActor [weak self] in
+            while self?.textConverter.hasPendingReplacements == true {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+            self?.textConverter.flushPendingClipboardRestore()
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         // Не теряем буфер обмена в 2-секундном окне отложенного восстановления
         // (актуально и при само-обновлении, которое завершает процесс).

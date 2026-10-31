@@ -215,7 +215,7 @@ if [[ "$ENABLE_UPDATES" == "1" ]]; then
     /usr/libexec/PlistBuddy -c "Add :MSGitHubRepository string $UPDATE_REPO" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :MSUpdateChannel string $UPDATE_CHANNEL" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :MSDeveloperTeamID string $DEVELOPER_TEAM_ID" "$INFO"
-    /usr/libexec/PlistBuddy -c "Add :SUFeedURL string https://sokolovmo.github.io/MultiSwitcher/appcast.xml" "$INFO"
+    /usr/libexec/PlistBuddy -c "Add :SUFeedURL string https://sokolovmo.github.io/multi-releases/MultiSwitcher/appcast.xml" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_KEY" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :SUEnableAutomaticChecks bool true" "$INFO"
     /usr/libexec/PlistBuddy -c "Add :SUAutomaticallyUpdate bool false" "$INFO"

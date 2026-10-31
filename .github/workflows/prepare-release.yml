@@ -1,0 +1,33 @@
+name: Prepare candidate
+run-name: candidate · ${{ inputs.channel }} · ${{ inputs.commit }}
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        type: string
+        required: true
+      channel:
+        type: choice
+        options: [beta, stable]
+        required: true
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: prepare-candidate
+  cancel-in-progress: false
+  queue: max
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Validate reviewed commit and dispatch build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_COMMIT: ${{ inputs.commit }}
+          CHANNEL: ${{ inputs.channel }}
+        run: python3 scripts/prepare_candidate.py --app MultiSwitcher --commit "$CANDIDATE_COMMIT" --channel "$CHANNEL"

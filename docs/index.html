@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ru">
 <head>
+  <meta http-equiv="refresh" content="0;url=https://sokolovmo.github.io/multi-releases/MultiSwitcher/">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
@@ -54,8 +55,8 @@
     <h1 id="headline">Печатай.<br>Мы поправим раскладку.</h1>
     <p class="lead" id="lead">MultiSwitcher помогает исправить текст, набранный не в той раскладке, сохраняя привычный контроль и ваши личные правила.</p>
     <div class="actions">
-      <a class="button" id="download" href="https://github.com/SokolovMO/MultiSwitcher/releases" aria-disabled="true">Проверяем последний выпуск…</a>
-      <a id="all-releases" href="https://github.com/SokolovMO/MultiSwitcher/releases">Все версии</a>
+      <a class="button" id="download" href="https://github.com/SokolovMO/multi-releases/releases" aria-disabled="true">Проверяем последний выпуск…</a>
+      <a id="all-releases" href="https://github.com/SokolovMO/multi-releases/releases">Все версии</a>
     </div>
     <p class="subtle" id="requirements">Для macOS 15 и новее на Apple Silicon. Публичная альфа может содержать ошибки; перед установкой прочитайте известные ограничения.</p>
   </div>
@@ -108,7 +109,7 @@
   document.getElementById("language").addEventListener("click", e => { e.preventDefault(); language = language === "ru" ? "en" : "ru"; render(); });
   render();
   const button = document.getElementById("download");
-  fetch("https://api.github.com/repos/SokolovMO/MultiSwitcher/releases?per_page=20", {headers:{Accept:"application/vnd.github+json"}})
+  fetch("https://api.github.com/repos/SokolovMO/multi-releases/releases?per_page=20", {headers:{Accept:"application/vnd.github+json"}})
     .then(r => { if (!r.ok) throw new Error("release lookup failed"); return r.json(); })
     .then(releases => {
       const release = releases.find(r => !r.draft && r.assets.some(a => /^MultiSwitcher-.*-arm64\.dmg$/i.test(a.name)));
@@ -118,7 +119,7 @@
       button.removeAttribute("aria-disabled");
       button.textContent = language === "ru" ? `Скачать ${release.name || release.tag_name}` : `Download ${release.name || release.tag_name}`;
     })
-    .catch(() => { button.href = "https://github.com/SokolovMO/MultiSwitcher/releases"; button.removeAttribute("aria-disabled"); button.textContent = language === "ru" ? "Релизов пока нет — открыть GitHub" : "No release yet — open GitHub"; });
+    .catch(() => { button.href = "https://github.com/SokolovMO/multi-releases/releases"; button.removeAttribute("aria-disabled"); button.textContent = language === "ru" ? "Релизов пока нет — открыть GitHub" : "No release yet — open GitHub"; });
 })();
 </script>
 </body>

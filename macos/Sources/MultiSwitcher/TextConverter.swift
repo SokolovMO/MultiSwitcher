@@ -12,6 +12,7 @@ final class TextConverter {
     private var savedClipboardChangeCount: Int?
     private var ownedClipboardChangeCount: Int?
     private var clipboardRestoreWork: DispatchWorkItem?
+    var hasPendingReplacements: Bool { isConverting || replacementQueue.isActive || replacementQueue.pendingCount > 0 }
     private var isConverting = false
     // Repeated Option taps and rapid word boundaries must survive normal bursts.
     // Keep a hard cap to avoid unbounded stale work when an app stops responding.
