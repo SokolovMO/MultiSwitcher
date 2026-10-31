@@ -1939,7 +1939,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsItem.keyEquivalentModifierMask = .command
         settingsItem.target = self
         settingsItem.image = nil
+        #if compiler(>=6.4)
+        // This property is declared only by the macOS 27 SDK, not older SDKs.
         if #available(macOS 27.0, *) { settingsItem.preferredImageVisibility = .hidden }
+        #endif
         appMenu.addItem(settingsItem)
 
         let closeWindowItem = NSMenuItem(title: L10n.menuCloseWindow,
@@ -2095,7 +2098,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let settingsItem = NSMenuItem(title: L10n.menuSettings, action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         settingsItem.image = nil
+        #if compiler(>=6.4)
+        // This property is declared only by the macOS 27 SDK, not older SDKs.
         if #available(macOS 27.0, *) { settingsItem.preferredImageVisibility = .hidden }
+        #endif
         menu.addItem(settingsItem)
         let helpItem = NSMenuItem(title: L10n.languageCode == "ru" ? "справка" : "help", action: #selector(showHelp), keyEquivalent: "")
         helpItem.target = self
@@ -2587,6 +2593,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func closeSettingsWindow() {
         settingsController.closeSettingsWindow()
+    }
+
+    func postponeUpdateRelaunch(_ installHandler: @escaping () -> Void) -> Bool {
+        keyboardMonitor.stop()
+        perAppLayoutManager.stop()
+        guard textConverter.hasPendingReplacements else { return false }
+        Task { @MainActor [weak self] in
+            while self?.textConverter.hasPendingReplacements == true {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+            self?.textConverter.flushPendingClipboardRestore()
+            installHandler()
+        }
+        return true
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        keyboardMonitor.stop()
+        perAppLayoutManager.stop()
+        guard textConverter.hasPendingReplacements else {
+            textConverter.flushPendingClipboardRestore()
+            return .terminateNow
+        }
+        Task { @MainActor [weak self] in
+            while self?.textConverter.hasPendingReplacements == true {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+            self?.textConverter.flushPendingClipboardRestore()
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 
     func applicationWillTerminate(_ notification: Notification) {

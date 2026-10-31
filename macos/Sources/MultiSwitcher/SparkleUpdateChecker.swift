@@ -9,6 +9,12 @@ private final class MultiSwitcherUpdaterDelegate: NSObject, SPUUpdaterDelegate {
     func allowedChannels(for updater: SPUUpdater) -> Set<String> {
         SettingsManager.shared.updateChannel == .beta ? ["beta"] : []
     }
+
+    @objc(updater:shouldPostponeRelaunchForUpdate:untilInvokingBlock:)
+    func updater(_ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem,
+                 untilInvokingBlock installHandler: @escaping () -> Void) -> Bool {
+        (NSApplication.shared.delegate as? AppDelegate)?.postponeUpdateRelaunch(installHandler) ?? false
+    }
 }
 
 /// Sparkle is linked only in distribution builds. Developer review builds do not
@@ -24,7 +30,7 @@ enum UpdateChecker {
               let feed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String,
               let url = URL(string: feed), url.scheme == "https",
               url.host == "sokolovmo.github.io",
-              url.path == "/MultiSwitcher/appcast.xml" else { return false }
+              url.path == "/multi-releases/MultiSwitcher/appcast.xml" else { return false }
         return true
     }
 
@@ -60,12 +66,14 @@ enum UpdateChecker {
         let delegate = MultiSwitcherUpdaterDelegate()
         updaterDelegate = delegate // SPUStandardUpdaterController holds delegates weakly.
         controller = SPUStandardUpdaterController(
+            startingUpdater: false,
             updaterDelegate: delegate,
             userDriverDelegate: nil
         )
         controller?.updater.automaticallyChecksForUpdates = SettingsManager.shared.checkUpdatesEnabled
         // Never silently install an update. Sparkle presents its standard confirmation UI.
         controller?.updater.automaticallyDownloadsUpdates = false
+        controller?.startUpdater()
     }
 }
 #endif

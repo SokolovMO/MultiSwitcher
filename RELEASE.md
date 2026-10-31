@@ -1,3 +1,17 @@
+# release candidate implementation — 2026-11-01
+
+Current source metadata: 0.4.0 (64). This is not a published release.
+
+- Candidate dispatch is available through prepare-release.yml; exact main commit and successful push CI are required.
+- Sparkle uses the centralized public feed at https://sokolovmo.github.io/multi-releases/MultiSwitcher/appcast.xml.
+- Source workflow creates an immutable draft with manifest and corresponding source. Delivery is performed by multi-releases after artifact-bound acceptance.
+- Shutdown stops keyboard monitoring, waits for pending text replacements and restores owned clipboard data before termination. Physical relaunch acceptance is still required.
+- First pilot disables crash reporting.
+- Source artifacts, signing and end-to-end update checks are not certified by this change. Apple Developer enrollment is not yet available.
+- Later UI geometry/menu evidence is in the shared October 24 QA reports; the historical report below must not be used as the current installed-build status.
+
+---
+
 # Public Alpha 1 readiness
 
 Last verified locally: 2026-10-23. This document describes source preparation, not a published release.

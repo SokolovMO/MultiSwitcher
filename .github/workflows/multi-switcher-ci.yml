@@ -17,6 +17,8 @@ jobs:
     runs-on: ${{ matrix.macos }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Check artifact-bound release acceptance
+        run: python3 -m unittest discover -s tests/release -v
       - name: Run core checks
         run: swift run --package-path macos MultiSwitcherCoreTests
       - name: Check signed appcast release gate

@@ -1,6 +1,7 @@
 name: MultiSwitcher signed release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -8,10 +9,12 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: multiswitcher-release-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   release:
@@ -23,6 +26,11 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
+
+      - name: Check exact main CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/check_release_source.py
 
       - name: Check release configuration and version
         id: release_config
@@ -50,20 +58,7 @@ jobs:
           for name in CERTIFICATE CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD TEAM_ID SIGNING_IDENTITY SPARKLE_PUBLIC_KEY; do
             if [[ -z "${!name}" ]]; then echo "Missing required GitHub environment secret or variable: $name" >&2; exit 1; fi
           done
-          crash_values=("$CRASH_REPORT_DSN" "$SENTRY_ORG" "$SENTRY_PROJECT" "$SENTRY_AUTH_TOKEN")
-          configured_crash_values=0
-          for value in "${crash_values[@]}"; do [[ -z "$value" ]] || ((configured_crash_values+=1)); done
-          if [[ "$configured_crash_values" == "0" ]]; then
-            crash_reporting=0
-          elif [[ "$configured_crash_values" == "4" ]]; then
-            [[ "$CRASH_REPORT_DSN" =~ ^https://[^/@]+@[^/]+/[0-9]+$ ]] || { echo "MULTISWITCHER_SENTRY_DSN must be an HTTPS Sentry project DSN." >&2; exit 1; }
-            [[ "$SENTRY_ORG" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || { echo "MULTISWITCHER_SENTRY_ORG_SLUG must be a valid Sentry organization slug." >&2; exit 1; }
-            [[ "$SENTRY_PROJECT" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || { echo "MULTISWITCHER_SENTRY_PROJECT_SLUG must be a valid Sentry project slug." >&2; exit 1; }
-            crash_reporting=1
-          else
-            echo "Crash reporting must be configured completely or left disabled: set all four Sentry values or none." >&2
-            exit 1
-          fi
+          crash_reporting=0
           version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
           build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
           [[ "$build_number" =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "CFBundleVersion must be numeric." >&2; exit 1; }
@@ -136,7 +131,7 @@ jobs:
           MULTISWITCHER_ENABLE_CRASH_REPORTING: ${{ steps.release_config.outputs.crash_reporting }}
           MULTISWITCHER_GITHUB_REPOSITORY: ${{ github.repository }}
           MULTISWITCHER_UPDATE_CHANNEL: ${{ steps.release_config.outputs.channel }}
-          MULTISWITCHER_SENTRY_DSN: ${{ vars.MULTISWITCHER_SENTRY_DSN }}
+          MULTISWITCHER_SENTRY_DSN: ""
           MULTISWITCHER_DEVELOPER_TEAM_ID: ${{ vars.MULTISWITCHER_DEVELOPER_TEAM_ID }}
           MULTISWITCHER_SPARKLE_PUBLIC_KEY: ${{ vars.MULTISWITCHER_SPARKLE_PUBLIC_KEY }}
           MULTISWITCHER_SIGN_IDENTITY: ${{ vars.MULTISWITCHER_DEVELOPER_ID_SIGNING_IDENTITY }}
@@ -201,49 +196,19 @@ jobs:
           /usr/bin/xcrun stapler validate "$DMG"
           /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
 
-      - name: Generate signed appcast and draft release
+      - name: Create immutable draft with source and manifest
         env:
-          SPARKLE_PRIVATE_KEY_BASE64: ${{ secrets.MULTISWITCHER_SPARKLE_PRIVATE_KEY_BASE64 }}
+          MULTISWITCHER_SPARKLE_PUBLIC_KEY: ${{ vars.MULTISWITCHER_SPARKLE_PUBLIC_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          [[ -n "$SPARKLE_PRIVATE_KEY_BASE64" ]] || { echo "Missing Sparkle private-key export." >&2; exit 1; }
-          printf '%s' "$SPARKLE_PRIVATE_KEY_BASE64" | /usr/bin/base64 -D >/dev/null || {
-            echo "MULTISWITCHER_SPARKLE_PRIVATE_KEY_BASE64 is not valid base64." >&2; exit 1;
-          }
-          private_key_bytes="$(printf '%s' "$SPARKLE_PRIVATE_KEY_BASE64" | /usr/bin/base64 -D | /usr/bin/wc -c | /usr/bin/tr -d ' ')"
-          [[ "$private_key_bytes" -gt 0 ]] || { echo "Sparkle private key export is empty." >&2; exit 1; }
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' macos/Info.plist)
           BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' macos/Info.plist)
-          CHANNEL="$MULTISWITCHER_RELEASE_CHANNEL"
           DMG="$RUNNER_TEMP/MultiSwitcher-$VERSION-arm64.dmg"
-          SPARKLE_BIN="$(find "$RUNNER_TEMP/MultiSwitcher-release-build" -type f -name generate_appcast -print -quit)"
-          [[ -x "$SPARKLE_BIN" ]] || { echo "Sparkle generate_appcast tool is missing from the resolved package." >&2; exit 1; }
-          FEED_DIR="$RUNNER_TEMP/sparkle-feed"
-          mkdir -m 700 -p "$FEED_DIR"
-          FEED_URL="https://sokolovmo.github.io/MultiSwitcher/appcast.xml"
-          HTTP_STATUS="$(curl -sS -L -o "$FEED_DIR/appcast.xml" -w '%{http_code}' "$FEED_URL")"
-          if [[ "$HTTP_STATUS" == "404" ]]; then
-            rm -f "$FEED_DIR/appcast.xml"
-          elif [[ "$HTTP_STATUS" != "200" ]]; then
-            echo "Could not retrieve the existing signed Sparkle feed (HTTP $HTTP_STATUS)." >&2; exit 1
-          fi
-          cp "$DMG" "$FEED_DIR/"
-          APPCAST_ARGS=(--ed-key-file - --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" --link "$FEED_URL")
-          if [[ "$CHANNEL" == "beta" ]]; then APPCAST_ARGS+=(--channel beta); fi
-          printf '%s' "$SPARKLE_PRIVATE_KEY_BASE64" | /usr/bin/base64 -D | \
-            "$SPARKLE_BIN" "${APPCAST_ARGS[@]}" "$FEED_DIR"
-          python3 scripts/validate_sparkle_appcast.py \
-            --appcast "$FEED_DIR/appcast.xml" --version "$VERSION" \
-            --build-number "$BUILD_NUMBER" --tag "$GITHUB_REF_NAME" \
-            --repository "$GITHUB_REPOSITORY" --channel "$CHANNEL"
-          python3 scripts/create_update_manifest.py \
-            --version "$VERSION" --build-number "$BUILD_NUMBER" --tag "$GITHUB_REF_NAME" \
-            --channel "$CHANNEL" \
-            --repository "$GITHUB_REPOSITORY" \
-            --dmg "$DMG" --output "$RUNNER_TEMP/version.json"
-          RELEASE_ARGS=("$GITHUB_REF_NAME" "$DMG" "$RUNNER_TEMP/version.json" "$FEED_DIR/appcast.xml" --verify-tag --draft --title "MultiSwitcher $VERSION ($CHANNEL)" --generate-notes)
-          if [[ "$CHANNEL" == "beta" ]]; then RELEASE_ARGS+=(--prerelease); fi
+          python3 scripts/release_manifest.py create --app MultiSwitcher --version "$VERSION" --build "$BUILD_NUMBER" --commit "$GITHUB_SHA" --channel "$MULTISWITCHER_RELEASE_CHANNEL" --minimum-os 15.0 --updater-key "$MULTISWITCHER_SPARKLE_PUBLIC_KEY" --artifact "$DMG" > "$RUNNER_TEMP/manifest.json"
+          git archive --format=tar.gz --output="$RUNNER_TEMP/source.tar.gz" HEAD macos scripts dicts LICENSE THIRD-PARTY-NOTICES.md README.md
+          RELEASE_ARGS=("$GITHUB_REF_NAME" "$DMG" "$RUNNER_TEMP/manifest.json" "$RUNNER_TEMP/source.tar.gz" LICENSE THIRD-PARTY-NOTICES.md --verify-tag --draft --title "MultiSwitcher $VERSION ($MULTISWITCHER_RELEASE_CHANNEL)" --generate-notes)
+          if [[ "$MULTISWITCHER_RELEASE_CHANNEL" == "beta" ]]; then RELEASE_ARGS+=(--prerelease); fi
           gh release create "${RELEASE_ARGS[@]}"
 
       - name: Remove signing material

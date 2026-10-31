@@ -509,21 +509,28 @@ struct MultiNavigationItem: Equatable {
         guard animated, !reduceMotionOverride, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, window?.isVisible == true else {
             progressVelocity = 0; applyProgress(target); resizesWindow = false; return
         }
-        let start = progress; let velocity = progressVelocity
-        let startTime = ProcessInfo.processInfo.systemUptime
-        let animation = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
+        // Keep spring arithmetic in Double; mixing CGFloat and Double here
+        // exhausts the type solver in older supported Swift toolchains.
+        let start: Double = Double(progress)
+        let velocity: Double = Double(progressVelocity)
+        let destination: Double = Double(target)
+        let duration: Double = MultiDesign.sidebarDuration
+        let startTime: Double = ProcessInfo.processInfo.systemUptime
+        let animation = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
             guard let self else { timer.invalidate(); return }
             MainActor.assumeIsolated {
-                let t = min(1, (ProcessInfo.processInfo.systemUptime - startTime) / MultiDesign.sidebarDuration)
-                let spring = (1 - (1 + 9 * t) * exp(-9 * t)) / (1 - 10 * exp(-9.0))
-                let continuation = velocity * MultiDesign.sidebarDuration * t * pow(1 - t, 2)
-                let raw = start + (target - start) * spring + continuation
-                let value = min(1, max(0, raw))
-                self.progressVelocity = value == raw
-                    ? (target - start) * 81 * t * exp(-9 * t) / (1 - 10 * exp(-9.0)) / MultiDesign.sidebarDuration
-                        + velocity * (1 - 4 * t + 3 * t * t) : 0
-                self.applyProgress(value)
-                if t >= 1 { self.timer?.invalidate(); self.timer = nil; self.progressVelocity = 0; self.applyProgress(target); self.resizesWindow = false }
+                let t: Double = min(1.0, (ProcessInfo.processInfo.systemUptime - startTime) / duration)
+                let decay: Double = exp(-9.0 * t)
+                let normalization: Double = 1.0 - 10.0 * exp(-9.0)
+                let spring: Double = (1.0 - (1.0 + 9.0 * t) * decay) / normalization
+                let continuation: Double = velocity * duration * t * pow(1.0 - t, 2.0)
+                let raw: Double = start + (destination - start) * spring + continuation
+                let value: Double = min(1.0, max(0.0, raw))
+                let baseVelocity: Double = (destination - start) * 81.0 * t * decay / normalization / duration
+                let carriedVelocity: Double = velocity * (1.0 - 4.0 * t + 3.0 * t * t)
+                self.progressVelocity = CGFloat(value == raw ? baseVelocity + carriedVelocity : 0.0)
+                self.applyProgress(CGFloat(value))
+                if t >= 1.0 { self.timer?.invalidate(); self.timer = nil; self.progressVelocity = 0; self.applyProgress(target); self.resizesWindow = false }
             }
         }
         timer = animation; RunLoop.main.add(animation, forMode: .common)
