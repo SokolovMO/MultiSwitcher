@@ -9,6 +9,12 @@ private final class MultiSwitcherUpdaterDelegate: NSObject, SPUUpdaterDelegate {
     func allowedChannels(for updater: SPUUpdater) -> Set<String> {
         SettingsManager.shared.updateChannel == .beta ? ["beta"] : []
     }
+
+    @objc(updater:shouldPostponeRelaunchForUpdate:untilInvokingBlock:)
+    func updater(_ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem,
+                 untilInvokingBlock installHandler: @escaping () -> Void) -> Bool {
+        (NSApplication.shared.delegate as? AppDelegate)?.postponeUpdateRelaunch(installHandler) ?? false
+    }
 }
 
 /// Sparkle is linked only in distribution builds. Developer review builds do not

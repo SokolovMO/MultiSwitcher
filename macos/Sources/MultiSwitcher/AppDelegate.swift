@@ -2595,6 +2595,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsController.closeSettingsWindow()
     }
 
+    func postponeUpdateRelaunch(_ installHandler: @escaping () -> Void) -> Bool {
+        keyboardMonitor.stop()
+        perAppLayoutManager.stop()
+        guard textConverter.hasPendingReplacements else { return false }
+        Task { @MainActor [weak self] in
+            while self?.textConverter.hasPendingReplacements == true {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+            self?.textConverter.flushPendingClipboardRestore()
+            installHandler()
+        }
+        return true
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         keyboardMonitor.stop()
         perAppLayoutManager.stop()
