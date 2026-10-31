@@ -1939,7 +1939,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsItem.keyEquivalentModifierMask = .command
         settingsItem.target = self
         settingsItem.image = nil
+        #if compiler(>=6.4)
+        // This property is declared only by the macOS 27 SDK, not older SDKs.
         if #available(macOS 27.0, *) { settingsItem.preferredImageVisibility = .hidden }
+        #endif
         appMenu.addItem(settingsItem)
 
         let closeWindowItem = NSMenuItem(title: L10n.menuCloseWindow,
@@ -2095,7 +2098,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let settingsItem = NSMenuItem(title: L10n.menuSettings, action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         settingsItem.image = nil
+        #if compiler(>=6.4)
+        // This property is declared only by the macOS 27 SDK, not older SDKs.
         if #available(macOS 27.0, *) { settingsItem.preferredImageVisibility = .hidden }
+        #endif
         menu.addItem(settingsItem)
         let helpItem = NSMenuItem(title: L10n.languageCode == "ru" ? "справка" : "help", action: #selector(showHelp), keyEquivalent: "")
         helpItem.target = self

@@ -519,9 +519,12 @@ struct MultiNavigationItem: Equatable {
                 let continuation = velocity * MultiDesign.sidebarDuration * t * pow(1 - t, 2)
                 let raw = start + (target - start) * spring + continuation
                 let value = min(1, max(0, raw))
-                self.progressVelocity = value == raw
-                    ? (target - start) * 81 * t * exp(-9 * t) / (1 - 10 * exp(-9.0)) / MultiDesign.sidebarDuration
-                        + velocity * (1 - 4 * t + 3 * t * t) : 0
+                let decay: Double = exp(-9.0 * t)
+                let normalization: Double = 1.0 - 10.0 * exp(-9.0)
+                let baseVelocity: Double = (target - start) * 81.0 * t * decay
+                    / normalization / MultiDesign.sidebarDuration
+                let carriedVelocity: Double = velocity * (1.0 - 4.0 * t + 3.0 * t * t)
+                self.progressVelocity = value == raw ? baseVelocity + carriedVelocity : 0
                 self.applyProgress(value)
                 if t >= 1 { self.timer?.invalidate(); self.timer = nil; self.progressVelocity = 0; self.applyProgress(target); self.resizesWindow = false }
             }
