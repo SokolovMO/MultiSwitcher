@@ -1,4 +1,4 @@
 interface:
   display_name: "Оформление GitHub-приложений"
-  short_description: "Единое оформление репозиториев приложений на GitHub"
-  default_prompt: "Используй $github-app-presentation, чтобы оформить репозиторий приложения и проверить опубликованный результат."
+  short_description: "Оформление GitHub и короткие видеопревью приложений"
+  default_prompt: "Используй $github-app-presentation, чтобы оформить репозиторий или сделать короткое видеопревью приложения и проверить результат."
