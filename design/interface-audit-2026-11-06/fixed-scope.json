@@ -1,0 +1,101 @@
+[
+  {
+    "id": "UI-01",
+    "severity": "HIGH",
+    "title": "Поиск: ввод налезает на лупу",
+    "location": "DesignSystem.swift",
+    "before": "Реальный field editor начинался в x=2,y=0, а лупа занимала x=8..24. Воспроизведено 8 раз.",
+    "after": "Штатная ячейка NSSearchField, единая высота и фокус.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-02",
+    "severity": "HIGH",
+    "title": "Обрезание кнопки Sparkle",
+    "location": "DesignSystem.swift",
+    "before": "На присланном снимке временного предпросмотра оставалось Install and. Ранняя отрисовка заменяла native cell; последующие попытки компенсировали это отступами.",
+    "after": "Сохранена native NSButtonCell; графит задаётся bezelColor, метрики/действие/Enter принадлежат AppKit.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-03",
+    "severity": "MEDIUM",
+    "title": "Окно обновления не следует языку приложения",
+    "location": "Localization.swift",
+    "before": "В .app отсутствовали CFBundleLocalizations/AllowMixedLocalizations; отдельный тест выбирал en вместо ru.",
+    "after": "Метаданные локализаций и process-local AppleLanguages до инициализации AppKit; RU/EN проверены на релизном бинарнике.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-04",
+    "severity": "MEDIUM",
+    "title": "У полей и списков нет понятного имени для доступности",
+    "location": "UserRuleEditor.swift",
+    "before": "В редакторе четыре поля имели пустую accessibilityLabel; пять popup основных настроек также без подписи. Полное прохождение VoiceOver не выполнялось; это проверка явных подписей AppKit.",
+    "after": "Явные подписи поиска и полей; общий settingsFormRow связывает название с контролом.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-05",
+    "severity": "HIGH",
+    "title": "Недостаточный контраст вторичного текста в светлой теме",
+    "location": "DesignSystem.swift",
+    "before": "Измеренная secondaryLabelColor с alpha 0.498 на поверхности 0.995 даёт 3.94:1.",
+    "after": "DesignPalette.secondary для подсказок и динамических строк: значения 0.38/0.66 дают расчётный минимум 4.83:1/4.94:1 на стандартном выделении. Регрессия измеряет цвета AppKit в обеих темах.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-06",
+    "severity": "HIGH",
+    "title": "Стиль таблиц зависит от порядка открытия страниц",
+    "location": "SettingsWindowController.swift",
+    "before": "NSTabView монтирует только текущую страницу; одноразовый обход не стилизовал остальные, на матрице выделение отличалось.",
+    "after": "Применение DesignStyler при каждом didSelect; отдельная регрессия выделения Learning.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-07",
+    "severity": "MEDIUM",
+    "title": "Нельзя прочитать длинное слово в обучении/исключении",
+    "location": "LearningListEditor.swift",
+    "before": "Обрезание хвостом, tooltip отсутствовал; строка не редактируется.",
+    "after": "Полное значение доступно в подсказке; для приложения также показывается bundle ID.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-08",
+    "severity": "MEDIUM",
+    "title": "Ручная ширина колонок правил сбрасывается",
+    "location": "UserRuleEditor.swift",
+    "before": "RuleScrollView.tile каждый раз заново назначал фиксированные пропорции.",
+    "after": "Распределение только при изменении viewport; ручные пропорции и горизонтальная прокрутка сохраняются. Регрессия в InteractionChecks.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-09",
+    "severity": "MEDIUM",
+    "title": "Обновление спрятано, номер сборки не виден",
+    "location": "SettingsWindowController.swift",
+    "before": "В О приложении показывалась только 0.4.0, а кнопка обновления была внутри технического disclosure.",
+    "after": "Сборка в версии, обновление и автопроверка видимы в основной карточке.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-10",
+    "severity": "MEDIUM",
+    "title": "Устаревшие и английские сообщения",
+    "location": "Localization.swift",
+    "before": "О приложении ошибочно указывало GitHub и несуществующий переключатель отчётов; лог и feed имели только английские тексты.",
+    "after": "Актуальный адрес сервера, русская инструкция создания журнала и локализованные RU/EN описания appcast.",
+    "status": "fixed and verified in build 70"
+  },
+  {
+    "id": "UI-11",
+    "severity": "LOW",
+    "title": "Отключённый custom popup выглядит включённым",
+    "location": "DesignSystem.swift",
+    "before": "Custom draw игнорировал isEnabled.",
+    "after": "Отключённый текст и стрелка используют вторичный цвет.",
+    "status": "fixed and verified in build 70"
+  }
+]

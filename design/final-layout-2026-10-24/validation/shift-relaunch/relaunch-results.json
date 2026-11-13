@@ -1,0 +1,17 @@
+{
+  "actual" : [
+    48,
+    269,
+    840,
+    618
+  ],
+  "autosaveName" : "MultiShift.SettingsWindow.review",
+  "expected" : [
+    48,
+    269,
+    840,
+    618
+  ],
+  "freshProcess" : true,
+  "passed" : true
+}

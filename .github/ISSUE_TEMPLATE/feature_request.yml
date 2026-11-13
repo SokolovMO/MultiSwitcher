@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest a focused improvement to MultiSwitcher.
+title: "[Feature]: "
+labels: [enhancement, needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem should this solve?
+      description: Describe the task or workflow, not private text.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like MultiSwitcher to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have tried
+    validations:
+      required: false

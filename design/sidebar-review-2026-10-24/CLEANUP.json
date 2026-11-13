@@ -1,0 +1,11 @@
+{
+  "removed": [
+    "/private/tmp/multi-sidebar-fix/MultiSwitcher.old",
+    "/private/tmp/multi-sidebar-fix/MultiShift.old",
+    "/private/tmp/multi-sidebar-fix/switcher",
+    "/private/tmp/multi-sidebar-fix/shift",
+    "/private/tmp/multi-sidebar-fix/shift-cache",
+    "/private/tmp/multi-sidebar-fix/tests"
+  ],
+  "currentArchivesMatchInstalledBinaries": true
+}

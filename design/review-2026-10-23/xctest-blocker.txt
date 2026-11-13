@@ -1,0 +1,43 @@
+Building for production...
+[Constructing description]
+[Planning deferred tasks]
+[13 / 34]
+[14 / 35] MultiSwitcherCore
+[24 / 93]
+[26 / 93]
+[28 / 93]
+[31 / 93]
+[34 / 93]
+[35 / 93]
+[36 / 93]
+[39 / 93]
+[40 / 93]
+[41 / 93]
+[42 / 93]
+[43 / 93]
+[45 / 93]
+[46 / 93]
+[49 / 93]
+[50 / 93]
+[51 / 93]
+[52 / 93]
+[53 / 93]
+[59 / 93]
+[60 / 93]
+[64 / 93]
+[65 / 93]
+[66 / 93]
+[68 / 93]
+[69 / 93]
+[70 / 93]
+[72 / 93]
+[73 / 93] MultiSwitcherCore
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Package.swift: MultiSwitcherCore: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[79 / 96] MultiSwitcherCore
+[82 / 98] MultiSwitcherCoreTests-product
+error: clang dependency scanning failure: 
+error: /private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Tests/MultiSwitcherCoreUnitTests/CorrectionReliabilityTests.swift:1:8 unable to resolve module dependency: 'XCTest'
+error: SwiftDriver MultiSwitcherCoreUnitTests normal arm64 com.apple.xcode.tools.swift.compiler failed with a nonzero exit code. Command line:     cd /private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue
+    builtin-SwiftDriver -- /Library/Developer/CommandLineTools/usr/bin/swiftc -parse-as-library -module-name MultiSwitcherCoreUnitTests -O -whole-module-optimization @/private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/MultiSwitcher.build/Release/MultiSwitcherCoreUnitTests-p.build/Objects-normal/arm64/MultiSwitcherCoreUnitTests.SwiftFileList -DSWIFT_PACKAGE -DXcode -enable-experimental-feature DebugDescriptionMacro -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX27.0.sdk -target arm64-apple-macos15.0 -module-cache-path /private/tmp/multiswitcher-core-checks/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -disable-sandbox -enable-testing -swift-version 6 -I /private/tmp/multiswitcher-core-checks/out/Products/Release -Isystem /Library/Developer/CommandLineTools/Developer/usr/lib -F /private/tmp/multiswitcher-core-checks/out/Products/Release/PackageFrameworks -F /private/tmp/multiswitcher-core-checks/out/Products/Release -F /Library/Developer/CommandLineTools/Library/Developer/Frameworks -F /Library/Developer/CommandLineTools/Developer/Library/Frameworks -c -num-threads 10 -Xcc -ivfsstatcache -Xcc /private/tmp/multiswitcher-core-checks/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f6549ffd68ff603bdaacc80b00cb8898de72d.sdkstatcache -output-file-map /private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/MultiSwitcher.build/Release/MultiSwitcherCoreUnitTests-p.build/Objects-normal/arm64/MultiSwitcherCoreUnitTests-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /private/tmp/multiswitcher-core-checks/out/ModuleCache.noindex -sdk-module-cache-path /private/tmp/multiswitcher-core-checks/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/MultiSwitcher.build/Release/MultiSwitcherCoreUnitTests-p.build/Objects-normal/arm64/MultiSwitcherCoreUnitTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/MultiSwitcher.build/Release/MultiSwitcherCoreUnitTests-p.build/Objects-normal/arm64/MultiSwitcherCoreUnitTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /private/tmp/multiswitcher-core-checks/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name package -emit-const-values -const-gather-protocols-list /private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/MultiSwitcher.build/Release/MultiSwitcherCoreUnitTests-p.build/Objects-normal/arm64/MultiSwitcherCoreUnitTests_const_extract_protocols.json -Xcc -I/private/tmp/multiswitcher-core-checks/out/Products/Release/include -Xcc -I/private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/MultiSwitcher.build/Release/MultiSwitcherCoreUnitTests-p.build/DerivedSources-normal/arm64 -Xcc -I/private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/MultiSwitcher.build/Release/MultiSwitcherCoreUnitTests-p.build/DerivedSources/arm64 -Xcc -I/private/tmp/multiswitcher-core-checks/out/Intermediates.noindex/MultiSwitcher.build/Release/MultiSwitcherCoreUnitTests-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -working-directory /private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue -no-emit-module-separately-wmo
+error: Build failed
+error: fatalError

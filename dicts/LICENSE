@@ -1,0 +1,15 @@
+# Bundled English and Russian word lists
+
+The en.v1.deflate and ru.v1.deflate packs in this directory are distributed in the repository and bundled into MultiSwitcher.app.
+
+## Source and license
+
+The lists are derived from FrequencyWords by Hermit Dave (https://github.com/hermitdave/FrequencyWords), built from the OpenSubtitles 2018 corpus (https://opus.nlpl.eu/OpenSubtitles2018.php).
+
+The word-list data is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0): https://creativecommons.org/licenses/by-sa/4.0/. This notice and the license link are included in the app bundle.
+
+## Changes
+
+The source lists were filtered to lowercase words of three or more letters, keeping the top 30,000 English and 50,000 Russian entries by frequency, then encoded as raw DEFLATE data. Pack sizes, entry counts, and SHA-256 hashes are recorded in manifest.json. The build validates these values and unpacks the lists locally.
+
+This license applies to the derived word-list data, not the application code. The application code is distributed under the MIT License in the repository root.

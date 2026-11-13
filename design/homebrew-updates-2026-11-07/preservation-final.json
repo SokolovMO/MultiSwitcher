@@ -1,0 +1,12 @@
+{
+  "switcher_profile_byte_identical": true,
+  "shift_history_semantically_identical": true,
+  "MultiShift_changed_preference_keys": [
+    "NSWindow Frame SUUpdateAlert2",
+    "SULastCheckTime"
+  ],
+  "MultiSwitcher_changed_preference_keys": [
+    "NSWindow Frame SUUpdateAlert2",
+    "SULastCheckTime"
+  ]
+}

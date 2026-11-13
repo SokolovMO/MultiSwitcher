@@ -1,0 +1,12 @@
+{
+  "app" : "multiswitcher",
+  "cycles" : 20,
+  "geometry" : true,
+  "keyboard" : true,
+  "rapidReversals" : 20,
+  "reducedMotion" : true,
+  "sectionCount" : 7,
+  "stableNavigationAndTheme" : true,
+  "timerStopped" : true,
+  "windowNumber" : 937
+}

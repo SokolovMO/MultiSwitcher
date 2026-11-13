@@ -1,0 +1,8 @@
+{
+  "states" : 14,
+  "missingCannotFinish" : true,
+  "grantAndRevocation" : true,
+  "readyCanFinish" : true,
+  "realPermissionsChanged" : false,
+  "navigationBounds" : true
+}

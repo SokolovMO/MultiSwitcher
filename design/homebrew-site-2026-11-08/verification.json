@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-08",
+  "nginx_unchanged": true,
+  "other_routes_unchanged": true,
+  "responsive_widths_checked": [
+    390,
+    768,
+    1440
+  ],
+  "pages": {
+    "multiswitcher": {
+      "url": "https://sokolovmo.ru/multiswitcher/#homebrew",
+      "previous": "/var/www/multiswitcher/releases/build-72-f0a3413c6273f55b",
+      "current": "/var/www/multiswitcher/releases/site-72-f4ea65af671b1ece",
+      "release_files_unchanged": true
+    },
+    "multishift": {
+      "url": "https://sokolovmo.ru/multishift/#homebrew",
+      "previous": "/var/www/multishift/releases/build-6-d3ed90ab23ebca96",
+      "current": "/var/www/multishift/releases/site-6-ae8889bf5007878d",
+      "release_files_unchanged": true
+    }
+  }
+}

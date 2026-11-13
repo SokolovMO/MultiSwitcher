@@ -1,0 +1,16 @@
+{
+  "profile_unchanged_during_audit": true,
+  "changed_source_files": [
+    "macos/Sources/MultiSwitcher/UserRuleEditor.swift",
+    "macos/Sources/MultiSwitcher/SparkleUpdateChecker.swift",
+    "macos/Sources/MultiSwitcher/Localization.swift",
+    "macos/Sources/MultiSwitcher/PermissionsGuideWindowController.swift",
+    "macos/Sources/MultiSwitcher/LearningListEditor.swift",
+    "macos/Sources/MultiSwitcher/DesignSystem.swift",
+    "macos/Sources/MultiSwitcher/SettingsWindowController.swift",
+    "macos/Sources/MultiSwitcher/MultiSwitcherApplication.swift",
+    "macos/Sources/MultiSwitcher/ExceptionListEditor.swift",
+    "macos/Sources/MultiSwitcher/AppDelegate.swift"
+  ],
+  "unrelated_sources_preserved": true
+}

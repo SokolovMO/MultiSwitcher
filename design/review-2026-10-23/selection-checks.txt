@@ -1,0 +1,4 @@
+Validated and unpacked 2 language packs
+Lexicon en: 30000 base words, 356 thematic words
+Lexicon ru: 50000 base words, 262 thematic words
+Selection conversion: PASS (106 assertions, 0 failures)

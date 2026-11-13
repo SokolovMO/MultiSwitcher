@@ -1,0 +1,20 @@
+{
+  "learning" : [
+
+  ],
+  "legacyDefaultsMigrated" : true,
+  "rules" : [
+
+  ],
+  "schemaVersion" : 2,
+  "settings" : {
+    "com.multiswitcher.interfaceLanguage" : {
+      "kind" : "string",
+      "string" : "ru"
+    },
+    "com.multiswitcher.interfaceTheme" : {
+      "kind" : "string",
+      "string" : "dark"
+    }
+  }
+}

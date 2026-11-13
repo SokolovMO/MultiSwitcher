@@ -1,0 +1,14 @@
+{
+  "rapidCycles" : 20,
+  "checks" : 56,
+  "passed" : true,
+  "geometry" : {
+    "iconTop" : 20,
+    "bodyTop" : 70,
+    "rowCount" : 23,
+    "rowWidthsValid" : true,
+    "height" : 379,
+    "width" : 340,
+    "headerTop" : 14
+  }
+}

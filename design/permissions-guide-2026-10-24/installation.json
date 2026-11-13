@@ -1,0 +1,8 @@
+{
+  "path": "/Applications/MultiSwitcher.app",
+  "process": "/Applications/MultiSwitcher.app/Contents/MacOS/MultiSwitcher --permissions-guide",
+  "pid": 26619,
+  "sha256": "27acd00920fb385bd4b3d1e3a57b776fa3f537889dfa2ab9f9b94b5cbeaf095d",
+  "userRulesAndLearningPreserved": true,
+  "guideRequested": true
+}

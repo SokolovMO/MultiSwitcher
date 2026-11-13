@@ -1,0 +1,43 @@
+{
+  "importedPuntoRules" : [
+
+  ],
+  "learning" : [
+
+  ],
+  "legacyDefaultsMigrated" : true,
+  "rules" : [
+
+  ],
+  "schemaVersion" : 2,
+  "settings" : {
+    "com.multiswitcher.autoConvert" : {
+      "bool" : true,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.autoSwitch" : {
+      "bool" : false,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.interfaceLanguage" : {
+      "kind" : "string",
+      "string" : "de"
+    },
+    "com.multiswitcher.interfaceTheme" : {
+      "kind" : "string",
+      "string" : "dark"
+    },
+    "com.multiswitcher.monochromeControls" : {
+      "bool" : true,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.pauseUntil" : {
+      "integer" : 0,
+      "kind" : "integer"
+    },
+    "com.multiswitcher.paused" : {
+      "bool" : false,
+      "kind" : "bool"
+    }
+  }
+}

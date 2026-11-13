@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apple Native App Design"
+  short_description: "Нативный macOS UI по актуальным Apple HIG"
+  default_prompt: "Используй $apple-native-app-design: выбери нативные macOS-компоненты, проверь актуальные Apple HIG и покажи результат в работающем приложении."

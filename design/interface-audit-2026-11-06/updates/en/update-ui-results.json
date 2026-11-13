@@ -1,0 +1,13 @@
+{
+  "actionRouted" : true,
+  "buttonTitle" : "Install and Relaunch",
+  "buttonWidth" : 149.5,
+  "expectedTitle" : "Install and Relaunch",
+  "frameworkLanguages" : [
+    "en"
+  ],
+  "language" : "en",
+  "nativeCell" : true,
+  "realUpdaterCreated" : false,
+  "returnKey" : true
+}

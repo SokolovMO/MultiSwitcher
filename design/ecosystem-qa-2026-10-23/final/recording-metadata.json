@@ -1,0 +1,30 @@
+{
+  "popover-open-close.mov": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "width": 828,
+        "height": 810,
+        "avg_frame_rate": "58/1"
+      }
+    ],
+    "format": {
+      "duration": "2.985000"
+    }
+  },
+  "sidebar-resize-theme.mov": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "width": 1944,
+        "height": 1480,
+        "avg_frame_rate": "115/2"
+      }
+    ],
+    "format": {
+      "duration": "17.998333"
+    }
+  }
+}

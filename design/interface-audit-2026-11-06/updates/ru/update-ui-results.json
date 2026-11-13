@@ -1,0 +1,13 @@
+{
+  "actionRouted" : true,
+  "buttonTitle" : "Установить и перезапустить",
+  "buttonWidth" : 208.5,
+  "expectedTitle" : "Установить и перезапустить",
+  "frameworkLanguages" : [
+    "ru"
+  ],
+  "language" : "ru",
+  "nativeCell" : true,
+  "realUpdaterCreated" : false,
+  "returnKey" : true
+}

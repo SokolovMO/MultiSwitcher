@@ -1,0 +1,274 @@
+[
+  {
+    "editor" : [
+      0,
+      0,
+      568,
+      28
+    ],
+    "expectedText" : [
+      28,
+      6,
+      514,
+      17
+    ],
+    "field" : [
+      0,
+      0,
+      568,
+      28
+    ],
+    "icon" : [
+      8,
+      6,
+      16,
+      16
+    ],
+    "overlap" : true,
+    "state" : "light-page-3-search-apple",
+    "text" : [
+      2,
+      0,
+      31.16015625,
+      15
+    ]
+  },
+  {
+    "editor" : [
+      0,
+      0,
+      568,
+      28
+    ],
+    "expectedText" : [
+      28,
+      6,
+      514,
+      17
+    ],
+    "field" : [
+      0,
+      0,
+      568,
+      28
+    ],
+    "icon" : [
+      8,
+      6,
+      16,
+      16
+    ],
+    "overlap" : true,
+    "state" : "light-page-3-search-empty",
+    "text" : [
+      2,
+      0,
+      34.25390625,
+      15
+    ]
+  },
+  {
+    "editor" : [
+      0,
+      0,
+      568,
+      24
+    ],
+    "expectedText" : [
+      28,
+      4,
+      514,
+      17
+    ],
+    "field" : [
+      0,
+      0,
+      568,
+      24
+    ],
+    "icon" : [
+      8,
+      4,
+      16,
+      16
+    ],
+    "overlap" : true,
+    "state" : "light-page-4-search-apple",
+    "text" : [
+      2,
+      0,
+      31.16015625,
+      15
+    ]
+  },
+  {
+    "editor" : [
+      0,
+      0,
+      568,
+      24
+    ],
+    "expectedText" : [
+      28,
+      4,
+      514,
+      17
+    ],
+    "field" : [
+      0,
+      0,
+      568,
+      24
+    ],
+    "icon" : [
+      8,
+      4,
+      16,
+      16
+    ],
+    "overlap" : true,
+    "state" : "light-page-4-search-empty",
+    "text" : [
+      2,
+      0,
+      34.25390625,
+      15
+    ]
+  },
+  {
+    "editor" : [
+      0,
+      0,
+      568,
+      28
+    ],
+    "expectedText" : [
+      28,
+      6,
+      514,
+      17
+    ],
+    "field" : [
+      0,
+      0,
+      568,
+      28
+    ],
+    "icon" : [
+      8,
+      6,
+      16,
+      16
+    ],
+    "overlap" : true,
+    "state" : "dark-page-3-search-apple",
+    "text" : [
+      2,
+      0,
+      31.16015625,
+      15
+    ]
+  },
+  {
+    "editor" : [
+      0,
+      0,
+      568,
+      28
+    ],
+    "expectedText" : [
+      28,
+      6,
+      514,
+      17
+    ],
+    "field" : [
+      0,
+      0,
+      568,
+      28
+    ],
+    "icon" : [
+      8,
+      6,
+      16,
+      16
+    ],
+    "overlap" : true,
+    "state" : "dark-page-3-search-empty",
+    "text" : [
+      2,
+      0,
+      34.25390625,
+      15
+    ]
+  },
+  {
+    "editor" : [
+      0,
+      0,
+      568,
+      24
+    ],
+    "expectedText" : [
+      28,
+      4,
+      514,
+      17
+    ],
+    "field" : [
+      0,
+      0,
+      568,
+      24
+    ],
+    "icon" : [
+      8,
+      4,
+      16,
+      16
+    ],
+    "overlap" : true,
+    "state" : "dark-page-4-search-apple",
+    "text" : [
+      2,
+      0,
+      31.16015625,
+      15
+    ]
+  },
+  {
+    "editor" : [
+      0,
+      0,
+      568,
+      24
+    ],
+    "expectedText" : [
+      28,
+      4,
+      514,
+      17
+    ],
+    "field" : [
+      0,
+      0,
+      568,
+      24
+    ],
+    "icon" : [
+      8,
+      4,
+      16,
+      16
+    ],
+    "overlap" : true,
+    "state" : "dark-page-4-search-empty",
+    "text" : [
+      2,
+      0,
+      34.25390625,
+      15
+    ]
+  }
+]

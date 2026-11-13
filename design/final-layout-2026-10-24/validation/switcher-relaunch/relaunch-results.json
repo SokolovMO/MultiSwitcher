@@ -1,0 +1,17 @@
+{
+  "actual" : [
+    48,
+    239,
+    880,
+    648
+  ],
+  "autosaveName" : "MultiSwitcher.SettingsWindow.review",
+  "expected" : [
+    48,
+    239,
+    880,
+    648
+  ],
+  "freshProcess" : true,
+  "passed" : true
+}

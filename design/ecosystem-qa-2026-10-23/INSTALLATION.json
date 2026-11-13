@@ -1,0 +1,62 @@
+{
+  "installed": [
+    {
+      "name": "MultiSwitcher",
+      "source": "/private/tmp/multi-install-q5a6561f/MultiSwitcher/MultiSwitcher.app",
+      "id": "com.multiswitcher.app",
+      "sha256": "4de4f0a47d32562e7b131b7c195eb48b835cef77b57ac158f07d8e54ae73f63f",
+      "destination": "/Applications/MultiSwitcher.app",
+      "process": "47067 /Applications/MultiSwitcher.app/Contents/MacOS/MultiSwitcher"
+    },
+    {
+      "name": "MultiShift",
+      "source": "/private/tmp/multi-install-q5a6561f/MultiShift/MultiShift.app",
+      "id": "com.multiswitcher.multishift",
+      "sha256": "0f6995fb0f514f0488c2c81cd3aaef2be92e7f6e9fa4f352c3145167d61d6168",
+      "destination": "/Applications/MultiShift.app",
+      "process": "47069 /Applications/MultiShift.app/Contents/MacOS/MultiShift --settings"
+    }
+  ],
+  "removed": [
+    "/private/tmp/multi-ecosystem-work/module-cache",
+    "/private/tmp/multi-ecosystem-work/shift-build",
+    "/private/tmp/multi-ecosystem-work/shift-cache",
+    "/private/tmp/multi-ecosystem-work/switcher-build",
+    "/private/tmp/multi-ecosystem-work/switcher-build-v8",
+    "/private/tmp/multi-ecosystem-work/switcher-preview-unpack",
+    "/private/tmp/multi-ecosystem-work/switcher-tests",
+    "/private/tmp/multi-ecosystem-integration",
+    "/private/tmp/MultiShift-ecosystem-file-QA",
+    "/private/tmp/MultiShift-premium-build",
+    "/private/tmp/MultiShift-ecosystem-tests",
+    "/private/tmp/MultiShift-ecosystem-zip-check",
+    "/private/tmp/MultiSwitcher-ecosystem-core-check",
+    "/private/tmp/MultiSwitcher-ecosystem-cache",
+    "/private/tmp/MultiSwitcher-ecosystem-tests",
+    "/private/tmp/MultiShift-ecosystem-1",
+    "/private/tmp/MultiShift-ecosystem-2",
+    "/private/tmp/MultiShift-ecosystem-3",
+    "/private/tmp/MultiShift-ecosystem-4",
+    "/private/tmp/MultiShift-ecosystem-5",
+    "/Users/sokolovmo/Documents/MultiSwitcher/.build",
+    "/Users/sokolovmo/Documents/MultiSwitcher/macos/.build",
+    "/Users/sokolovmo/Documents/MultiShift/macos/.build",
+    "/Users/sokolovmo/Documents/MultiShift/dist/.native-build",
+    "/Users/sokolovmo/Documents/MultiShift/dist/MultiShift-0.3.0.zip",
+    "/Users/sokolovmo/Documents/MultiShift/dist/MultiShift-0.3.0-premium.zip",
+    "/private/tmp/multi-install-q5a6561f/MultiSwitcher",
+    "/private/tmp/multi-install-q5a6561f/MultiShift"
+  ],
+  "userDataFilesPreserved": 9,
+  "userDataUnchangedDuringCleanup": true,
+  "rollbackBundlesPreserved": false,
+  "explicitlyApprovedRollbackBundlesRemoved": [
+    "/Users/sokolovmo/Library/Application Support/MultiShift/Rollback/MultiShift-0.2.1-before-monochrome-20261023/MultiShift.app",
+    "/Users/sokolovmo/Library/Application Support/MultiShift/Rollback/MultiShift-0.3.0-before-premium-final-20261023/MultiShift.app",
+    "/Users/sokolovmo/Library/Application Support/MultiShift/Rollback/MultiShift-0.2.0-20261022/MultiShift.app.rollback",
+    "/Users/sokolovmo/Library/Application Support/MultiSwitcher/InstallBackups/20261022T174535Z.WZHCX2/MultiSwitcher.rollback",
+    "/private/tmp/multi-install-q5a6561f/MultiSwitcher.old",
+    "/private/tmp/multi-install-q5a6561f/MultiShift.old"
+  ],
+  "userDataUnchangedDuringRollbackDeletion": true
+}

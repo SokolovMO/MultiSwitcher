@@ -1,0 +1,7 @@
+{
+  "destination": "/Applications/MultiSwitcher.app",
+  "sha256": "26baabc83b8afd5d98d28414dc195e4ba162d24888ad9d0d0ce5dee8edb48140",
+  "profilePreservedDuringReplacement": true,
+  "signature": "Executable=/Applications/MultiSwitcher.app/Contents/MacOS/MultiSwitcher\n",
+  "process": "78557 /Applications/MultiSwitcher.app/Contents/MacOS/MultiSwitcher"
+}

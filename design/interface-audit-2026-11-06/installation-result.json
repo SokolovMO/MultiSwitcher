@@ -1,0 +1,13 @@
+{
+  "installed_build": 70,
+  "installed_binary_matches_release": true,
+  "profile_byte_identical": true,
+  "preserved": {
+    "rules": true,
+    "learning": true,
+    "settings": true,
+    "importedPuntoRules": true
+  },
+  "old_app_backup": "/Applications/.multiswitcher-previous-53340.app",
+  "installation_method": "reviewed installer with graceful quit and startup handshake"
+}

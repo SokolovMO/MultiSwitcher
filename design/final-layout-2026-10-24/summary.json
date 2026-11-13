@@ -1,0 +1,38 @@
+{
+  "multiswitcher": {
+    "allCardGuidesAligned": true,
+    "allRestoreStates": true,
+    "app": "multiswitcher",
+    "cycles": 20,
+    "geometry": true,
+    "keyboard": true,
+    "matrixStates": 252,
+    "nativeMaximumEnforced": true,
+    "rapidReversals": 20,
+    "reducedMotion": true,
+    "sectionCount": 7,
+    "stableNavigationAndTheme": true,
+    "systemScreenshots": 252,
+    "timerStopped": true,
+    "windowNumber": 2612,
+    "binarySHA256": "2f8fcf852668d8102074378eacd495b242d9a0c59ebb08576f0aa1a9b3384672"
+  },
+  "multishift": {
+    "allCardGuidesAligned": true,
+    "allRestoreStates": true,
+    "app": "multishift",
+    "cycles": 20,
+    "geometry": true,
+    "keyboard": true,
+    "matrixStates": 180,
+    "nativeMaximumEnforced": true,
+    "rapidReversals": 20,
+    "reducedMotion": true,
+    "sectionCount": 5,
+    "stableNavigationAndTheme": true,
+    "systemScreenshots": 180,
+    "timerStopped": true,
+    "windowNumber": 2473,
+    "binarySHA256": "e2bb5c805bba68aafb078f365e2107cff2934ef0648118d69670f5e50e5bb6e3"
+  }
+}

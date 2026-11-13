@@ -1,0 +1,41 @@
+{
+  "staging": "/private/tmp/multi-install-2z83sbc0",
+  "installed": [
+    {
+      "name": "MultiSwitcher",
+      "source": "/private/tmp/multi-install-2z83sbc0/MultiSwitcher/MultiSwitcher.app",
+      "id": "com.multiswitcher.app",
+      "sha256": "526469f8bd0472558acf1f91f16510e78409cbdc9cc77cb9fe6773902034c0d8",
+      "destination": "/Applications/MultiSwitcher.app",
+      "process": "74380 /Applications/MultiSwitcher.app/Contents/MacOS/MultiSwitcher"
+    },
+    {
+      "name": "MultiShift",
+      "source": "/private/tmp/multi-install-2z83sbc0/MultiShift/MultiShift.app",
+      "id": "com.multiswitcher.multishift",
+      "sha256": "d654fb5697d91ddc6acff0f43dfbcbf64d9006c9c7d59f9e3a465e5b3afda81d",
+      "destination": "/Applications/MultiShift.app",
+      "process": "74382 /Applications/MultiShift.app/Contents/MacOS/MultiShift --settings"
+    }
+  ],
+  "removedTemporaryBuilds": [
+    "/private/tmp/multi-popover-fix/shift-cache",
+    "/private/tmp/multi-popover-fix/switcher-correct",
+    "/private/tmp/multi-popover-fix/capture-cache",
+    "/private/tmp/multi-popover-fix/switcher-installed",
+    "/private/tmp/multi-popover-fix/shift-verified",
+    "/private/tmp/multi-popover-fix/shift-installed",
+    "/private/tmp/multi-popover-fix/switcher-build",
+    "/private/tmp/multi-popover-fix/switcher-final",
+    "/private/tmp/multi-popover-fix/shift-correct",
+    "/private/tmp/multi-popover-fix/shift-build",
+    "/private/tmp/multi-popover-fix/shift-release",
+    "/private/tmp/multi-popover-fix/shift-final",
+    "/private/tmp/multi-popover-fix/shift-delivery",
+    "/private/tmp/multi-popover-fix/shift-coalesced",
+    "/private/tmp/multi-popover-fix/check-cache",
+    "/private/tmp/multi-install-2z83sbc0"
+  ],
+  "userDataUnchangedDuringCleanup": true,
+  "userDataFilesPreserved": 9
+}

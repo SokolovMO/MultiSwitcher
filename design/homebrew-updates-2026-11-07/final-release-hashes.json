@@ -1,0 +1,12 @@
+{
+  "MultiSwitcher": {
+    "build": "72",
+    "executable_sha256": "804858c4606b86b05e3d51cdfd807a6648d74ea3f5237d378c5dfe1b22f19872",
+    "archive_sha256": "f0a3413c6273f55bbfc7a63d4aa49ece9575d020bdfa17e6f00ad15c95d1e205"
+  },
+  "MultiShift": {
+    "build": "6",
+    "executable_sha256": "e7c70639789b19c4b6fb78d73e9159758dba749876bcc2414d1a676a92ca3c40",
+    "archive_sha256": "d3ed90ab23ebca9668fb97fe13cff619bc2a69d6f4df0556b07f96df381798cc"
+  }
+}

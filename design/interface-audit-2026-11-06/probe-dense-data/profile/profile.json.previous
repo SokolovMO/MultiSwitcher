@@ -1,0 +1,2112 @@
+{
+  "importedPuntoRules" : [
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-3",
+      "match" : "exact",
+      "origin" : "punto",
+      "pattern" : "тестовое исключение",
+      "semanticStatus" : "verified"
+    }
+  ],
+  "learning" : [
+    {
+      "cancellationCount" : 2,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "кандидат"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "оченьдлинноесловодляпроверкиотображенияполнойстроки"
+    },
+    {
+      "cancellationCount" : 3,
+      "isExcluded" : true,
+      "origin" : "local",
+      "word" : "обученное"
+    },
+    {
+      "cancellationCount" : 0,
+      "isExcluded" : false,
+      "origin" : "punto",
+      "word" : "импортированное"
+    },
+    {
+      "cancellationCount" : 0,
+      "isExcluded" : false,
+      "manualRoundTripCount" : 2,
+      "origin" : "local",
+      "word" : "ручнойкандидат"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения0"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения1"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения2"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения3"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения4"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения5"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения6"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения7"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения8"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения9"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения10"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения11"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения12"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения13"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения14"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения15"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения16"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения17"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения18"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения19"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения20"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения21"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения22"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения23"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения24"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения25"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения26"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения27"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения28"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения29"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения30"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения31"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения32"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения33"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения34"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения35"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения36"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения37"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения38"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения39"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения40"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения41"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения42"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения43"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения44"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения45"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения46"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения47"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения48"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения49"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения50"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения51"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения52"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения53"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения54"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения55"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения56"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения57"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения58"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения59"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения60"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения61"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения62"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения63"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения64"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения65"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения66"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения67"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения68"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения69"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения70"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения71"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения72"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения73"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения74"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения75"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения76"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения77"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения78"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "тестобучения79"
+    }
+  ],
+  "legacyDefaultsMigrated" : true,
+  "rules" : [
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-0",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "apple",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "alwaysConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-1",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "openrouter",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "replace",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-2",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "служебное_очень_длинное_правило_для_проверки_обрезания",
+      "replacement" : "длинная замена для проверки отображения и доступности полного значения",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-3",
+      "match" : "exact",
+      "origin" : "punto",
+      "pattern" : "тестовое исключение",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-4",
+      "match" : "exact",
+      "origin" : "learned",
+      "pattern" : "обученное",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-0",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово0",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-1",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово1",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-2",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово2",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-3",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово3",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-4",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово4",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-5",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово5",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-6",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово6",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-7",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово7",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-8",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово8",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-9",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово9",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-10",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово10",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-11",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово11",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-12",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово12",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-13",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово13",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-14",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово14",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-15",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово15",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-16",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово16",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-17",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово17",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-18",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово18",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-19",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово19",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-20",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово20",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-21",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово21",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-22",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово22",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-23",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово23",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-24",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово24",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-25",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово25",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-26",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово26",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-27",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово27",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-28",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово28",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-29",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово29",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-30",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово30",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-31",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово31",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-32",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово32",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-33",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово33",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-34",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово34",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-35",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово35",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-36",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово36",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-37",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово37",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-38",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово38",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-39",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово39",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-40",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово40",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-41",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово41",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-42",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово42",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-43",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово43",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-44",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово44",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-45",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово45",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-46",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово46",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-47",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово47",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-48",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово48",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-49",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово49",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-50",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово50",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-51",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово51",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-52",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово52",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-53",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово53",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-54",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово54",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-55",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово55",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-56",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово56",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-57",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово57",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-58",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово58",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-59",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово59",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-60",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово60",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-61",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово61",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-62",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово62",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-63",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово63",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-64",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово64",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-65",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово65",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-66",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово66",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-67",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово67",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-68",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово68",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-69",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово69",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-70",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово70",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-71",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово71",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-72",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово72",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-73",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово73",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-74",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово74",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-75",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово75",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-76",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово76",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-77",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово77",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-78",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово78",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-79",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово79",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-80",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово80",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-81",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово81",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-82",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово82",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-83",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово83",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-84",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово84",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-85",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово85",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-86",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово86",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-87",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово87",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-88",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово88",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-89",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово89",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-90",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово90",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-91",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово91",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-92",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово92",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-93",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово93",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-94",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово94",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-95",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово95",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-96",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово96",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-97",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово97",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-98",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово98",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-99",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово99",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-100",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово100",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-101",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово101",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-102",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово102",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-103",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово103",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-104",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово104",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-105",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово105",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-106",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово106",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-107",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово107",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-108",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово108",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-109",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово109",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-110",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово110",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-111",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово111",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-112",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово112",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-113",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово113",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-114",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово114",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-115",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово115",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-116",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово116",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-117",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово117",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-118",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово118",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-119",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово119",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-120",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово120",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-121",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово121",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-122",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово122",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-123",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово123",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-124",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово124",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-125",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово125",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-126",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово126",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-127",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово127",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-128",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово128",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-129",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово129",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-130",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово130",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-131",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово131",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-132",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово132",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-133",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово133",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-134",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово134",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-135",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово135",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-136",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово136",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-137",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово137",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-138",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово138",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-139",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово139",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-140",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово140",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-141",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово141",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-142",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово142",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-143",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово143",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-144",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово144",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-145",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово145",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-146",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово146",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-147",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово147",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-148",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово148",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "dense-149",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "тестовоеслово149",
+      "semanticStatus" : "verified"
+    }
+  ],
+  "schemaVersion" : 2,
+  "settings" : {
+    "com.multiswitcher.autoConvert" : {
+      "bool" : true,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.autoSwitch" : {
+      "bool" : false,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.interfaceLanguage" : {
+      "kind" : "string",
+      "string" : "ru"
+    },
+    "com.multiswitcher.interfaceTheme" : {
+      "kind" : "string",
+      "string" : "dark"
+    },
+    "com.multiswitcher.monochromeControls" : {
+      "bool" : true,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.pauseUntil" : {
+      "integer" : 0,
+      "kind" : "integer"
+    },
+    "com.multiswitcher.paused" : {
+      "bool" : false,
+      "kind" : "bool"
+    }
+  }
+}

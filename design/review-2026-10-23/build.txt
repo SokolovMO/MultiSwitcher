@@ -1,0 +1,99 @@
+Building MultiSwitcher 0.4.0 (53) for arm64
+Staging directory: /private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue
+Building for production...
+[2 / 5] MultiSwitcher-product
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/AppDelegate.swift:681:15: warning: result of call to 'runModal()' is unused [#NoUsage]
+ 679 |         alert.informativeText = L10n.permissionsOkText
+ 680 |         alert.addButton(withTitle: "ok")
+ 681 |         alert.runModal()
+     |               `- warning: result of call to 'runModal()' is unused [#NoUsage]
+ 682 |     }
+ 683 | 
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/SettingsWindowController.swift:2250:19: warning: result of call to 'runModal()' is unused [#NoUsage]
+2248 |             alert.informativeText = error.localizedDescription
+2249 |             alert.addButton(withTitle: L10n.commonOkay)
+2250 |             alert.runModal()
+     |                   `- warning: result of call to 'runModal()' is unused [#NoUsage]
+2251 |         }
+2252 |     }
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/SettingsWindowController.swift:2516:19: warning: result of call to 'runModal()' is unused [#NoUsage]
+2514 |             alert.messageText = "log file not found"
+2515 |             alert.informativeText = "enable debug logging first."
+2516 |             alert.runModal()
+     |                   `- warning: result of call to 'runModal()' is unused [#NoUsage]
+2517 |         }
+2518 |     }
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/SettingsWindowController.swift:2562:25: warning: result of call to 'runModal()' is unused [#NoUsage]
+2560 |             unavailable.messageText = L10n.supportReportUnavailable
+2561 |             unavailable.addButton(withTitle: L10n.commonOkay)
+2562 |             unavailable.runModal()
+     |                         `- warning: result of call to 'runModal()' is unused [#NoUsage]
+2563 |             return
+2564 |         }
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/SettingsWindowController.swift:2574:16: warning: result of call to 'runModal()' is unused [#NoUsage]
+2572 |         copied.messageText = L10n.supportReportCopied
+2573 |         copied.addButton(withTitle: L10n.commonOkay)
+2574 |         copied.runModal()
+     |                `- warning: result of call to 'runModal()' is unused [#NoUsage]
+2575 |     }
+2576 | 
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/StatusPopoverController.swift:107:36: warning: use '#selector' instead of explicitly constructing a 'Selector'
+105 |             let symbol: String
+106 |             if item.submenu != nil { symbol = item.title.contains("—") ? "app" : "chevron.right" }
+107 |             else if item.action == Selector(("openSettings")) { symbol = "slider.horizontal.3" }
+    |                                    `- warning: use '#selector' instead of explicitly constructing a 'Selector'
+108 |             else if item.action == Selector(("quit")) { symbol = "power" }
+109 |             else if item.state == .on { symbol = "checkmark.circle.fill" }
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/StatusPopoverController.swift:108:36: warning: use '#selector' instead of explicitly constructing a 'Selector'
+106 |             if item.submenu != nil { symbol = item.title.contains("—") ? "app" : "chevron.right" }
+107 |             else if item.action == Selector(("openSettings")) { symbol = "slider.horizontal.3" }
+108 |             else if item.action == Selector(("quit")) { symbol = "power" }
+    |                                    `- warning: use '#selector' instead of explicitly constructing a 'Selector'
+109 |             else if item.state == .on { symbol = "checkmark.circle.fill" }
+110 |             else { symbol = "circle" }
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/UpdateChecker.swift:592:15: warning: result of call to 'runModal()' is unused [#NoUsage]
+590 |         alert.informativeText = message
+591 |         alert.addButton(withTitle: "ok")
+592 |         alert.runModal()
+    |               `- warning: result of call to 'runModal()' is unused [#NoUsage]
+593 |     }
+594 | 
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources/MultiSwitcher/UserRuleEditor.swift:375:23: warning: result of call to 'runModal()' is unused [#NoUsage]
+373 |                 )
+374 |                 alert.addButton(withTitle: L10n.commonOkay)
+375 |                 alert.runModal()
+    |                       `- warning: result of call to 'runModal()' is unused [#NoUsage]
+376 |                 return
+377 |             }
+
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Sources[3 / 6] MultiSwitcher-product
+/MultiSwitcher/UserRuleEditor.swift:649:15: warning: result of call to 'runModal()' is unused [#NoUsage]
+647 |         alert.informativeText = message
+648 |         alert.addButton(withTitle: L10n.commonOkay)
+649 |         alert.runModal()
+    |               `- warning: result of call to 'runModal()' is unused [#NoUsage]
+650 |     }
+651 | }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Package.swift: MultiSwitcher-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/package/Package.swift: MultiSwitcher-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
+[5 / 6] MultiSwitcher-product
+Build complete! (18,31 с)
+Local review: actool unavailable; using .icns without Assets.car.
+Validated and unpacked 2 language packs
+Validated 8 thematic vocabulary packs
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/MultiSwitcher.app/Contents/Info.plist: OK
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/MultiSwitcher.app: replacing existing signature
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/MultiSwitcher.app: valid on disk
+/private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/MultiSwitcher.app: satisfies its Designated Requirement
+Verified app: /private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/MultiSwitcher.app
+Build record: /private/var/folders/n3/z1f124t95klc4v14q1pt3myh0000gn/T/multiswitcher-build.0P8sue/BUILD-INFO.txt

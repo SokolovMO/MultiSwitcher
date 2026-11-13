@@ -1,0 +1,125 @@
+{
+  "importedPuntoRules" : [
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-3",
+      "match" : "exact",
+      "origin" : "punto",
+      "pattern" : "тестовое исключение",
+      "semanticStatus" : "verified"
+    }
+  ],
+  "learning" : [
+    {
+      "cancellationCount" : 2,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "кандидат"
+    },
+    {
+      "cancellationCount" : 1,
+      "isExcluded" : false,
+      "origin" : "local",
+      "word" : "оченьдлинноесловодляпроверкиотображенияполнойстроки"
+    },
+    {
+      "cancellationCount" : 3,
+      "isExcluded" : true,
+      "origin" : "local",
+      "word" : "обученное"
+    },
+    {
+      "cancellationCount" : 0,
+      "isExcluded" : false,
+      "origin" : "punto",
+      "word" : "импортированное"
+    }
+  ],
+  "legacyDefaultsMigrated" : true,
+  "rules" : [
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-0",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "apple",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "alwaysConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-1",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "openrouter",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "replace",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-2",
+      "match" : "exact",
+      "origin" : "user",
+      "pattern" : "служебное_очень_длинное_правило_для_проверки_обрезания",
+      "replacement" : "длинная замена для проверки отображения и доступности полного значения",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-3",
+      "match" : "exact",
+      "origin" : "punto",
+      "pattern" : "тестовое исключение",
+      "semanticStatus" : "verified"
+    },
+    {
+      "action" : "neverConvert",
+      "caseSensitive" : false,
+      "enabled" : true,
+      "id" : "audit-4",
+      "match" : "exact",
+      "origin" : "learned",
+      "pattern" : "обученное",
+      "semanticStatus" : "verified"
+    }
+  ],
+  "schemaVersion" : 2,
+  "settings" : {
+    "com.multiswitcher.autoConvert" : {
+      "bool" : true,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.autoSwitch" : {
+      "bool" : false,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.interfaceLanguage" : {
+      "kind" : "string",
+      "string" : "ru"
+    },
+    "com.multiswitcher.interfaceTheme" : {
+      "kind" : "string",
+      "string" : "dark"
+    },
+    "com.multiswitcher.monochromeControls" : {
+      "bool" : true,
+      "kind" : "bool"
+    },
+    "com.multiswitcher.pauseUntil" : {
+      "integer" : 0,
+      "kind" : "integer"
+    },
+    "com.multiswitcher.paused" : {
+      "bool" : false,
+      "kind" : "bool"
+    }
+  }
+}

@@ -1,0 +1,7118 @@
+[
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-expanded-0.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 204,
+          "width" : 480,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 480,
+          "x" : 24,
+          "y" : 397
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 480,
+          "x" : 24,
+          "y" : 653
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 109,
+          "width" : 480,
+          "x" : 24,
+          "y" : 805
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-expanded-1.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 480,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 480,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 480,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 480,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-expanded-2.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 254,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 480,
+          "x" : 24,
+          "y" : 333
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 480,
+          "x" : 24,
+          "y" : 584
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-expanded-3.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-expanded-4.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 284,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-expanded-5.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 480,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-expanded-6.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 480,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-compact-0.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 204,
+          "width" : 480,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 480,
+          "x" : 24,
+          "y" : 397
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 480,
+          "x" : 24,
+          "y" : 653
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 109,
+          "width" : 480,
+          "x" : 24,
+          "y" : 805
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-compact-1.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 480,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 480,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 480,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 480,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-compact-2.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 254,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 480,
+          "x" : 24,
+          "y" : 333
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 480,
+          "x" : 24,
+          "y" : 584
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-compact-3.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-compact-4.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 284,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-compact-5.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 480,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-minimum-compact-6.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 480,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-expanded-0.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.79050167813898,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 190,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 383
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 639
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 95,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 791
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-expanded-1.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.79050167813898,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-expanded-2.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.79050167813898,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 226,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 305
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 556
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-expanded-3.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.79050167813898,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-expanded-4.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.79050167813898,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 270,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-expanded-5.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 21.79050167813898,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-expanded-6.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 21.79050167813898,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 640,
+          "x" : 23.79050167813898,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-compact-0.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 190,
+          "width" : 640,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 640,
+          "x" : 24,
+          "y" : 383
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 640,
+          "x" : 24,
+          "y" : 639
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 95,
+          "width" : 640,
+          "x" : 24,
+          "y" : 791
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-compact-1.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 640,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 640,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 640,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 640,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-compact-2.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 226,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 640,
+          "x" : 24,
+          "y" : 305
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 640,
+          "x" : 24,
+          "y" : 556
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-compact-3.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-compact-4.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 270,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-compact-5.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 640,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-maximum-compact-6.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 640,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-expanded-0.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 204,
+          "width" : 600,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 600,
+          "x" : 24,
+          "y" : 397
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 600,
+          "x" : 24,
+          "y" : 653
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 95,
+          "width" : 600,
+          "x" : 24,
+          "y" : 805
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-expanded-1.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 600,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 600,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 600,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 600,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-expanded-2.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 226,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 600,
+          "x" : 24,
+          "y" : 305
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 600,
+          "x" : 24,
+          "y" : 556
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-expanded-3.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-expanded-4.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 270,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-expanded-5.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 600,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-expanded-6.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 600,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-compact-0.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 204,
+          "width" : 600,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 600,
+          "x" : 24,
+          "y" : 397
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 600,
+          "x" : 24,
+          "y" : 653
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 95,
+          "width" : 600,
+          "x" : 24,
+          "y" : 805
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-compact-1.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 600,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 600,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 600,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 600,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-compact-2.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 226,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 600,
+          "x" : 24,
+          "y" : 305
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 600,
+          "x" : 24,
+          "y" : 556
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-compact-3.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-compact-4.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 270,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-compact-5.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 600,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "light-restore-compact-6.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 600,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-expanded-0.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 21.772009074444611,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 204,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 397
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 653
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 109,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 805
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-expanded-1.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 21.772009074444611,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-expanded-2.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 21.772009074444611,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 254,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 333
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 584
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-expanded-3.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 21.772009074444611,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-expanded-4.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 21.772009074444611,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 284,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-expanded-5.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 21.772009074444611,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      737,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-expanded-6.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      737,
+      532
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 21.772009074444611,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 480,
+          "x" : 23.772009074444611,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 737,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-compact-0.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 204,
+          "width" : 480,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 480,
+          "x" : 24,
+          "y" : 397
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 480,
+          "x" : 24,
+          "y" : 653
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 109,
+          "width" : 480,
+          "x" : 24,
+          "y" : 805
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-compact-1.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 480,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 480,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 480,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 480,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-compact-2.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 254,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 480,
+          "x" : 24,
+          "y" : 333
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 480,
+          "x" : 24,
+          "y" : 584
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-compact-3.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-compact-4.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 484,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 284,
+          "width" : 480,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-compact-5.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 480,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      372,
+      589,
+      532
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 528,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-minimum-compact-6.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      589,
+      532
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 480,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 500,
+      "width" : 589,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-expanded-0.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.790655888443951,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 190,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 383
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 639
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 95,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 791
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-expanded-1.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.790655888443951,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-expanded-2.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.790655888443951,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 226,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 305
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 556
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-expanded-3.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.790655888443951,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-expanded-4.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 21.790655888443951,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 270,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-expanded-5.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 21.790655888443951,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      897,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-expanded-6.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      897,
+      832
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 21.790655888443951,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 640,
+          "x" : 23.790655888443951,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 897,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-compact-0.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 190,
+          "width" : 640,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 640,
+          "x" : 24,
+          "y" : 383
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 640,
+          "x" : 24,
+          "y" : 639
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 95,
+          "width" : 640,
+          "x" : 24,
+          "y" : 791
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-compact-1.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 640,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 640,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 640,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 640,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-compact-2.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 226,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 640,
+          "x" : 24,
+          "y" : 305
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 640,
+          "x" : 24,
+          "y" : 556
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-compact-3.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-compact-4.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 644,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 270,
+          "width" : 640,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-compact-5.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 640,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      72,
+      749,
+      832
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 688,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-maximum-compact-6.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      749,
+      832
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 640,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 800,
+      "width" : 749,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-expanded-0.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 204,
+          "width" : 600,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 600,
+          "x" : 24,
+          "y" : 397
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 600,
+          "x" : 24,
+          "y" : 653
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 95,
+          "width" : 600,
+          "x" : 24,
+          "y" : 805
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-expanded-1.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 600,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 600,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 600,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 600,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-expanded-2.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 226,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 600,
+          "x" : 24,
+          "y" : 305
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 600,
+          "x" : 24,
+          "y" : 556
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-expanded-3.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-expanded-4.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 270,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-expanded-5.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 600,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      857,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-expanded-6.png",
+    "maximum" : [
+      897,
+      800
+    ],
+    "minimum" : [
+      737,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      857,
+      652
+    ],
+    "sidebarWidth" : 208,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 600,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 857,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-compact-0.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 98,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 204,
+          "width" : 600,
+          "x" : 24,
+          "y" : 177
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 240,
+          "width" : 600,
+          "x" : 24,
+          "y" : 397
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 136,
+          "width" : 600,
+          "x" : 24,
+          "y" : 653
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 95,
+          "width" : 600,
+          "x" : 24,
+          "y" : 805
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-compact-1.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 272,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 263,
+          "width" : 600,
+          "x" : 24,
+          "y" : 351
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 96,
+          "width" : 600,
+          "x" : 24,
+          "y" : 630
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 341,
+          "width" : 600,
+          "x" : 24,
+          "y" : 742
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 56,
+          "width" : 600,
+          "x" : 24,
+          "y" : 1099
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-compact-2.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 226,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 235,
+          "width" : 600,
+          "x" : 24,
+          "y" : 305
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 159,
+          "width" : 600,
+          "x" : 24,
+          "y" : 556
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 2,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-compact-3.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 371,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-compact-4.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 23,
+          "width" : 604,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 270,
+          "width" : 600,
+          "x" : 24,
+          "y" : 63
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 1,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-compact-5.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 127.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 191,
+          "width" : 600,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  {
+    "afterNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "backingScale" : 2,
+    "beforeNavigation" : [
+      306,
+      252,
+      709,
+      652
+    ],
+    "cardLeadingAligned" : true,
+    "detailWidth" : 648,
+    "focusVisible" : true,
+    "geometry" : true,
+    "image" : "dark-restore-compact-6.png",
+    "maximum" : [
+      749,
+      800
+    ],
+    "minimum" : [
+      589,
+      500
+    ],
+    "nativeMaximumEnforced" : true,
+    "navigationStable" : true,
+    "restored" : true,
+    "restoreExpected" : [
+      709,
+      652
+    ],
+    "sidebarWidth" : 60,
+    "surfaces" : [
+      {
+        "frame" : {
+          "height" : 24,
+          "width" : 141.5,
+          "x" : 22,
+          "y" : 24
+        },
+        "kind" : "heading",
+        "radius" : 0,
+        "visible" : true
+      },
+      {
+        "frame" : {
+          "height" : 205,
+          "width" : 600,
+          "x" : 24,
+          "y" : 87
+        },
+        "kind" : "card",
+        "radius" : 14,
+        "visible" : true
+      }
+    ],
+    "systemScreenshot" : true,
+    "tables" : 0,
+    "textOverflowCandidates" : 0,
+    "windowContent" : {
+      "height" : 620,
+      "width" : 709,
+      "x" : 0,
+      "y" : 0
+    }
+  }
+]

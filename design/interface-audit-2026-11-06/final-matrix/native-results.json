@@ -1,0 +1,22 @@
+{
+  "captures" : [
+    {
+      "capturedWindowServer" : true,
+      "name" : "native-menu-light"
+    },
+    {
+      "capturedWindowServer" : true,
+      "name" : "native-menu-dark"
+    }
+  ],
+  "connectedDisplays" : 1,
+  "cycles" : 100,
+  "evidence" : "native NSMenu and actual controller; programmatic fixture interactions",
+  "failures" : [
+
+  ],
+  "pageTransitions" : [
+
+  ],
+  "trackingAfterClose" : false
+}

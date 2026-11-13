@@ -1,0 +1,2 @@
+designated => identifier "com.multiswitcher.app" and certificate root = H"77f8cfd709bc4dee5ce7fe7675b6f267c9d4f276"
+Executable=/Applications/MultiSwitcher.app/Contents/MacOS/MultiSwitcher
