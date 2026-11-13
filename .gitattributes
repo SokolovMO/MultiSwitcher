@@ -1,0 +1,7 @@
+# Keep review evidence and documentation out of source-language statistics.
+/design/** linguist-documentation
+/docs/** linguist-documentation
+/release-site/** linguist-documentation
+/plans/** linguist-documentation
+/skills/** linguist-documentation
+/.github/assets/** linguist-documentation

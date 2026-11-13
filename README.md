@@ -1,61 +1,122 @@
-# MultiSwitcher
+<p align="right"><a href="README.ru.md">Русский</a> · <b>English</b></p>
 
-A native macOS menu-bar utility for correcting text typed in the wrong keyboard layout. The project is developed and distributed as MultiSwitcher.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/header-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset=".github/assets/header-light.svg">
+  <img src=".github/assets/header-light.svg" alt="MultiSwitcher — ghbdtn becomes привет" width="1280">
+</picture>
 
-## Status
+<p align="center">
+  <a href="https://github.com/SokolovMO/MultiSwitcher/actions/workflows/multi-switcher-ci.yml"><img src="https://github.com/SokolovMO/MultiSwitcher/actions/workflows/multi-switcher-ci.yml/badge.svg?branch=main" alt="Build and core checks"></a>
+  <img src="https://img.shields.io/badge/macOS-15%2B-1f2328?logo=apple&amp;logoColor=white" alt="macOS 15 or newer">
+  <img src="https://img.shields.io/badge/Apple_silicon-arm64-59636e" alt="Apple silicon arm64">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-59636e" alt="MIT License"></a>
+</p>
 
-MultiSwitcher is preparing its first public alpha. Release readiness, signing requirements, and remaining validation gates are tracked in [Release readiness](RELEASE.md). Local development builds are not public releases.
+<p align="center">
+  <b><a href="https://sokolovmo.ru/multiswitcher/">Download for macOS</a></b> &nbsp;·&nbsp;
+  <a href="#install">Install</a> &nbsp;·&nbsp;
+  <a href="SUPPORT.md">Get help</a> &nbsp;·&nbsp;
+  <a href="https://github.com/SokolovMO/MultiSwitcher/issues/new/choose">Report a bug</a>
+</p>
 
-## Requirements
+## Keep typing. Fix the layout.
 
-- Apple Silicon Mac (arm64)
-- macOS 15 or newer
-- Accessibility and Input Monitoring permissions for global keyboard conversion
+MultiSwitcher is a native macOS menu-bar app for Russian and English typing.
+It corrects words entered in the wrong keyboard layout, converts selected text,
+and lets you decide when automatic correction should step aside.
 
-## macOS permissions
+- **Correct as you type.** Detect layout mismatches at word boundaries, with local dictionaries and rules.
+- **Fix it with a key.** Use the configurable Option shortcut for a word or selection, with undo for replacements.
+- **Make it yours.** Set exceptions, per-app exclusions, custom rules, and layout preferences.
+- **Keep your profile.** Import a Punto profile, review learning candidates, and restore profile backups.
+- **Stay native.** Light and dark appearances, Russian and English UI, system permissions, and signed Sparkle updates.
+- **Process text locally.** Typed text, clipboard contents, and profiles are not sent with update checks.
 
-MultiSwitcher does not interrupt first launch with a permissions dialog or change macOS privacy settings in the background. When keyboard access is missing, **Check Permissions…** appears in the menu-bar menu and a status with **Setup Guide…** appears in General settings. The guide explains each permission before offering to open System Settings; **Later** is the default choice. You can leave either permission off and keep using the app and its settings, but automatic correction and the manual Option shortcut remain paused until both permissions are enabled.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="design/interface-audit-2026-11-06/final-matrix/dark-0.png">
+  <source media="(prefers-color-scheme: light)" srcset="design/interface-audit-2026-11-06/final-matrix/light-0.png">
+  <img src="design/interface-audit-2026-11-06/final-matrix/light-0.png" alt="MultiSwitcher settings with layout shortcuts and macOS permission status, shown in Russian" width="820">
+</picture>
 
-The first path is **System Settings → Privacy & Security → Accessibility → MultiSwitcher** on macOS 15–26, and **System Settings → Privacy & Security → Device Control & Data Access → MultiSwitcher** on macOS 27. The second path is **System Settings → Privacy & Security → Input Monitoring → MultiSwitcher**. MultiSwitcher uses the first permission to work with text in supported fields and Input Monitoring to receive keyboard events for layout detection and shortcuts. If you enable both after choosing **Open Settings**, MultiSwitcher restarts once to apply keyboard monitoring. macOS remains in control of both switches.
-
-macOS Secure Input can temporarily block both automatic and manual correction, even with both permissions enabled. MultiSwitcher checks this independently of keyboard events. The menu shows which app holds Secure Input; select that row for recovery instructions. A prolonged block sends a quiet native macOS notification with the app icon and a Details action. **Advanced → Test notification** requests notification permission when needed; it is never requested automatically during password entry. If permission is missing or delivery fails, the status remains visible in Advanced settings and the menu; no imitation desktop banner is shown. macOS controls banner appearance and Focus. Recovery removes the warning from Notification Center automatically. Leave the password field in the named app; if the block persists, quit that app completely and reopen it. Short password entry does not trigger the automatic notice. Learning and pause feedback use coalesced native notifications with generic text; typed words are never stored in Notification Center.
+<sub>Settings captured during interface validation. Appearance follows your selected theme.</sub>
 
 ## Install
 
-Download the drag-to-Applications DMG (or optional ZIP), or use the installation command at https://sokolovmo.ru/multiswitcher/ .
-This independent distribution is not Apple-notarized; macOS may require allowing
-the first launch in Privacy & Security. The installer checks the archive and app,
-keeps the previous copy, and clears quarantine only on the verified MultiSwitcher.
+**Requires an Apple Silicon Mac and macOS 15 or newer.** Intel builds are not provided.
 
-Updates use embedded Sparkle with Ed25519-signed feeds and ZIP archives hosted on
-our own server. Check manually in the menu or Settings → About, or leave automatic
-checks enabled. Installation requires confirmation. No Apple Developer account,
-GitHub App, Pages, or release dashboard is required. See [DISTRIBUTION.md](DISTRIBUTION.md).
+### Download the app
 
-## Build and checks
+1. Get the DMG from the [official download page](https://sokolovmo.ru/multiswitcher/).
+2. Move **MultiSwitcher** to **Applications** and open it.
+3. Use **Setup Guide…** to grant **Accessibility** and **Input Monitoring** permissions in System Settings.
 
-Requirements: macOS 15 or newer and Swift 6 Command Line Tools.
+> [!IMPORTANT]
+> This is an early, independently distributed app. It is **not Apple-notarized**;
+> macOS may require allowing the first launch in **Privacy & Security**.
+> Current downloads and updates are hosted on the official website, not GitHub Releases.
+
+### Homebrew
 
 ```sh
+brew tap SokolovMO/apps
+HOMEBREW_MULTI_APPS_ALLOW_UNNOTARIZED=1 brew install --cask SokolovMO/apps/multiswitcher
+```
+
+The environment variable explicitly permits the cask to remove quarantine from
+this app after verifying its code signature. It does not disable Gatekeeper for
+other apps. For existing installations, adoption, and upgrades, see the
+[Homebrew instructions](homebrew-tap/README.md).
+
+### Update
+
+Choose **Check for Updates** in the menu or **Settings → About**. Sparkle checks
+Ed25519-signed update archives and asks before installing. See
+[release notes](CHANGELOG.md) and [release information](RELEASE.md) for details.
+
+## Your text stays on your Mac
+
+Layout detection, dictionaries, rules, and learning run locally. Update checks
+contact `sokolovmo.ru`; your text and profile are not part of these requests.
+The current distribution does not include crash reporting. Optional reporting
+exists in the source for builds explicitly configured for it.
+
+macOS Secure Input can temporarily pause correction and shortcuts. The menu
+identifies the app holding Secure Input and offers recovery instructions.
+Read [Privacy](PRIVACY.md) and [Permissions & troubleshooting](SUPPORT.md) for details.
+
+## Build from source
+
+You need macOS 15 or newer and Swift 6 Command Line Tools. Full Xcode is required
+for builds with release integrations and the complete asset catalog.
+
+```sh
+git clone https://github.com/SokolovMO/MultiSwitcher.git
+cd MultiSwitcher
 swift run --package-path macos MultiSwitcherCoreTests
 bash macos/build_app.sh
 ```
 
-With Command Line Tools alone, local builds fall back to the existing `.icns` when `actool` is unavailable. Builds with release integrations require full Xcode and the complete asset catalog. The native redesign review, real screenshots, checks and remaining validation limits are recorded in [the design review](design/review-2026-10-23/REPORT.md).
+With Command Line Tools alone, the app build falls back to its bundled `.icns`
+when `actool` is unavailable. Local builds do not inherit the publisher's signing
+identity. See [Contributing](CONTRIBUTING.md) for checks and development conventions,
+and [Distribution](DISTRIBUTION.md) for the release process.
 
-Public builds reuse the existing local MultiSwitcher Stable Code Signing certificate.
-It is independent of Apple's paid developer program. Keep the signing key and the
-separate Ed25519 seed backed up; changing the code-signing identity may affect macOS
-privacy permissions. Physical installation and forward-update acceptance remain separate checks.
+## Help shape MultiSwitcher
 
-## Privacy
+[Report a reproducible bug](https://github.com/SokolovMO/MultiSwitcher/issues/new?template=bug_report.yml),
+[suggest a feature](https://github.com/SokolovMO/MultiSwitcher/issues/new?template=feature_request.yml),
+or read the [contribution guide](CONTRIBUTING.md) before sending a pull request.
+Reports in Russian and English are welcome. Use synthetic examples such as
+`ghbdtn`, and keep private text and raw logs out of public reports.
 
-Text conversion runs locally. The release checker contacts sokolovmo.ru over HTTPS for the signed update feed and selected ZIP; typed text and profile data are not included in update requests. Optional crash reports are disabled until the user explicitly opts in, and are available only in builds configured with the reporting service. Read [Privacy](PRIVACY.md), [Security reporting](SECURITY.md), and [Release readiness](RELEASE.md) before installing.
+Security concerns belong in [private vulnerability reports](https://github.com/SokolovMO/MultiSwitcher/security/advisories/new),
+not public issues. See the [security policy](SECURITY.md).
 
-## Feedback
+## License
 
-Use the repository's bug-report and feature-request forms. Bug reports request synthetic examples and warn against publishing private text or raw logs. The redacted diagnostic preview is editable; choosing to share copies the reviewed report and opens the GitHub issue form. It is never submitted automatically.
+[MIT](LICENSE). Original copyright notices are preserved.
+Bundled dictionaries and dependencies have their own
+[third-party notices](THIRD-PARTY-NOTICES.md).
 
-## Source and license
-
-The application code is available under the MIT License. Its license is included in the app bundle. See [LICENSE](LICENSE).
+Maintained by [SokolovMO](https://github.com/SokolovMO).

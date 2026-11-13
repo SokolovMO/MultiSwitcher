@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-labelledby="title desc">
+  <title id="title">MultiSwitcher</title>
+  <desc id="desc">A native macOS keyboard layout switcher. ghbdtn becomes привет.</desc>
+  <rect width="1280" height="400" fill="#0d1117"/>
+  <rect x="48" y="44" width="84" height="84" rx="21" fill="#151b23" stroke="#3d444d"/>
+  <text x="90" y="100" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="48" font-weight="700" letter-spacing="-4" fill="#f0f6fc">AЯ</text>
+  <text x="158" y="103" font-family="Helvetica,Arial,sans-serif" font-size="56" font-weight="700" letter-spacing="-2" fill="#f0f6fc">MultiSwitcher</text>
+  <text x="50" y="255" font-family="Menlo,Consolas,monospace" font-size="76" fill="#9198a1">ghbdtn</text>
+  <path d="M400 230h76m-20-20 20 20-20 20" fill="none" stroke="#9198a1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="518" y="255" font-family="Helvetica,Arial,sans-serif" font-size="88" font-weight="600" letter-spacing="-3" fill="#f0f6fc">привет</text>
+  <rect x="836" y="181" width="4" height="90" rx="2" fill="#f0f6fc"/>
+  <text x="50" y="340" font-family="Helvetica,Arial,sans-serif" font-size="25" fill="#9198a1">Russian ↔ English. Right from your menu bar.</text>
+</svg>
