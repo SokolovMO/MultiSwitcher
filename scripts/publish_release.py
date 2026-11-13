@@ -34,6 +34,11 @@ def verify(directory, seed, sparkle):
             raise ValueError('required distribution file missing')
     allowed = {'index.html', 'install.sh', 'LICENSE', 'THIRD-PARTY-NOTICES.md',
                'SHA256SUMS', 'latest.json', 'appcast.xml', manifest['source'], manifest['archive']}
+    if 'multiswitcher-demo.mp4' in (directory / 'index.html').read_text():
+        for name in ('multiswitcher-demo.mp4', 'multiswitcher-demo-poster.jpg'):
+            if not (directory / name).is_file():
+                raise ValueError('product video asset missing')
+            allowed.add(name)
     if installer := manifest.get('installer'):
         if Path(installer).name != installer or not installer.endswith('-arm64.dmg'):
             raise ValueError('invalid installer name')

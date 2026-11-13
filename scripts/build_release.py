@@ -165,9 +165,13 @@ def main():
                              '@SOURCE@': source.name, '@RELEASE_URL@': base.rstrip('/')}.items():
             page = page.replace(token, value)
         (output / 'index.html').write_text(page)
+        promo_files = []
+        for name in ('multiswitcher-demo.mp4', 'multiswitcher-demo-poster.jpg'):
+            shutil.copyfile(ROOT / 'release-site' / name, output / name)
+            promo_files.append(output / name)
         for name in ['LICENSE', 'THIRD-PARTY-NOTICES.md']:
             shutil.copyfile(ROOT / name, output / name)
-        (output / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n' for p in [archive, dmg, source]))
+        (output / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n' for p in [archive, dmg, source, *promo_files]))
     print(f'Verified static release: {output}')
 
 

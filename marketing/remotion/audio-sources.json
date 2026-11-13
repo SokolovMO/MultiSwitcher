@@ -1,0 +1,57 @@
+[
+  {
+    "id": "scissor",
+    "title": "intense typing on a laptop macbook keyboard",
+    "creator": "plummet",
+    "source": "freesound",
+    "page": "https://freesound.org/people/Plummet/sounds/749425/",
+    "media": "https://cdn.freesound.org/previews/749/749425_2255505-hq.mp3",
+    "license": "cc0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "use": "9 distinct recorded scissor-switch keystrokes; the stronger take also supplies option-key foley; the author explicitly identifies a low-profile scissor keyboard"
+  },
+  {
+    "id": "click",
+    "title": "plastic clicks.flac",
+    "creator": "qubodup",
+    "source": "freesound",
+    "page": "https://freesound.org/people/qubodup/sounds/167829/",
+    "media": "https://cdn.freesound.org/previews/167/167829_71257-hq.mp3",
+    "license": "cc0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "use": "three different plastic lid clicks for interface actions"
+  },
+  {
+    "id": "whoosh",
+    "title": "whoosh",
+    "creator": "qubodup",
+    "source": "freesound",
+    "page": "https://freesound.org/people/qubodup/sounds/60013/",
+    "media": "https://cdn.freesound.org/previews/60/60013_71257-hq.mp3",
+    "license": "cc0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "use": "recorded bamboo-stick air movement, peaks aligned to cuts"
+  },
+  {
+    "id": "cable",
+    "title": "whoosh sample.wav",
+    "creator": "zaziesound",
+    "source": "freesound",
+    "page": "https://freesound.org/people/Zaziesound/sounds/558205/",
+    "media": "https://cdn.freesound.org/previews/558/558205_6653936-hq.mp3",
+    "license": "cc0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "use": "recorded cable movement for the tray menu"
+  },
+  {
+    "id": "impact",
+    "title": "woosh.wav",
+    "creator": "freakinbehemoth",
+    "source": "freesound",
+    "page": "https://freesound.org/people/freakinbehemoth/sounds/243400/",
+    "media": "https://cdn.freesound.org/previews/243/243400_4146245-hq.mp3",
+    "license": "cc0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "use": "low-level recorded microphone movement for the final cut"
+  }
+]
