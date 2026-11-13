@@ -34,7 +34,11 @@ MultiSwitcher — нативное приложение для macOS, котор
 - **Нативный интерфейс.** Светлая и тёмная темы, русский и английский языки, системные разрешения и обновления Sparkle.
 - **Локальная обработка.** Набранный текст, буфер обмена и профиль не отправляются при проверке обновлений.
 
-[посмотреть 10-секундное видео](https://sokolovmo.ru/multiswitcher/#video) · [исходники видео на remotion](marketing/remotion/) · [промпт для видео multishift](marketing/prompts/multishift-video.md)
+<a href="https://sokolovmo.ru/multiswitcher/#video">
+  <img src=".github/assets/multiswitcher-demo.gif" alt="multiswitcher: ghbdtn превращается в привет одним нажатием, затем работа продолжается" width="800">
+</a>
+
+<sub>10 секунд о работе приложения. <a href="https://sokolovmo.ru/multiswitcher/#video">открыть полное видео со звуком</a>.</sub>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="design/interface-audit-2026-11-06/final-matrix/dark-0.png">

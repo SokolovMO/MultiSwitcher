@@ -33,6 +33,12 @@ and lets you decide when automatic correction should step aside.
 - **Stay native.** Light and dark appearances, Russian and English UI, system permissions, and signed Sparkle updates.
 - **Process text locally.** Typed text, clipboard contents, and profiles are not sent with update checks.
 
+<a href="https://sokolovmo.ru/multiswitcher/#video">
+  <img src=".github/assets/multiswitcher-demo.gif" alt="multiswitcher: fix ghbdtn to привет with one key and keep typing" width="800">
+</a>
+
+<sub>A 10-second product demo. <a href="https://sokolovmo.ru/multiswitcher/#video">watch the full video with sound</a>.</sub>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="design/interface-audit-2026-11-06/final-matrix/dark-0.png">
   <source media="(prefers-color-scheme: light)" srcset="design/interface-audit-2026-11-06/final-matrix/light-0.png">

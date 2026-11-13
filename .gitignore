@@ -39,3 +39,6 @@ docs/*
 !docs/index.html
 .agents/
 *.log
+
+# Local video production sources, audio stems, reviews and prompts
+/marketing/
