@@ -1,13 +1,13 @@
-## What changes for the user?
+## Что изменится для пользователя?
 
-Describe the problem and the resulting behavior. Link an issue if relevant.
+Опишите проблему и итоговое поведение. При необходимости дайте ссылку на Issue.
 
-## Validation
+## Проверки
 
-Describe the checks you ran and any remaining limits. Include light/dark
-screenshots for UI changes, using synthetic data only.
+Укажите выполненные проверки и ограничения. Для изменения интерфейса приложите
+светлый и тёмный скриншоты с вымышленными данными. Можно писать по-русски или по-английски.
 
-- [ ] The change is focused and preserves unrelated work.
-- [ ] Relevant checks passed, or missing checks are explained above.
-- [ ] Russian and English text are updated where applicable.
-- [ ] No private text, profiles, credentials, or raw logs are included.
+- [ ] Изменение решает одну задачу и сохраняет постороннюю работу.
+- [ ] Нужные проверки прошли либо пропущенные проверки объяснены выше.
+- [ ] Русские и английские тексты синхронизированы, если они затронуты.
+- [ ] В PR нет личных текстов, профилей, ключей и необработанных журналов.

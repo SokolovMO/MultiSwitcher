@@ -1,24 +1,24 @@
-name: Feature request
-description: Suggest a focused improvement to MultiSwitcher.
+name: Предложение / Feature request
+description: Предложите улучшение MultiSwitcher. Можно на русском или английском.
 title: "[Feature]: "
 labels: [enhancement, needs-triage]
 body:
   - type: textarea
     id: problem
     attributes:
-      label: What problem should this solve?
-      description: Describe the task or workflow, not private text.
+      label: Какую задачу нужно решить?
+      description: Опишите сценарий без личных данных. Можно писать по-русски или по-английски.
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: What would you like MultiSwitcher to do?
+      label: Какого поведения вы ожидаете?
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives you have tried
+      label: Какие варианты вы уже пробовали?
     validations:
       required: false

@@ -1,21 +1,21 @@
-# Contributing to MultiSwitcher
+<p align="right"><b>Русский</b> · <a href="CONTRIBUTING.en.md">English</a></p>
 
-Thank you for helping improve Russian and English typing on macOS.
-Issues and pull requests in **Russian or English** are welcome.
+# Участие в MultiSwitcher
 
-## Start with the problem
+Сообщения об ошибках, предложения и pull request принимаются **на русском и английском**.
 
-Search [existing issues](https://github.com/SokolovMO/MultiSwitcher/issues) first.
-Use the bug or feature form and keep each report focused on one problem.
-For a large change, open an issue before implementation so scope can be discussed.
-Use synthetic text, a minimal reproduction, and the app version/build and macOS version.
-See [SUPPORT.md](SUPPORT.md) for troubleshooting and [SECURITY.md](SECURITY.md)
-for private vulnerability reporting.
+## Сначала опишите задачу
 
-## Set up locally
+Проверьте [существующие Issues](https://github.com/SokolovMO/MultiSwitcher/issues).
+Для ошибки или предложения используйте соответствующую форму. Перед крупной
+переделкой откройте Issue, чтобы обсудить задачу и границы работы.
+Укажите версию и сборку приложения, macOS, минимальные шаги и вымышленный пример.
+Справка: [SUPPORT.md](SUPPORT.md). Уязвимости: [SECURITY.md](SECURITY.md).
 
-Use an Apple Silicon Mac with macOS 15+ and Swift 6 Command Line Tools.
-Full Xcode is needed for release integrations and the complete asset catalog.
+## Локальная разработка
+
+Нужны Mac с Apple Silicon, macOS 15+ и Swift 6 Command Line Tools.
+Для релизных интеграций и полного каталога ресурсов нужен Xcode.
 
 ```sh
 git clone https://github.com/SokolovMO/MultiSwitcher.git
@@ -25,57 +25,56 @@ swift run --package-path macos MultiSwitcherCoreTests
 bash macos/build_app.sh
 ```
 
-## Where things live
+## Где находится код
 
-- `macos/Sources/MultiSwitcher/` — AppKit interface, keyboard monitoring, and app integration.
-- `macos/Sources/MultiSwitcherCore/` — correction policies, profiles, rules, and local storage.
-- `macos/Tests/` — core tests and native interaction checks.
-- `dicts/` — dictionary packs and their licensing; `dicts/themes/` contains thematic lists.
-- `scripts/` — validation and distribution tools.
-- `design/` — interface review evidence; `legacy-ui/` preserves the previous interface.
-- `homebrew-tap/` — cask source and update tooling.
+- `macos/Sources/MultiSwitcher/` — AppKit, клавиатурные события и интеграция с системой.
+- `macos/Sources/MultiSwitcherCore/` — политики исправления, профиль, правила и хранение.
+- `macos/Tests/` — проверки ядра и нативного взаимодействия.
+- `dicts/` — словари и лицензии; `dicts/themes/` — тематические списки.
+- `scripts/` — проверки и инструменты выпуска.
+- `design/` — результаты проверок интерфейса; `legacy-ui/` — предыдущий интерфейс.
+- `homebrew-tap/` — исходники cask и обновление формул.
 
-## Keep changes focused
+## Вносите небольшие изменения
 
-Use existing components and system-owned macOS controls. Keep Russian and English
-copy in sync. Follow the surrounding Swift style, preserve unrelated edits, and
-avoid new dependencies unless the problem requires them.
+Используйте существующие компоненты и системные элементы macOS. Синхронизируйте
+русские и английские тексты, соблюдайте стиль соседнего Swift-кода и сохраняйте
+посторонние правки. Новую зависимость добавляйте, если она нужна для решения задачи.
 
-Keyboard replacement code must preserve undo behavior, clipboard restoration,
-secure-input handling, permission boundaries, and per-app exclusions. Keep
-synthetic examples in regressions; never add real typed text or profile data.
+В коде замены текста сохраняйте отмену, восстановление буфера обмена, Secure Input,
+проверки разрешений и исключения приложений. Для регрессий используйте вымышленные
+примеры; реальные тексты и профили в репозиторий не добавляйте.
 
-## Validate what changed
+## Проверки
 
-Run the core checks for a behavior change:
+Для изменения поведения запустите:
 
 ```sh
 swift run --package-path macos MultiSwitcherCoreTests
 swift test --package-path macos
 ```
 
-For selected-text conversion and app integration, also run:
+Для конвертации выделения и системной интеграции дополнительно:
 
 ```sh
 bash scripts/check_selection_conversion.sh
 bash macos/build_app.sh
 ```
 
-For UI changes, attach light/dark screenshots with synthetic data and describe
-keyboard and resize checks. Some interaction checks require a logged-in macOS
-session and granted permissions. A green build does not prove physical typing,
-clean-Mac installation, accessibility, or update acceptance.
+Для интерфейса приложите светлый и тёмный скриншоты с вымышленными данными,
+опишите проверки клавиатуры и изменения размера. Часть проверок требует активной
+сессии macOS и разрешений. Успешная сборка не доказывает работу физического ввода,
+установку на чистый Mac, доступность или приёмку обновления.
 
-Documentation-only changes need working links and a visual check of the rendered
-Markdown; they do not need a full app rebuild.
+Для правок документации достаточно проверки ссылок и отображения Markdown;
+полная пересборка приложения не требуется.
 
-## Send a pull request
+## Pull request
 
-Describe the user-visible problem, the resulting behavior, and how you checked it.
-Keep the diff small enough to review. Use a short descriptive commit subject
-(for example, `fix: restore clipboard after conversion`). The maintainer reviews
-and decides when to merge.
+Опишите проблему пользователя, итоговое поведение, выполненные проверки и ограничения.
+Сохраняйте небольшой объём изменений и понятное сообщение коммита, например
+`fix: restore clipboard after conversion`. Решение о слиянии принимает maintainer.
 
-Do not commit signing certificates, private keys, tokens, `.env` files, personal
-profiles, raw diagnostic logs, or build output. Keep original license notices.
-Follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Не добавляйте сертификаты подписи, закрытые ключи, токены, `.env`, личные профили,
+необработанные журналы и результаты сборки. Сохраняйте исходные лицензии и соблюдайте
+[правила общения](CODE_OF_CONDUCT.md).

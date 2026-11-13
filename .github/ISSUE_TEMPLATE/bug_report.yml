@@ -1,30 +1,30 @@
-name: Bug report
-description: Report a reproducible MultiSwitcher problem without sharing private text.
+name: Ошибка / Bug report
+description: Опишите воспроизводимую ошибку без личных данных. Можно на русском или английском.
 title: "[Bug]: "
 labels: [bug, needs-triage]
 body:
   - type: markdown
     attributes:
       value: |
-        Please use synthetic text in examples. Do not post passwords, real messages, URLs containing private data, clipboard contents, or raw diagnostic logs. The app does not upload typed text automatically.
+        Используйте вымышленные примеры. Не публикуйте пароли, реальные сообщения, приватные ссылки, буфер обмена и необработанные журналы. Можно писать по-русски или по-английски.
   - type: input
     id: app-version
     attributes:
-      label: MultiSwitcher version and build
+      label: Версия и сборка MultiSwitcher
       placeholder: "0.4.4 (76)"
     validations:
       required: true
   - type: input
     id: macos-version
     attributes:
-      label: macOS version
+      label: Версия macOS
       placeholder: "macOS 27.0.1"
     validations:
       required: true
   - type: dropdown
     id: app
     attributes:
-      label: Where did it happen?
+      label: Где возникла ошибка?
       options:
         - Spotlight
         - Safari address bar
@@ -35,13 +35,13 @@ body:
         - TextEdit
         - Finder or System Settings search
         - Terminal or iTerm
-        - Other
+        - Другое / Other
     validations:
       required: true
   - type: dropdown
     id: feature
     attributes:
-      label: Which action failed?
+      label: Какая функция не сработала?
       options:
         - Automatic layout correction
         - Option conversion
@@ -49,41 +49,41 @@ body:
         - Selected-text conversion
         - Rules or learning
         - Install or update
-        - Other
+        - Другое / Other
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce
-      description: Use generic sample text such as `ghbdtn` and avoid real content.
+      label: Шаги воспроизведения
+      description: Используйте вымышленный текст вроде `ghbdtn`, не реальные сообщения.
       placeholder: |
-        1. Open a new empty text field.
-        2. Type a synthetic sample and press Space.
-        3. Describe the result without pasting private text.
+        1. Откройте новое пустое текстовое поле.
+        2. Наберите вымышленный пример и нажмите пробел.
+        3. Опишите результат без личных данных.
     validations:
       required: true
   - type: textarea
     id: expected-actual
     attributes:
-      label: Expected and actual behavior
+      label: Ожидаемый и фактический результат
     validations:
       required: true
   - type: dropdown
     id: repeatability
     attributes:
-      label: How often does it happen?
+      label: Как часто возникает ошибка?
       options:
-        - Every time
-        - Sometimes
-        - Happened once
-        - Not sure
+        - Каждый раз
+        - Иногда
+        - Один раз
+        - Не уверен
     validations:
       required: true
   - type: checkboxes
     id: privacy
     attributes:
-      label: Privacy check
+      label: Проверка приватности
       options:
-        - label: I used synthetic examples and checked that this report contains no private text, credentials, or raw logs.
+        - label: Я использовал вымышленные примеры; в отчёте нет личных текстов, ключей и необработанных журналов.
           required: true

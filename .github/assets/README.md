@@ -1,10 +1,17 @@
-# Repository artwork
+# Оформление репозитория
 
-- `header-light.svg` / `header-dark.svg` are used by both README languages.
-- `social-preview.png` is a 1280 × 640 PNG under 1 MB, ready for GitHub's
+- `header-light.svg` / `header-dark.svg` — русские обложки основного README.
+- `header-light.en.svg` / `header-dark.en.svg` — английские варианты той же композиции.
+- `social-preview.png` — карточка 1280 × 640, менее 1 MB, для
   **Settings → General → Social preview → Edit → Upload an image**.
-- `social-preview.svg` is the editable source for that card.
+- `social-preview.svg` — её редактируемый исходник.
 
-Artwork uses the existing AЯ identity and the synthetic conversion `ghbdtn → привет`.
-The actual app screenshots remain in the `design/` validation archive; README
-references them without modifying the captures.
+Карточка Social preview показывается при отправке ссылки на репозиторий.
+Она не заменяет обложку README; добавление PNG в Git само по себе её не назначает.
+После замены файл нужно загрузить в настройках GitHub, а соцсети могут сохранять
+старое изображение в своём кеше.
+
+Используются знак AЯ и вымышленный пример `ghbdtn → привет`. Скриншоты приложения
+хранятся в существующем архиве `design/` и подключаются без изменения снимков.
+
+Общий стандарт с MultiShift: [скил оформления](../../skills/github-app-presentation/SKILL.md).

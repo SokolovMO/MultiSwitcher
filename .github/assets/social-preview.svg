@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
   <title id="title">MultiSwitcher</title>
-  <desc id="desc">A native macOS keyboard layout switcher. ghbdtn becomes привет.</desc>
+  <desc id="desc">Нативный переключатель раскладки для macOS. ghbdtn превращается в привет.</desc>
   <rect width="1280" height="640" fill="#ffffff"/><g transform="translate(28 90)">
   <rect x="48" y="44" width="84" height="84" rx="21" fill="#f6f8fa" stroke="#d1d9e0"/>
   <text x="90" y="100" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="48" font-weight="700" letter-spacing="-4" fill="#1f2328">AЯ</text>
@@ -9,5 +9,5 @@
   <path d="M400 230h76m-20-20 20 20-20 20" fill="none" stroke="#59636e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="518" y="255" font-family="Helvetica,Arial,sans-serif" font-size="88" font-weight="600" letter-spacing="-3" fill="#1f2328">привет</text>
   <rect x="836" y="181" width="4" height="90" rx="2" fill="#1f2328"/>
-  <text x="50" y="340" font-family="Helvetica,Arial,sans-serif" font-size="25" fill="#59636e">Russian ↔ English. Right from your menu bar.</text>
+  <text x="50" y="340" font-family="Helvetica,Arial,sans-serif" font-size="25" fill="#59636e">Русский ↔ English. Исправление раскладки на Mac.</text>
 </g><text x="78" y="565" font-family="Helvetica,Arial,sans-serif" font-size="22" fill="#59636e">sokolovmo.ru/multiswitcher</text></svg>

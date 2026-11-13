@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Installation and troubleshooting / Помощь
+  - name: Установка и помощь / Support
     url: https://github.com/SokolovMO/MultiSwitcher/blob/main/SUPPORT.md
-    about: Start here for permissions, Secure Input, installation, and updates.
-  - name: Privacy and data handling
+    about: Разрешения macOS, Secure Input, установка и обновления.
+  - name: Конфиденциальность / Privacy
     url: https://github.com/SokolovMO/MultiSwitcher/blob/main/PRIVACY.md
-    about: Read what MultiSwitcher processes locally and what is included in update requests.
-  - name: Security reporting
+    about: Локальная обработка текста и данные при проверке обновлений.
+  - name: Безопасность / Security
     url: https://github.com/SokolovMO/MultiSwitcher/blob/main/SECURITY.md
-    about: Learn how to report a vulnerability privately.
+    about: Как сообщить об уязвимости через закрытый канал.

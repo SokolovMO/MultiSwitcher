@@ -1,17 +1,18 @@
-# Changelog
+<p align="right"><b>Русский</b> · <a href="CHANGELOG.en.md">English</a></p>
 
-Public builds are distributed through the [official website](https://sokolovmo.ru/multiswitcher/)
-and the app's Sparkle updater. Version numbers below refer to those builds, not
-GitHub Releases.
+# История изменений
 
-## 0.4.4 (76) — 2026-11-11
+Публичные сборки распространяются через [официальный сайт](https://sokolovmo.ru/multiswitcher/)
+и Sparkle внутри приложения. Номера ниже относятся к этим сборкам, а не GitHub Releases.
 
-- Use a native template menu-bar mark so macOS controls inactive and pressed appearance.
-- Unify the sidebar control and app-owned marks with the companion MultiShift app.
-- Remove the duplicate Quit card from Advanced settings; standard menu commands remain.
+## 0.4.4 (76) — 11 ноября 2026
 
-The [validation record](RELEASE-VALIDATION-2026-11-11-REFINEMENTS.md) describes
-build checks, distribution signatures, and remaining hands-on acceptance limits.
-This is an independent arm64 distribution for macOS 15+, without Apple notarization.
+- Нативный шаблонный значок строки меню: неактивный и нажатый вид определяет macOS.
+- Кнопка боковой панели и знаки приложения согласованы с MultiShift.
+- Удалена дублирующая карточка выхода в дополнительных настройках; стандартные команды меню сохранены.
 
-Earlier engineering and release records are preserved in [RELEASE-HISTORY.md](RELEASE-HISTORY.md).
+[Запись проверки](RELEASE-VALIDATION-2026-11-11-REFINEMENTS.md) описывает сборку,
+подписи дистрибутива и оставшуюся приёмку на устройствах.
+Независимый дистрибутив для arm64 и macOS 15+, без нотарификации Apple.
+
+Предыдущие инженерные записи сохранены в [RELEASE-HISTORY.md](RELEASE-HISTORY.md).

@@ -1,30 +1,32 @@
-# Code of Conduct
+<p align="right"><b>Русский</b> · <a href="CODE_OF_CONDUCT.en.md">English</a></p>
 
-MultiSwitcher welcomes participation regardless of experience, nationality,
-language, age, disability, race, ethnicity, religion, sex, gender identity,
-or sexual orientation. Russian and English are both welcome.
+# Правила общения
 
-## Expected behavior
+В MultiSwitcher рады участникам с любым опытом, национальностью, языком, возрастом,
+состоянием здоровья, расой, этнической принадлежностью, религией, полом, гендерной
+идентичностью и сексуальной ориентацией. Можно писать по-русски и по-английски.
 
-Be respectful, assume good intent, and give specific, constructive feedback.
-Discuss the work without attacking the person. Respect boundaries and privacy.
-Ask before sharing someone else's private information.
+## Ожидаемое поведение
 
-Harassment, threats, discriminatory language, sexualized attention, doxxing,
-spam, and deliberate disruption are not accepted.
+Общайтесь уважительно, допускайте добрые намерения и давайте конкретную обратную
+связь. Обсуждайте работу, а не личность человека. Уважайте границы и приватность;
+перед публикацией чужих личных сведений получите согласие.
 
-## Moderation and reporting
+Недопустимы преследование, угрозы, дискриминация, нежелательное сексуальное
+внимание, раскрытие личных данных, спам и намеренный срыв обсуждения.
 
-[SokolovMO](https://github.com/SokolovMO) maintains this project and moderates its
-issues, pull requests, and discussions. The maintainer may edit or remove content,
-lock a conversation, or restrict participation when necessary. Repeated or severe
-violations can result in removal from project spaces.
+## Модерация и сообщения о нарушениях
 
-For content on GitHub, use the comment's **Report content** action. To raise a
-project-specific concern, contact the maintainer through the options on their
-GitHub profile; request a private channel before sharing sensitive details.
-Do not publish personal information or screenshots of private conversations.
+[SokolovMO](https://github.com/SokolovMO) поддерживает проект и модерирует его
+Issues, pull request и обсуждения. При нарушении maintainer может удалить или
+отредактировать сообщение, закрыть обсуждение или ограничить участие.
+За повторные или серьёзные нарушения возможна блокировка в пространствах проекта.
 
-This policy applies in project spaces and when representing the project publicly.
-Reports should be handled discreetly, with information shared only as needed to
-review the concern. This document does not promise absolute confidentiality.
+Для сообщения о контенте GitHub используйте **Report content** в меню сообщения.
+По вопросу, связанному с проектом, обратитесь к maintainer через доступные способы
+связи в его профиле. Перед передачей чувствительных сведений запросите частный канал.
+Не публикуйте личные данные и скриншоты частных переписок.
+
+Правила действуют в пространствах проекта и при его публичном представлении.
+При рассмотрении сообщения сведения следует раскрывать только в необходимом объёме;
+абсолютная конфиденциальность этим документом не обещается.

@@ -1,52 +1,75 @@
-# Help with MultiSwitcher
+<p align="right"><b>Русский</b> · <a href="SUPPORT.en.md">English</a></p>
 
-Reports in Russian and English are welcome. Start with the [download page](https://sokolovmo.ru/multiswitcher/)
-and [installation guide](README.md#install).
+# Помощь с MultiSwitcher
 
-## Correction or shortcuts do not work
+Можно писать по-русски и по-английски. Начните с
+[официальной загрузки](https://sokolovmo.ru/multiswitcher/) и [установки](README.md#установка).
 
-1. Confirm that automatic correction is enabled in the menu or General settings.
-2. Open **Setup Guide…** and check both required macOS permissions.
-3. Check whether the app is paused or the current application is excluded.
-4. If the menu reports Secure Input, follow the recovery instructions below.
-5. Reproduce with synthetic text such as `ghbdtn` in a new TextEdit document.
+## Исправление или горячие клавиши не работают
 
-Behavior can differ between applications, protected fields, and editable web
-controls. Include the affected app and field type when reporting a problem.
+1. Убедитесь, что автоматическое исправление включено в меню или основных настройках.
+2. Откройте инструкцию настройки и проверьте оба разрешения macOS.
+3. Проверьте, не включена ли пауза и не добавлено ли приложение в исключения.
+4. Если меню сообщает о Secure Input, выполните рекомендации ниже.
+5. Повторите ввод вымышленного `ghbdtn` в новом документе TextEdit.
 
-## macOS permissions
+Поведение может отличаться в разных приложениях, защищённых полях и веб-формах.
+При сообщении об ошибке укажите приложение и тип поля.
 
+## Разрешения macOS
 
-MultiSwitcher does not interrupt first launch with a permissions dialog or change macOS privacy settings in the background. When keyboard access is missing, **Check Permissions…** appears in the menu-bar menu and a status with **Setup Guide…** appears in General settings. The guide explains each permission before offering to open System Settings; **Later** is the default choice. You can leave either permission off and keep using the app and its settings, but automatic correction and the manual Option shortcut remain paused until both permissions are enabled.
+При отсутствии доступа в меню появляется **Проверить разрешения…**, а в основных
+настройках — статус с инструкцией. Помощник объясняет разрешения и предлагает
+открыть системные настройки. Выдавать доступ решаете вы; приложение не меняет
+настройки приватности в фоне.
 
-The first path is **System Settings → Privacy & Security → Accessibility → MultiSwitcher** on macOS 15–26, and **System Settings → Privacy & Security → Device Control & Data Access → MultiSwitcher** on macOS 27. The second path is **System Settings → Privacy & Security → Input Monitoring → MultiSwitcher**. MultiSwitcher uses the first permission to work with text in supported fields and Input Monitoring to receive keyboard events for layout detection and shortcuts. If you enable both after choosing **Open Settings**, MultiSwitcher restarts once to apply keyboard monitoring. macOS remains in control of both switches.
+- **Accessibility / Универсальный доступ** нужен для работы с текстом в полях.
+- **Input Monitoring / Мониторинг ввода** нужен для клавиатурных событий и сочетаний.
 
-macOS Secure Input can temporarily block both automatic and manual correction, even with both permissions enabled. MultiSwitcher checks this independently of keyboard events. The menu shows which app holds Secure Input; select that row for recovery instructions. A prolonged block sends a quiet native macOS notification with the app icon and a Details action. **Advanced → Test notification** requests notification permission when needed; it is never requested automatically during password entry. If permission is missing or delivery fails, the status remains visible in Advanced settings and the menu; no imitation desktop banner is shown. macOS controls banner appearance and Focus. Recovery removes the warning from Notification Center automatically. Leave the password field in the named app; if the block persists, quit that app completely and reopen it. Short password entry does not trigger the automatic notice. Learning and pause feedback use coalesced native notifications with generic text; typed words are never stored in Notification Center.
+В macOS 15–26 Accessibility расположен в разделе **Конфиденциальность и безопасность**.
+В macOS 27 путь может называться **Device Control & Data Access → MultiSwitcher**.
+Input Monitoring расположен в **Конфиденциальность и безопасность → Мониторинг ввода**.
+Названия разделов зависят от языка и версии macOS; помощник открывает нужный раздел.
+После выдачи обоих разрешений из помощника приложение один раз перезапускается,
+чтобы применить доступ. Без них можно пользоваться настройками, но глобальные
+исправления и конвертация остаются приостановлены.
 
+## Защищённый ввод — Secure Input
 
-## Downloads and updates
+macOS Secure Input временно блокирует автокоррекцию и горячие клавиши даже при
+выданных разрешениях. Меню показывает удерживающее его приложение. Покиньте поле
+пароля; если блокировка не снялась, полностью закройте указанное приложение
+и откройте снова.
 
-Use the [official download page](https://sokolovmo.ru/multiswitcher/). Updates are
-hosted on the same server; an empty GitHub Releases page does not mean there is
-no download. The app is independently signed and is not Apple-notarized.
+О длительной блокировке сообщает системное уведомление с инструкцией. Короткий
+ввод пароля не вызывает автоматическое предупреждение. Разрешение уведомлений
+запрашивается при действии **Дополнительно → Проверить уведомление**, а не при
+вводе пароля. При отсутствии разрешения статус остаётся в меню и настройках.
+Внешний вид уведомлений и режим фокусирования определяет macOS. После восстановления
+предупреждение убирается из Центра уведомлений. Тексты введённых слов туда не записываются.
 
-For updates, use **Check for Updates** from the menu or About settings. If you
-installed with Homebrew, see [adoption and upgrade instructions](homebrew-tap/README.md).
-Do not delete your profile or force-replace an existing installation to solve an
-update problem. Report the version/build and error message first.
+## Установка и обновления
 
-## Report an issue
+Дистрибутивы доступны на [официальном сайте](https://sokolovmo.ru/multiswitcher/).
+Обновления размещены на том же сервере; пустой раздел GitHub Releases не означает,
+что приложение недоступно. Приложение имеет независимую подпись, без нотарификации Apple.
 
-Use [Bug report](https://github.com/SokolovMO/MultiSwitcher/issues/new?template=bug_report.yml)
-or [Feature request](https://github.com/SokolovMO/MultiSwitcher/issues/new?template=feature_request.yml).
-Include the app version/build, macOS version, affected app, reproduction steps,
-and expected versus actual behavior.
+Используйте **Проверить обновления** в меню или разделе **О приложении**.
+Для Homebrew есть отдельные [инструкции подключения и обновления](homebrew-tap/README.md).
+Не удаляйте профиль и не заменяйте установленное приложение принудительно ради
+исправления ошибки обновления. Сначала сообщите версию/сборку и текст ошибки.
 
-The app can prepare an editable, redacted diagnostic preview. Review it before
-copying anything into a report. Redaction cannot guarantee that every private
-detail has been removed. Never share passwords, real messages, clipboard contents,
-private profiles, signing keys, or raw logs.
+## Сообщить о проблеме
 
-For vulnerabilities, use the [security policy](SECURITY.md). There is no guaranteed
-support response time. Known release checks and limits are recorded in
-[RELEASE.md](RELEASE.md) and the linked validation records.
+Используйте [форму ошибки](https://github.com/SokolovMO/MultiSwitcher/issues/new?template=bug_report.yml)
+или [предложения](https://github.com/SokolovMO/MultiSwitcher/issues/new?template=feature_request.yml).
+Укажите версию/сборку, macOS, затронутое приложение, шаги и ожидаемый/фактический результат.
+
+Приложение может подготовить редактируемый диагностический отчёт с удалением
+распознаваемых личных сведений. Проверьте его перед публикацией: фильтр не гарантирует
+удаление всех приватных деталей. Не передавайте пароли, реальные сообщения,
+содержимое буфера, личные профили, ключи подписи и необработанные журналы.
+
+Уязвимости описаны в [политике безопасности](SECURITY.md). Гарантированных сроков
+ответа нет. Проверки и ограничения выпусков перечислены в [RELEASE.md](RELEASE.md)
+и связанных записях проверки.
